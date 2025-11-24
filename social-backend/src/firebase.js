@@ -3,7 +3,7 @@ const serviceAccount = require("./firebase-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "brewhub.appspot.com"
+  storageBucket: "brewhub-bd760.firebasestorage.app"
 });
 
 const db = admin.firestore();
