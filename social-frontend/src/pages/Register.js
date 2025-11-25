@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { useAuth } from '../context/AuthContext';
 
 const Register = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [role, setRole] = useState('Appassionato'); // Default role
+    const [bio, setBio] = useState('');
+
     const [error, setError] = useState(null);
     const [info, setInfo] = useState(null);
+
+    const { updateProfile } = useAuth();
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -17,6 +26,26 @@ const Register = ({ onLoginSuccess }) => {
 
             // Ottieni UID
             const uid = user.uid;
+
+            // Dati profilo
+            const profileData = {
+                name: `${firstName} ${lastName}`,
+                role: role,
+                bio: bio,
+                email: email,
+                stats: {
+                    posts: 0,
+                    followers: 0,
+                    following: 0
+                },
+                profilePic: `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=random`
+            };
+
+            // Salva su Firestore
+            await setDoc(doc(db, "users", uid), profileData);
+
+            // Aggiorna stato locale
+            updateProfile(profileData);
 
             // Ottieni token Firebase (serve per /me backend)
             const token = await user.getIdToken();
@@ -42,9 +71,53 @@ const Register = ({ onLoginSuccess }) => {
 
     return (
         <div className="register-container">
-            <h2>Register</h2>
+            <h2>Crea Account</h2>
             <form onSubmit={handleRegister}>
-                <div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label>Nome:</label>
+                        <input
+                            type="text"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Cognome:</label>
+                        <input
+                            type="text"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label>Tag:</label>
+                    <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        className="role-select"
+                    >
+                        <option value="Barista">Barista</option>
+                        <option value="Appassionato">Appassionato</option>
+                        <option value="Torrefazione">Torrefazione</option>
+                    </select>
+                </div>
+
+                <div className="form-group">
+                    <label>Bio (Opzionale):</label>
+                    <textarea
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        placeholder="Raccontaci qualcosa di te..."
+                        rows="3"
+                    />
+                </div>
+
+                <div className="form-group">
                     <label>Email:</label>
                     <input
                         type="email"
@@ -53,7 +126,7 @@ const Register = ({ onLoginSuccess }) => {
                         required
                     />
                 </div>
-                <div>
+                <div className="form-group">
                     <label>Password:</label>
                     <input
                         type="password"
@@ -65,7 +138,7 @@ const Register = ({ onLoginSuccess }) => {
 
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
-                <button type="submit" className="submit-btn">Register</button>
+                <button type="submit" className="submit-btn">Registrati</button>
             </form>
 
             {/* QUI MOSTRIAMO UID E TOKEN */}

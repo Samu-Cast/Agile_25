@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
@@ -10,7 +11,7 @@ import AuthModal from './components/AuthModal';
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isLoggedIn, login, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLoginClick = () => {
@@ -19,7 +20,7 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    logout();
     navigate('/'); // Torna alla home page
   };
 
@@ -28,7 +29,7 @@ function AppContent() {
   };
 
   const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
+    login();
     closeModal();
   };
 
@@ -55,7 +56,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }
