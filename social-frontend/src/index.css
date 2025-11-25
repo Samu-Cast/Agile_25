@@ -1,3 +1,25 @@
+:root {
+  /* Palette */
+  --bg-primary: #FAF3E1;
+  /* Light Cream */
+  --bg-secondary: #F5E7C6;
+  /* Darker Cream */
+  --accent-color: #FF6D1F;
+  /* Orange */
+  --text-primary: #222222;
+  /* Dark Grey/Black */
+  --text-secondary: #575757;
+  --white: #FFFFFF;
+
+  /* Spacing & Layout */
+  --header-height: 60px;
+  --sidebar-width: 270px;
+  --border-radius: 12px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,9 +27,18 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Reset buttons */
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
 }
