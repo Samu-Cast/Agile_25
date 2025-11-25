@@ -1,15 +1,15 @@
 import React from 'react';
 import './Home.css';
+import Header from '../components/Header';
 
 const Navbar = ({ onLoginClick }) => {
     return (
         <nav className="navbar">
             <div className="navbar-logo">
-                <span className="logo-icon">⚡</span>
-                <span className="logo-text">Agile_25</span>
+                <span className="logo-text">BrewHub</span>
             </div>
             <div className="navbar-search">
-                <input type="text" placeholder="Search Agile_25..." />
+                <input type="text" placeholder="Search BrewHub..." />
             </div>
             <div className="navbar-actions">
                 <button className="btn-login" onClick={onLoginClick}>
@@ -116,14 +116,13 @@ const Feed = () => {
 const Home = ({ onLoginClick }) => {
     return (
         <div className="home-layout">
-            <Navbar onLoginClick={onLoginClick} />
             <div className="main-container">
                 <Sidebar />
                 <Feed />
                 <div className="right-sidebar">
                     {/* Placeholder for right sidebar content like 'Recent' or 'Trending' */}
                     <div className="info-card">
-                        <h3>Agile_25 Premium</h3>
+                        <h3>BrewHub Premium</h3>
                         <p>The best social experience for developers.</p>
                         <button className="btn-primary">Try Now</button>
                     </div>

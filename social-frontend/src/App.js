@@ -1,54 +1,60 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import './App.css';
-import Register from './pages/Register';
-import Login from './pages/Login';
 import Home from './pages/Home';
+import Profile from './pages/Profile';
+import Header from './components/Header';
+import AuthModal from './components/AuthModal';
 
-function App() {
-  const [currentView, setCurrentView] = useState('home');
+function AppContent() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
 
-  const renderView = () => {
-    switch (currentView) {
-      case 'login':
-        return (
-          <>
-            <Login />
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('register')}>
-                Need an account? Register
-              </button>
-              <br />
-              <button onClick={() => setCurrentView('home')} style={{ marginTop: '10px' }}>
-                Back to Home
-              </button>
-            </div>
-          </>
-        );
-      case 'register':
-        return (
-          <>
-            <Register />
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button onClick={() => setCurrentView('login')}>
-                Already have an account? Login
-              </button>
-              <br />
-              <button onClick={() => setCurrentView('home')} style={{ marginTop: '10px' }}>
-                Back to Home
-              </button>
-            </div>
-          </>
-        );
-      case 'home':
-      default:
-        return <Home onLoginClick={() => setCurrentView('login')} />;
-    }
+  const handleLoginClick = () => {
+    setAuthMode('login');
+    setShowAuthModal(true);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    navigate('/'); // Torna alla home page
+  };
+
+  const closeModal = () => {
+    setShowAuthModal(false);
+  };
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+    closeModal();
   };
 
   return (
     <div className="App">
-      {renderView()}
+      <Header
+        onLoginClick={handleLoginClick}
+        onLogoutClick={handleLogout}
+        showProfile={isLoggedIn}
+        isLoggedIn={isLoggedIn}
+      />
+      <Routes>
+        <Route path="/" element={<Home onLoginClick={handleLoginClick} />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+      {showAuthModal && (
+        <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />
+      )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 
