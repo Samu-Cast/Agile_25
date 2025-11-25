@@ -25,6 +25,9 @@ function Profile() {
             setEditForm({
                 name: user.name || '',
                 bio: user.bio || '',
+                location: user.location || '',
+                address: user.address || '',
+                openingHours: user.openingHours || '',
                 profilePic: user.profilePic || DEFAULT_AVATAR
             });
         }
@@ -34,6 +37,9 @@ function Profile() {
         setEditForm({
             name: user.name || '',
             bio: user.bio || '',
+            location: user.location || '',
+            address: user.address || '',
+            openingHours: user.openingHours || '',
             profilePic: user.profilePic || DEFAULT_AVATAR
         });
         setIsEditing(true);
@@ -51,6 +57,9 @@ function Profile() {
             await updateDoc(ref, {
                 name: editForm.name,
                 bio: editForm.bio,
+                location: editForm.location,
+                address: editForm.address,
+                openingHours: editForm.openingHours,
                 profilePic: editForm.profilePic
             });
             setIsEditing(false);
@@ -151,6 +160,26 @@ function Profile() {
                         <span className={`role-tag ${String(user.role || 'Appassionato').toLowerCase()}`}>{user.role || 'Appassionato'}</span>
                     </div>
                     <p className="profile-bio">{user.bio}</p>
+                    {user.location && (
+                        <p className="profile-location">
+                            📍 {user.location}
+                        </p>
+                    )}
+
+                    {user.role === 'Bar' && (
+                        <div className="bar-info">
+                            {user.address && <p className="profile-detail">🏠 {user.address}</p>}
+                            {user.openingHours && <p className="profile-detail">🕒 {user.openingHours}</p>}
+
+                            <div className="associated-baristas">
+                                <h4>Baristi Associati</h4>
+                                <div className="baristas-list">
+                                    {/* Placeholder for now - logic to fetch baristas would go here */}
+                                    <p className="no-baristas">Nessun barista associato al momento.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -227,6 +256,41 @@ function Profile() {
                             onChange={handleInputChange}
                         />
                     </div>
+                    <div className="edit-form-group">
+                        <label>Luogo</label>
+                        <input
+                            type="text"
+                            name="location"
+                            value={editForm.location}
+                            onChange={handleInputChange}
+                            placeholder="Es. Roma, Italia"
+                        />
+                    </div>
+
+                    {user.role === 'Bar' && (
+                        <>
+                            <div className="edit-form-group">
+                                <label>Indirizzo</label>
+                                <input
+                                    type="text"
+                                    name="address"
+                                    value={editForm.address}
+                                    onChange={handleInputChange}
+                                    placeholder="Via Roma 1, 00100"
+                                />
+                            </div>
+                            <div className="edit-form-group">
+                                <label>Orari di Apertura</label>
+                                <input
+                                    type="text"
+                                    name="openingHours"
+                                    value={editForm.openingHours}
+                                    onChange={handleInputChange}
+                                    placeholder="Lun-Ven: 07:00 - 20:00"
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div className="drawer-footer">
                     <button className="cancel-btn" onClick={handleCloseDrawer}>Annulla</button>

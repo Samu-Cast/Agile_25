@@ -119,6 +119,15 @@
     text-align: left;
 }
 
+.profile-location {
+    font-size: 0.9rem;
+    color: #8D6E63;
+    margin: 0.5rem 0 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* Stats Row */
 .profile-stats {
     display: flex;

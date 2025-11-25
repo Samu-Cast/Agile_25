@@ -105,6 +105,7 @@ const Register = ({ onLoginSuccess }) => {
                         onChange={(e) => setRole(e.target.value)}
                         className="role-select"
                     >
+                        <option value="Bar">Bar</option>
                         <option value="Barista">Barista</option>
                         <option value="Appassionato">Appassionato</option>
                         <option value="Torrefazione">Torrefazione</option>
