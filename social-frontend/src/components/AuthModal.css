@@ -304,6 +304,201 @@
     color: #1B5E20;
 }
 
+
+.login-container input:focus,
+.register-container input:focus {
+    outline: none;
+    border-color: #6F4E37;
+    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+}
+
+.submit-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #6F4E37;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: #4B3621;
+}
+
+/* AuthModal.css */
+.auth-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(62, 39, 35, 0.6);
+    /* Dark brown overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.auth-modal {
+    background: #FFFFFF;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    padding: 2rem;
+    position: relative;
+    box-shadow: 0 8px 24px rgba(62, 39, 35, 0.2);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #8D6E63;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #3E2723;
+}
+
+.tab-header {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #EFEBE9;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #A1887F;
+    /* Light Coffee */
+    transition: all 0.3s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.tab-btn.active {
+    color: #6F4E37;
+    /* Coffee Bean */
+    border-bottom: 2px solid #6F4E37;
+}
+
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.login-form,
+.register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.login-container h2,
+.register-container h2 {
+    color: #3E2723;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.login-container label,
+.register-container label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #5D4037;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.login-container input,
+.register-container input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #D7CCC8;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #3E2723;
+    background-color: #FAFAFA;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.login-container input:focus,
+.register-container input:focus {
+    outline: none;
+    border-color: #6F4E37;
+    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+}
+
+.submit-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #6F4E37;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: #4B3621;
+}
+
+.forgot-password-link {
+    background: none;
+    border: none;
+    color: #6F4E37;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    transition: color 0.2s;
+}
+
+.forgot-password-link:hover {
+    color: #3E2723;
+    text-decoration: underline;
+}
+
+.success-msg {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #E8F5E9;
+    border-radius: 8px;
+    word-break: break-all;
+    color: #2E7D32;
+    font-size: 0.9rem;
+}
+
+.success-msg h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #1B5E20;
+}
+
 .success-msg p {
     margin: 0.25rem 0;
 }
@@ -313,4 +508,58 @@
     padding: 0.5rem;
     border-radius: 4px;
     overflow-x: auto;
+}
+
+/* New styles for extended registration form */
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.role-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #D7CCC8;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #3E2723;
+    background-color: #FAFAFA;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+    appearance: none;
+    /* Remove default arrow */
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236F4E37%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem top 50%;
+    background-size: 0.65rem auto;
+}
+
+.role-select:focus {
+    outline: none;
+    border-color: #6F4E37;
+    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+}
+
+.register-container textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #D7CCC8;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #3E2723;
+    background-color: #FAFAFA;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.register-container textarea:focus {
+    outline: none;
+    border-color: #6F4E37;
+    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
 }
