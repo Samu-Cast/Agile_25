@@ -5,10 +5,11 @@ import './App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import CreatePost from './pages/CreatePost';
+import PostDetails from './pages/PostDetails';
 import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
-import { createPost, getPosts, updateVotes, toggleCoffee, updateRating } from './services/postService';
+import { createPost, getPosts, updateVotes } from './services/postService';
 
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -130,22 +131,6 @@ function AppContent() {
     }
   };
 
-
-
-  // Gestione tazze di caffè  - passa userId
-  const handleCoffee = async (postId) => {
-    if (!currentUser) {
-      alert('Devi essere loggato per dare caffè!');
-      return;
-    }
-    try {
-      await toggleCoffee(postId, currentUser.email);
-      await loadPosts();
-    } catch (error) {
-      console.error('Errore nel toggle del caffè:', error);
-    }
-  };
-
   return (
     <div className="App">
       <Header
@@ -162,13 +147,13 @@ function AppContent() {
             posts={posts}
             loading={loading}
             onVote={handleVote}
-            onCoffee={handleCoffee}
             currentUser={currentUser}
             refreshPosts={loadPosts}
           />
         } />
         <Route path="/profile" element={<Profile />} />
         <Route path="/create-post" element={<CreatePost onPostCreate={addPost} />} />
+        <Route path="/post/:id" element={<PostDetails />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />
