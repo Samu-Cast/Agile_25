@@ -88,17 +88,17 @@ const Feed = ({ posts, loading, onVote, onCoffee, onRatingChange, currentUser })
                     <div key={post.id} className="post-card">
                         <div className="post-sidebar">
                             <button
-                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                                className={`vote-btn up ${Number(userVote) === 1 ? 'active' : ''}`}
                                 onClick={() => onVote(post.id, 1)}
-                                style={{ color: userVote === 1 ? 'var(--accent-color)' : '' }}
+                                style={{ color: Number(userVote) === 1 ? '#4169E1' : '' }}
                             >
                                 ▲
                             </button>
                             <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
                             <button
-                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                                className={`vote-btn down ${Number(userVote) === -1 ? 'active' : ''}`}
                                 onClick={() => onVote(post.id, -1)}
-                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                                style={{ color: Number(userVote) === -1 ? '#4169E1' : '' }}
                             >
                                 ▼
                             </button>
@@ -174,13 +174,6 @@ const Home = ({ onLoginClick, isLoggedIn, posts, loading, onVote, onCoffee, curr
                             </a>
                         </div>
                     )}
-
-                    {/* Placeholder for right sidebar content like 'Recent' or 'Trending' */}
-                    <div className="info-card">
-                        <h3>BrewHub Premium</h3>
-                        <p>The best social experience for developers.</p>
-                        <button className="btn-primary">Try Now</button>
-                    </div>
                 </div>
             </div>
         </div>

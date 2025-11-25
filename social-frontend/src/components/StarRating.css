@@ -6,12 +6,15 @@
 
 .star {
     font-size: 1.5rem;
-    color: var(--text-secondary);
+    color: #BDBDBD;
+    /* Lighter gray for unfilled stars */
     cursor: pointer;
+    transition: color 0.2s;
 }
 
 .star.filled {
-    color: gold;
+    color: var(--accent-color);
+    /* Coffee color for filled stars */
 }
 
 .average-rating {

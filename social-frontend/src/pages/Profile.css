@@ -86,7 +86,8 @@
 }
 
 .role-tag {
-    padding: 0.25rem 0.75rem;
+    margin-top: 1.5%;
+    padding: 0.25rem 0.180rem;
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 600;
@@ -115,6 +116,7 @@
     line-height: 1.5;
     color: #5D4037;
     max-width: 600px;
+    text-align: left;
 }
 
 /* Stats Row */

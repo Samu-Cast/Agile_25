@@ -5,6 +5,8 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import './Profile.css';
 
+const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+
 function Profile() {
     const { currentUser } = useAuth();
     const user = useUserData();
@@ -23,7 +25,7 @@ function Profile() {
             setEditForm({
                 name: user.name || '',
                 bio: user.bio || '',
-                profilePic: user.profilePic || ''
+                profilePic: user.profilePic || DEFAULT_AVATAR
             });
         }
     }, [user]);
@@ -32,7 +34,7 @@ function Profile() {
         setEditForm({
             name: user.name || '',
             bio: user.bio || '',
-            profilePic: user.profilePic || ''
+            profilePic: user.profilePic || DEFAULT_AVATAR
         });
         setIsEditing(true);
     };
@@ -131,7 +133,7 @@ function Profile() {
                     ✎
                 </button>
                 <div className="profile-pic-container" onClick={handleImageClick} style={{ cursor: 'pointer' }}>
-                    <img src={user.profilePic} alt={user.name} className="profile-pic" />
+                    <img src={user.profilePic || DEFAULT_AVATAR} alt={user.name} className="profile-pic" />
                     <div className="profile-pic-overlay">
                         <span>Cambia Foto</span>
                     </div>
@@ -146,7 +148,7 @@ function Profile() {
                 <div className="profile-info">
                     <div className="profile-name-row">
                         <h1 className="profile-name">{user.name}</h1>
-                        <span className={`role-tag ${user.role.toLowerCase()}`}>{user.role}</span>
+                        <span className={`role-tag ${String(user.role || 'Appassionato').toLowerCase()}`}>{user.role || 'Appassionato'}</span>
                     </div>
                     <p className="profile-bio">{user.bio}</p>
                 </div>
@@ -155,15 +157,15 @@ function Profile() {
             {/* Stats Row */}
             <div className="profile-stats">
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats.posts}</span>
+                    <span className="stat-value">{user.stats?.posts || 0}</span>
                     <span className="stat-label">Post</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats.followers}</span>
+                    <span className="stat-value">{user.stats?.followers || 0}</span>
                     <span className="stat-label">Follower</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats.following}</span>
+                    <span className="stat-value">{user.stats?.following || 0}</span>
                     <span className="stat-label">Following</span>
                 </div>
             </div>

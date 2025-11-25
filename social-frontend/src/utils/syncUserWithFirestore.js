@@ -20,6 +20,10 @@ export const syncUserWithFirestore = async (firebaseUser) => {
     if (!snap.exists()) {
         await setDoc(ref, {
             ...baseData,
+            role: 'Appassionato', // Default role
+            profilePic: firebaseUser.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png", // Default avatar
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User",
+            bio: "Coffee lover ☕",
             createdAt: new Date(),
             stats: { posts: 0, followers: 0, following: 0 },
         });
