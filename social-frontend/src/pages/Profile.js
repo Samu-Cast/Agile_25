@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useUserData } from '../hooks/useUserData';
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import './Profile.css';
 
 function Profile() {
-    const { user, updateProfile } = useAuth();
+    const { currentUser } = useAuth();
+    const user = useUserData();
     const [activeTab, setActiveTab] = useState('posts');
     const [isEditing, setIsEditing] = useState(false);
 
@@ -17,18 +21,18 @@ function Profile() {
     useEffect(() => {
         if (user) {
             setEditForm({
-                name: user.name,
-                bio: user.bio,
-                profilePic: user.profilePic
+                name: user.name || '',
+                bio: user.bio || '',
+                profilePic: user.profilePic || ''
             });
         }
     }, [user]);
 
     const handleEditClick = () => {
         setEditForm({
-            name: user.name,
-            bio: user.bio,
-            profilePic: user.profilePic
+            name: user.name || '',
+            bio: user.bio || '',
+            profilePic: user.profilePic || ''
         });
         setIsEditing(true);
     };
@@ -37,13 +41,21 @@ function Profile() {
         setIsEditing(false);
     };
 
-    const handleSave = () => {
-        updateProfile({
-            name: editForm.name,
-            bio: editForm.bio,
-            profilePic: editForm.profilePic
-        });
-        setIsEditing(false);
+    const handleSave = async () => {
+        if (!currentUser) return;
+
+        try {
+            const ref = doc(db, "users", currentUser.uid);
+            await updateDoc(ref, {
+                name: editForm.name,
+                bio: editForm.bio,
+                profilePic: editForm.profilePic
+            });
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            // Handle error (maybe show a toast)
+        }
     };
 
     const handleInputChange = (e) => {

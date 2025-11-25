@@ -218,6 +218,15 @@
     color: var(--text-primary);
 }
 
+.post-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    object-fit: cover;
+    max-height: 500px;
+}
+
 .post-footer {
     display: flex;
     gap: 8px;

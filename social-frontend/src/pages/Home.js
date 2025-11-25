@@ -1,6 +1,8 @@
 import React from 'react';
+import StarRating from '../components/StarRating';
 import './Home.css';
 import Header from '../components/Header';
+import { updateRating } from '../services/postService';
 
 const Navbar = ({ onLoginClick }) => {
     return (
@@ -54,7 +56,7 @@ const Sidebar = () => {
     );
 };
 
-const Feed = ({ posts, loading, onVote, onCoffee, currentUser }) => {
+const Feed = ({ posts, loading, onVote, onCoffee, onRatingChange, currentUser }) => {
     if (loading) {
         return (
             <main className="feed">
@@ -78,7 +80,7 @@ const Feed = ({ posts, loading, onVote, onCoffee, currentUser }) => {
     return (
         <main className="feed">
             {posts.map(post => {
-                const userId = currentUser?.username;
+                const userId = currentUser?.email;
                 const userVote = post.votedBy && userId ? post.votedBy[userId] : null;
                 const hasGivenCoffee = post.coffeeBy && userId ? post.coffeeBy.includes(userId) : false;
 
@@ -126,16 +128,12 @@ const Feed = ({ posts, loading, onVote, onCoffee, currentUser }) => {
                             <div className="post-footer">
                                 <button className="action-btn">💬 {post.comments || 0} Comments</button>
                                 <button className="action-btn">↗ Share</button>
-                                <button
-                                    className={`action-btn ${hasGivenCoffee ? 'active' : ''}`}
-                                    onClick={() => onCoffee(post.id)}
-                                    style={{
-                                        backgroundColor: hasGivenCoffee ? 'rgba(255, 109, 31, 0.1)' : '',
-                                        fontWeight: hasGivenCoffee ? 'bold' : ''
-                                    }}
-                                >
-                                    ☕ {post.coffees || 0} Coffee
-                                </button>
+                                <StarRating
+                                    postId={post.id}
+                                    userRatingMap={post.ratingBy || {}}
+                                    currentUserId={currentUser?.email}
+                                    onRatingChange={onRatingChange}
+                                />
                             </div>
                         </div>
                     </div>
@@ -145,12 +143,26 @@ const Feed = ({ posts, loading, onVote, onCoffee, currentUser }) => {
     );
 };
 
-const Home = ({ onLoginClick, isLoggedIn, posts, loading, onVote, onCoffee, currentUser }) => {
+const Home = ({ onLoginClick, isLoggedIn, posts, loading, onVote, onCoffee, currentUser, refreshPosts }) => {
+    // Handler for rating changes
+    const onRatingChange = async (postId, rating) => {
+        if (!currentUser) {
+            alert('Devi essere loggato per valutare!');
+            return;
+        }
+        try {
+            await updateRating(postId, currentUser.email, rating);
+            // Refresh posts after rating update
+            await refreshPosts();
+        } catch (err) {
+            console.error('Errore nell\'aggiornamento della valutazione:', err);
+        }
+    };
     return (
         <div className="home-layout">
             <div className="main-container">
                 <Sidebar />
-                <Feed posts={posts} loading={loading} onVote={onVote} onCoffee={onCoffee} currentUser={currentUser} />
+                <Feed posts={posts} loading={loading} onVote={onVote} onCoffee={onCoffee} onRatingChange={onRatingChange} currentUser={currentUser} />
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
                     {isLoggedIn && (

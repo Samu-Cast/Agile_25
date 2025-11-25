@@ -8,25 +8,46 @@ import CreatePost from './pages/CreatePost';
 import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
-import { createPost, getPosts, updateVotes, toggleCoffee } from './services/postService';
+import { createPost, getPosts, updateVotes, toggleCoffee, updateRating } from './services/postService';
 
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
-
-  // Stato utente corrente
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('currentUser');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    const saved = localStorage.getItem('isLoggedIn');
-    return saved === 'true';
-  });
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const { currentUser, logout } = useAuth();
+  const isLoggedIn = !!currentUser;
 
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/posts');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+
+        // Map backend data to frontend format
+        const formattedPosts = data.map(post => ({
+          id: post.id,
+          author: post.authorName, // Use the author name we fetched
+          time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
+          title: post.content.substring(0, 50) + (post.content.length > 50 ? "..." : ""), // Use content as title for now
+          content: post.content,
+          image: post.image,
+          votes: post.likes || 0,
+          comments: 0 // Default
+        }));
+
+        setPosts(formattedPosts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   const navigate = useNavigate();
 
@@ -62,22 +83,17 @@ function AppContent() {
     setShowAuthModal(true);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    navigate('/');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/'); // Torna alla home page
   };
 
   const closeModal = () => {
     setShowAuthModal(false);
   };
 
-  const handleLoginSuccess = (userData) => {
-    setIsLoggedIn(true);
-    setCurrentUser({
-      username: userData?.username || 'u/you',
-      email: userData?.email || ''
-    });
+  const handleLoginSuccess = () => {
+    // login(); // Non serve più, AuthContext gestisce lo stato
     closeModal();
   };
 
@@ -87,7 +103,7 @@ function AppContent() {
       const postToSave = {
         title: newPostData.title,
         content: newPostData.content,
-        author: currentUser?.username || 'u/anonymous',
+        author: currentUser?.email || 'u/anonymous',
         tags: newPostData.tags || []
       };
 
@@ -107,12 +123,14 @@ function AppContent() {
       return;
     }
     try {
-      await updateVotes(postId, currentUser.username, value);
+      await updateVotes(postId, currentUser.email, value);
       await loadPosts();
     } catch (error) {
       console.error('Errore nel voto:', error);
     }
   };
+
+
 
   // Gestione tazze di caffè  - passa userId
   const handleCoffee = async (postId) => {
@@ -121,7 +139,7 @@ function AppContent() {
       return;
     }
     try {
-      await toggleCoffee(postId, currentUser.username);
+      await toggleCoffee(postId, currentUser.email);
       await loadPosts();
     } catch (error) {
       console.error('Errore nel toggle del caffè:', error);
@@ -146,6 +164,7 @@ function AppContent() {
             onVote={handleVote}
             onCoffee={handleCoffee}
             currentUser={currentUser}
+            refreshPosts={loadPosts}
           />
         } />
         <Route path="/profile" element={<Profile />} />

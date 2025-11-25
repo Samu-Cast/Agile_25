@@ -188,4 +188,25 @@ const formatTimestamp = (timestamp) => {
     return `${diffWeeks}w ago`;
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee };
+export const updateRating = async (postId, userId, rating) => {
+    if (rating < 0 || rating > 5) {
+        throw new Error('Rating must be between 0 and 5');
+    }
+    try {
+        const postRef = doc(db, 'posts', postId);
+        const postSnap = await getDoc(postRef);
+        if (!postSnap.exists()) {
+            throw new Error('Post not found');
+        }
+        const postData = postSnap.data();
+        const ratingBy = postData.ratingBy || {};
+        ratingBy[userId] = rating;
+        await updateDoc(postRef, { ratingBy });
+        return { success: true, ratingBy };
+    } catch (error) {
+        console.error('Error updating rating:', error);
+        throw error;
+    }
+};
+
+export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating };
