@@ -54,41 +54,103 @@ const Sidebar = () => {
     );
 };
 
-const Feed = ({ posts }) => {
+const Feed = ({ posts, loading, onVote, onCoffee, currentUser }) => {
+    if (loading) {
+        return (
+            <main className="feed">
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    Caricamento post...
+                </div>
+            </main>
+        );
+    }
+
+    if (posts.length === 0) {
+        return (
+            <main className="feed">
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    Nessun post disponibile. Crea il primo! ☕
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="feed">
-            {posts.map(post => (
-                <div key={post.id} className="post-card">
-                    <div className="post-sidebar">
-                        <button className="vote-btn up">▲</button>
-                        <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                        <button className="vote-btn down">▼</button>
-                    </div>
-                    <div className="post-content">
-                        <div className="post-header">
-                            <span className="post-author">{post.author}</span>
-                            <span className="post-time">• {post.time}</span>
+            {posts.map(post => {
+                const userId = currentUser?.username;
+                const userVote = post.votedBy && userId ? post.votedBy[userId] : null;
+                const hasGivenCoffee = post.coffeeBy && userId ? post.coffeeBy.includes(userId) : false;
+
+                return (
+                    <div key={post.id} className="post-card">
+                        <div className="post-sidebar">
+                            <button
+                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                                onClick={() => onVote(post.id, 1)}
+                                style={{ color: userVote === 1 ? 'var(--accent-color)' : '' }}
+                            >
+                                ▲
+                            </button>
+                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
+                            <button
+                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                                onClick={() => onVote(post.id, -1)}
+                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                            >
+                                ▼
+                            </button>
                         </div>
-                        <h3 className="post-title">{post.title}</h3>
-                        <p className="post-text">{post.content}</p>
-                        <div className="post-footer">
-                            <button className="action-btn">💬 {post.comments} Comments</button>
-                            <button className="action-btn">↗ Share</button>
-                            <button className="action-btn">★ Save</button>
+                        <div className="post-content">
+                            <div className="post-header">
+                                <span className="post-author">{post.author}</span>
+                                <span className="post-time">• {post.time}</span>
+                            </div>
+                            <h3 className="post-title">{post.title}</h3>
+                            <p className="post-text">{post.content}</p>
+
+                            {/* Display image if present */}
+                            {post.imageUrl && (
+                                <img
+                                    src={String(post.imageUrl)}
+                                    alt={post.title}
+                                    style={{
+                                        width: '100%',
+                                        maxHeight: '500px',
+                                        objectFit: 'cover',
+                                        borderRadius: '8px',
+                                        marginTop: '1rem'
+                                    }}
+                                />
+                            )}
+                            <div className="post-footer">
+                                <button className="action-btn">💬 {post.comments || 0} Comments</button>
+                                <button className="action-btn">↗ Share</button>
+                                <button
+                                    className={`action-btn ${hasGivenCoffee ? 'active' : ''}`}
+                                    onClick={() => onCoffee(post.id)}
+                                    style={{
+                                        backgroundColor: hasGivenCoffee ? 'rgba(255, 109, 31, 0.1)' : '',
+                                        fontWeight: hasGivenCoffee ? 'bold' : ''
+                                    }}
+                                >
+                                    ☕ {post.coffees || 0} Coffee
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </main>
     );
 };
 
-const Home = ({ onLoginClick, isLoggedIn, posts }) => {
+const Home = ({ onLoginClick, isLoggedIn, posts, loading, onVote, onCoffee, currentUser }) => {
     return (
         <div className="home-layout">
             <div className="main-container">
                 <Sidebar />
-                <Feed posts={posts} />
+                <Feed posts={posts} loading={loading} onVote={onVote} onCoffee={onCoffee} currentUser={currentUser} />
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
                     {isLoggedIn && (

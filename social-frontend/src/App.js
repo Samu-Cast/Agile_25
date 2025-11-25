@@ -7,53 +7,54 @@ import CreatePost from './pages/CreatePost';
 import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
+import { createPost, getPosts, updateVotes, toggleCoffee } from './services/postService';
 
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  // Recupera lo stato di login da localStorage
+  const [authMode, setAuthMode] = useState('login');
+
+  // Stato utente corrente
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('currentUser');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     const saved = localStorage.getItem('isLoggedIn');
     return saved === 'true';
   });
 
-  // Lista dei post - inizia con alcuni post di esempio
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: "u/dev_master",
-      time: "4h ago",
-      title: "What is the best way to handle state in 2025?",
-      content: "I've been using Redux for years, but with the new React hooks and Context API updates, I'm wondering if it's still the go-to solution...",
-      votes: 1240,
-      comments: 342
-    },
-    {
-      id: 2,
-      author: "u/design_guru",
-      time: "6h ago",
-      title: "Check out this new UI kit I made!",
-      content: "It's based on the latest neomorphism trends but with a flat twist. Let me know what you think!",
-      votes: 856,
-      comments: 120
-    },
-    {
-      id: 3,
-      author: "u/startup_joe",
-      time: "12h ago",
-      title: "We just launched our MVP!",
-      content: "After 6 months of hard work, we are finally live. Check it out and give us feedback.",
-      votes: 2100,
-      comments: 560
-    }
-  ]);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
-  // Salva lo stato di login in localStorage quando cambia
+  // Carica i post da Firebase all'avvio
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const fetchedPosts = await getPosts();
+      setPosts(fetchedPosts);
+    } catch (error) {
+      console.error('Errore nel caricamento dei post:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Salva lo stato di login e utente in localStorage
   useEffect(() => {
     localStorage.setItem('isLoggedIn', isLoggedIn);
-  }, [isLoggedIn]);
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [isLoggedIn, currentUser]);
 
   const handleLoginClick = () => {
     setAuthMode('login');
@@ -62,31 +63,68 @@ function AppContent() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    navigate('/'); // Torna alla home page
+    setCurrentUser(null);
+    navigate('/');
   };
 
   const closeModal = () => {
     setShowAuthModal(false);
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (userData) => {
     setIsLoggedIn(true);
+    setCurrentUser({
+      username: userData?.username || 'u/you',
+      email: userData?.email || ''
+    });
     closeModal();
   };
 
-  // Funzione per aggiungere un nuovo post
-  const addPost = (newPost) => {
-    const post = {
-      id: posts.length + 1,
-      author: "u/you", // TODO: sostituire con l'utente vero
-      time: "Just now",
-      title: newPost.title,
-      content: newPost.content,
-      votes: 0,
-      comments: 0
-    };
-    // Aggiunge il nuovo post all'inizio dell'array
-    setPosts([post, ...posts]);
+  // Funzione per aggiungere un nuovo post (salva su Firebase)
+  const addPost = async (newPostData) => {
+    try {
+      const postToSave = {
+        title: newPostData.title,
+        content: newPostData.content,
+        author: currentUser?.username || 'u/anonymous',
+        tags: newPostData.tags || []
+      };
+
+      await createPost(postToSave);
+      await loadPosts(); // Ricarica tutti i post
+
+    } catch (error) {
+      console.error('Errore nel salvataggio del post:', error);
+      alert('Errore nel salvataggio del post. Riprova.');
+    }
+  };
+
+  // Gestione voti - passa userId
+  const handleVote = async (postId, value) => {
+    if (!currentUser) {
+      alert('Devi essere loggato per votare!');
+      return;
+    }
+    try {
+      await updateVotes(postId, currentUser.username, value);
+      await loadPosts();
+    } catch (error) {
+      console.error('Errore nel voto:', error);
+    }
+  };
+
+  // Gestione tazze di caffè  - passa userId
+  const handleCoffee = async (postId) => {
+    if (!currentUser) {
+      alert('Devi essere loggato per dare caffè!');
+      return;
+    }
+    try {
+      await toggleCoffee(postId, currentUser.username);
+      await loadPosts();
+    } catch (error) {
+      console.error('Errore nel toggle del caffè:', error);
+    }
   };
 
   return (
@@ -98,8 +136,19 @@ function AppContent() {
         isLoggedIn={isLoggedIn}
       />
       <Routes>
-        <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} posts={posts} />} />
+        <Route path="/" element={
+          <Home
+            onLoginClick={handleLoginClick}
+            isLoggedIn={isLoggedIn}
+            posts={posts}
+            loading={loading}
+            onVote={handleVote}
+            onCoffee={handleCoffee}
+            currentUser={currentUser}
+          />
+        } />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/create-post" element={<CreatePost onPostCreate={addPost} />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />
