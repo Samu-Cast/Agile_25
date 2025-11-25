@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import './AuthModal.css';
+import Login from '../pages/Login';
+import Register from '../pages/Register';
 
 function AuthModal({ mode: initialMode = 'login', onClose, onLoginSuccess }) {
     const [mode, setMode] = useState(initialMode);
@@ -29,22 +31,9 @@ function AuthModal({ mode: initialMode = 'login', onClose, onLoginSuccess }) {
                 </div>
                 <div className="tab-content">
                     {mode === 'login' ? (
-                        <div className="login-form">
-                            {/* Placeholder login form */}
-                            <h2>Login</h2>
-                            <input type="email" placeholder="Email" />
-                            <input type="password" placeholder="Password" />
-                            <button className="submit-btn" onClick={onLoginSuccess}>Log In</button>
-                        </div>
+                        <Login onLoginSuccess={onLoginSuccess} onClose={onClose} />
                     ) : (
-                        <div className="register-form">
-                            {/* Placeholder register form */}
-                            <h2>Register</h2>
-                            <input type="text" placeholder="Username" />
-                            <input type="email" placeholder="Email" />
-                            <input type="password" placeholder="Password" />
-                            <button className="submit-btn">Sign Up</button>
-                        </div>
+                        <Register onLoginSuccess={onLoginSuccess} />
                     )}
                 </div>
             </div>
