@@ -1,36 +1,38 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { auth } from '../firebase';
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { syncUserWithFirestore } from "../utils/syncUserWithFirestore";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    // Mock initial user data
-    const [user, setUser] = useState({
-        name: "Matteo Rossi",
-        role: "Barista", // "Barista", "Appassionato", "Torrefazione"
-        bio: "Coffee lover & latte art enthusiast. Always looking for the perfect bean. ☕✨",
-        stats: {
-            posts: 42,
-            followers: 1205,
-            following: 350
-        },
-        profilePic: "https://ui-avatars.com/api/?name=Matteo+Rossi&background=6F4E37&color=fff&size=150"
-    });
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const [isLoggedIn, setIsLoggedIn] = useState(true); // Default to true for dev
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                await syncUserWithFirestore(user);  // SYNC AUTOMATICA
+            }
+            setCurrentUser(user);
+            setLoading(false);
+        });
 
-    const login = () => setIsLoggedIn(true);
-    const logout = () => setIsLoggedIn(false);
+        return unsubscribe;
+    }, []);
 
-    const updateProfile = (updatedData) => {
-        setUser(prev => ({
-            ...prev,
-            ...updatedData
-        }));
+    const logout = () => {
+        return signOut(auth);
+    };
+
+    const value = {
+        currentUser,
+        logout
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoggedIn, login, logout, updateProfile }}>
-            {children}
+        <AuthContext.Provider value={value}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

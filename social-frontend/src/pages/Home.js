@@ -70,6 +70,7 @@ const Feed = ({ posts }) => {
                             <span className="post-time">• {post.time}</span>
                         </div>
                         <h3 className="post-title">{post.title}</h3>
+                        {post.image && <img src={post.image} alt="Post content" className="post-image" />}
                         <p className="post-text">{post.content}</p>
                         <div className="post-footer">
                             <button className="action-btn">💬 {post.comments} Comments</button>

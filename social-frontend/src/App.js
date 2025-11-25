@@ -12,38 +12,40 @@ import AuthModal from './components/AuthModal';
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  const { isLoggedIn, login, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
+  const isLoggedIn = !!currentUser;
 
-  // Lista dei post - inizia con alcuni post di esempio
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: "u/dev_master",
-      time: "4h ago",
-      title: "What is the best way to handle state in 2025?",
-      content: "I've been using Redux for years, but with the new React hooks and Context API updates, I'm wondering if it's still the go-to solution...",
-      votes: 1240,
-      comments: 342
-    },
-    {
-      id: 2,
-      author: "u/design_guru",
-      time: "6h ago",
-      title: "Check out this new UI kit I made!",
-      content: "It's based on the latest neomorphism trends but with a flat twist. Let me know what you think!",
-      votes: 856,
-      comments: 120
-    },
-    {
-      id: 3,
-      author: "u/startup_joe",
-      time: "12h ago",
-      title: "We just launched our MVP!",
-      content: "After 6 months of hard work, we are finally live. Check it out and give us feedback.",
-      votes: 2100,
-      comments: 560
-    }
-  ]);
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/posts');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+
+        // Map backend data to frontend format
+        const formattedPosts = data.map(post => ({
+          id: post.id,
+          author: post.authorName, // Use the author name we fetched
+          time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
+          title: post.content.substring(0, 50) + (post.content.length > 50 ? "..." : ""), // Use content as title for now
+          content: post.content,
+          image: post.image,
+          votes: post.likes || 0,
+          comments: 0 // Default
+        }));
+
+        setPosts(formattedPosts);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   const navigate = useNavigate();
 
@@ -52,8 +54,8 @@ function AppContent() {
     setShowAuthModal(true);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/'); // Torna alla home page
   };
 
@@ -62,7 +64,7 @@ function AppContent() {
   };
 
   const handleLoginSuccess = () => {
-    login();
+    // login(); // Non serve più, AuthContext gestisce lo stato
     closeModal();
   };
 

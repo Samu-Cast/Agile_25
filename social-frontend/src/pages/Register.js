@@ -15,7 +15,8 @@ const Register = ({ onLoginSuccess }) => {
     const [error, setError] = useState(null);
     const [info, setInfo] = useState(null);
 
-    const { updateProfile } = useAuth();
+    // const { updateProfile } = useAuth(); // Removed as it's no longer in AuthContext
+
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -29,6 +30,7 @@ const Register = ({ onLoginSuccess }) => {
 
             // Dati profilo
             const profileData = {
+                uid: uid,
                 name: `${firstName} ${lastName}`,
                 role: role,
                 bio: bio,
@@ -38,14 +40,16 @@ const Register = ({ onLoginSuccess }) => {
                     followers: 0,
                     following: 0
                 },
-                profilePic: `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=random`
+                profilePic: `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=random`,
+                createdAt: new Date()
             };
 
             // Salva su Firestore
             await setDoc(doc(db, "users", uid), profileData);
 
-            // Aggiorna stato locale
-            updateProfile(profileData);
+            // Aggiorna stato locale - Non serve più con il nuovo AuthContext che ascolta le modifiche
+            // updateProfile(profileData); 
+
 
             // Ottieni token Firebase (serve per /me backend)
             const token = await user.getIdToken();
