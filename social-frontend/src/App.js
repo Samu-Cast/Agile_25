@@ -4,6 +4,7 @@ import './App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import CreatePost from './pages/CreatePost';
+import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
 
@@ -99,7 +100,6 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} posts={posts} />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/create-post" element={<CreatePost onPostCreate={addPost} />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />

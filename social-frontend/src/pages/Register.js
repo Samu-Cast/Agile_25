@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
-const Register = () => {
+const Register = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
-    const [info, setInfo] = useState(null);  // <- aggiunto
+    const [info, setInfo] = useState(null);
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -28,6 +28,11 @@ const Register = () => {
             });
 
             setError(null);
+
+            // Notifica il successo al genitore (AuthModal)
+            if (onLoginSuccess) {
+                onLoginSuccess();
+            }
 
         } catch (err) {
             setError(err.message);
@@ -60,18 +65,12 @@ const Register = () => {
 
                 {error && <p style={{ color: 'red' }}>{error}</p>}
 
-                <button type="submit">Register</button>
+                <button type="submit" className="submit-btn">Register</button>
             </form>
 
             {/* QUI MOSTRIAMO UID E TOKEN */}
             {info && (
-                <div style={{
-                    marginTop: "20px",
-                    padding: "10px",
-                    background: "#f1f1f1",
-                    borderRadius: "5px",
-                    wordBreak: "break-all"
-                }}>
+                <div className="success-msg">
                     <h3>Registrazione riuscita</h3>
                     <p><strong>UID:</strong> {info.uid}</p>
                     <p><strong>Token Firebase:</strong></p>
