@@ -11,7 +11,15 @@ app.get('/', (req, res) => {
 
 
 const postsRouter = require('./routes/posts');
+const usersRouter = require('./routes/users');
+const barsRouter = require('./routes/bars');
+const roastersRouter = require('./routes/roasters');
+const searchRouter = require('./routes/search');
 
 app.use('/api/posts', postsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/bars', barsRouter);
+app.use('/api/roasters', roastersRouter);
+app.use('/api/search', searchRouter);
 
 module.exports = app;
