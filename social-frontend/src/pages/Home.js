@@ -5,6 +5,8 @@ import StarRating from '../components/StarRating';
 import { updateRating } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
+import PostCard from '../components/PostCard';
+import { getUsersByUids } from '../services/userService';
 
 const Navbar = ({ onLoginClick }) => {
     return (
@@ -32,26 +34,26 @@ const Sidebar = () => {
         <aside className="sidebar">
             <div className="sidebar-section">
                 <div className="sidebar-item active">
-                    <span className="icon">🏠</span> Home
+                    <span className="icon"></span> Home
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🔥</span> Popular
+                    <span className="icon"></span> Popular
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🌐</span> All
+                    <span className="icon"></span> All
                 </div>
             </div>
 
             <div className="sidebar-section">
                 <h3 className="sidebar-title">COMMUNITIES</h3>
                 <div className="sidebar-item">
-                    <span className="icon">☕</span> r/cappucinos
+                    <span className="icon"></span> cappucinos
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🥛</span> r/latteArt
+                    <span className="icon"></span> latteArt
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">☕</span> r/coffeeChats
+                    <span className="icon"></span> coffeeChats
                 </div>
             </div>
         </aside>
@@ -80,20 +82,16 @@ const Feed = ({ isLoggedIn, user }) => {
                 // Initialize votes state
                 const initialVotes = {};
 
-                // Map backend data to frontend format
-                const formattedPosts = await Promise.all(data.map(async post => {
-                    let authorName = post.uid;
-                    try {
-                        // Fetch author name
-                        const userRes = await fetch(`http://localhost:3001/api/users/${post.uid}`);
-                        if (userRes.ok) {
-                            const userData = await userRes.json();
-                            authorName = userData.displayName || userData.name || post.uid;
-                        }
-                    } catch (e) {
-                        console.warn("Failed to fetch user name", e);
-                    }
+                // Extract unique UIDs
+                const uids = [...new Set(data.map(post => post.uid))];
+                const users = await getUsersByUids(uids);
+                const userMap = {};
+                users.forEach(u => {
+                    userMap[u.uid] = u.nickname || u.name;
+                });
 
+                // Map backend data to frontend format
+                const formattedPosts = data.map(post => {
                     // Set initial vote state for this post
                     if (post.userVote) {
                         initialVotes[post.id] = post.userVote;
@@ -101,7 +99,7 @@ const Feed = ({ isLoggedIn, user }) => {
 
                     return {
                         id: post.id,
-                        author: authorName,
+                        author: userMap[post.uid] || post.uid,
                         authorId: post.uid,
                         time: new Date(post.createdAt).toLocaleDateString(),
                         title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
@@ -111,7 +109,7 @@ const Feed = ({ isLoggedIn, user }) => {
                         comments: post.commentsCount || 0,
                         ratingBy: post.ratingBy || {} // Ensure ratingBy is passed
                     };
-                }));
+                });
 
                 setPosts(formattedPosts);
                 setUserVotes(initialVotes);
@@ -131,7 +129,7 @@ const Feed = ({ isLoggedIn, user }) => {
         }
     };
 
-    const handleUpvote = async (postId) => {
+    const handleVote = async (postId, type) => {
         if (!isLoggedIn) return;
 
         const currentVote = userVotes[postId] || 0;
@@ -192,79 +190,89 @@ const Feed = ({ isLoggedIn, user }) => {
         }
     };
 
-    const handleRatingChange = async (postId, newRating) => {
-        if (!isLoggedIn || !user?.uid) return;
-
-        // Optimistic update
+    const handleCommentUpdate = (postId) => {
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
-                const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
-                return { ...p, ratingBy: newRatingBy };
+                return { ...p, comments: (p.comments || 0) + 1 };
             }
             return p;
         }));
-
-        try {
-            await updateRating(postId, user.uid, newRating);
-        } catch (error) {
-            console.error("Error updating rating:", error);
-        }
     };
-
-    return (
-        <main className="feed">
-            {posts.map(post => {
-                const userVote = userVotes[post.id] || 0;
-
-                return (
-                    <div key={post.id} className="post-card">
-                        <div className="post-sidebar">
-                            <button
-                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
-                                onClick={() => handleUpvote(post.id)}
-                                style={{ color: userVote === 1 ? '#4169E1' : '' }}
-                            >
-                                ▲
-                            </button>
-                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                            <button
-                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
-                                onClick={() => handleDownvote(post.id)}
-                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
-                            >
-                                ▼
-                            </button>
-                        </div>
-                        <div className="post-content">
-                            <div className="post-header">
-                                <span className="post-author">{post.author}</span>
-                                <span className="post-time">• {post.time}</span>
-                            </div>
-                            <h3 className="post-title">{post.title}</h3>
-                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
-                            <p className="post-text">{post.content}</p>
-                            <div className="post-footer">
-                                <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                    💬 {post.comments} Comments
-                                </button>
-                                <button className="action-btn">↗ Share</button>
-                                <StarRating
-                                    postId={post.id}
-                                    userRatingMap={post.ratingBy || {}}
-                                    currentUserId={user?.uid}
-                                    onRatingChange={handleRatingChange}
-                                />
-                            </div>
-                            {expandedPostId === post.id && (
-                                <CommentSection postId={post.id} currentUser={user} />
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
-        </main>
-    );
 };
+
+const handleRatingChange = async (postId, newRating) => {
+    if (!isLoggedIn || !user?.uid) return;
+
+    // Optimistic update
+    setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === postId) {
+            const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
+            return { ...p, ratingBy: newRatingBy };
+        }
+        return p;
+    }));
+
+    try {
+        await updateRating(postId, user.uid, newRating);
+    } catch (error) {
+        console.error("Error updating rating:", error);
+    }
+};
+
+return (
+    <main className="feed">
+        {posts.map(post => {
+            const userVote = userVotes[post.id] || 0;
+
+            return (
+                <div key={post.id} className="post-card">
+                    <div className="post-sidebar">
+                        <button
+                            className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                            onClick={() => handleVote(post.id)}
+                            style={{ color: userVote === 1 ? '#4169E1' : '' }}
+                        >
+                            ▲
+                        </button>
+                        <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
+                        <button
+                            className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                            onClick={() => handleDownvote(post.id)}
+                            style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                        >
+                            ▼
+                        </button>
+                    </div>
+                    <div className="post-content">
+                        <div className="post-header">
+                            <span className="post-author">{post.author}</span>
+                            <span className="post-time">• {post.time}</span>
+                        </div>
+                        <h3 className="post-title">{post.title}</h3>
+                        {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+                        <p className="post-text">{post.content}</p>
+                        <div className="post-footer">
+                            <button className="action-btn" onClick={() => toggleComments(post.id)}>
+                                💬 {post.comments} Comments
+                            </button>
+                            <button className="action-btn">↗ Share</button>
+                            <StarRating
+                                postId={post.id}
+                                userRatingMap={post.ratingBy || {}}
+                                currentUserId={user?.uid}
+                                onRatingChange={handleRatingChange}
+                            />
+                        </div>
+                        {expandedPostId === post.id && (
+                            <CommentSection postId={post.id} currentUser={user} />
+                        )}
+                    </div>
+                </div>
+            );
+        })}
+    </main>
+);
+
 
 
 
