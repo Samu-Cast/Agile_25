@@ -309,8 +309,8 @@ const Feed = ({ isLoggedIn, user }) => {
                             </div>
                         )}
                     </div>
-                );
-            })}
+                </div>
+            ))}
         </main>
     );
 };
