@@ -170,7 +170,6 @@ function CreatePost() {
                             <button
                                 type="button"
                                 onClick={() => navigate('/')}
-                                disabled={uploading}
                                 style={{
                                     flex: 1,
                                     padding: '0.75rem',
@@ -180,7 +179,7 @@ function CreatePost() {
                                     borderRadius: '20px',
                                     fontSize: '16px',
                                     fontWeight: '600',
-                                    cursor: uploading ? 'not-allowed' : 'pointer',
+                                    cursor: 'pointer',
                                     transition: 'background-color 0.2s'
                                 }}
                             >

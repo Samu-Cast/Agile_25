@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
-import Header from '../components/Header';
-import { updateRating } from '../services/postService';
 
 const Navbar = ({ onLoginClick }) => {
     return (
