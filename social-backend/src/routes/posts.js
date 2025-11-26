@@ -27,21 +27,21 @@ router.get('/', async (req, res) => {
 // POST /api/posts
 router.post('/', async (req, res) => {
     try {
-        const { title, content, image, uid, authorName, createdAt } = req.body;
+        const { uid, entityType, entityId, text, imageUrl, createdAt, likesCount, commentsCount } = req.body;
 
-        if (!content || !uid) {
+        if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
         const newPost = {
-            title: title || "",
-            content,
-            image: image || null,
             uid,
-            authorName: authorName || "Anonymous",
-            likes: 0,
-            comments: 0,
-            createdAt: createdAt ? new Date(createdAt) : new Date()
+            entityType: entityType || "user",
+            entityId: entityId || uid,
+            text,
+            imageUrl: imageUrl || null,
+            createdAt: createdAt ? new Date(createdAt) : new Date(),
+            likesCount: likesCount || 0,
+            commentsCount: commentsCount || 0
         };
 
         const ref = await db.collection('posts').add(newPost);
@@ -76,7 +76,7 @@ router.get('/:postId/comments', async (req, res) => {
 router.post('/:postId/comments', async (req, res) => {
     try {
         const { postId } = req.params;
-        const { text, uid, author } = req.body; // Assuming frontend sends these
+        const { text, uid, parentComment } = req.body;
 
         if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -85,7 +85,7 @@ router.post('/:postId/comments', async (req, res) => {
         const newComment = {
             text,
             uid,
-            author: author || "Unknown", // Optional if we want to store name directly
+            parentComment: parentComment || null,
             createdAt: new Date()
         };
 
@@ -93,13 +93,75 @@ router.post('/:postId/comments', async (req, res) => {
 
         // Increment comment count on the post
         await db.collection('posts').doc(postId).update({
-            comments: admin.firestore.FieldValue.increment(1)
+            commentsCount: admin.firestore.FieldValue.increment(1)
         });
 
         res.json({ id: ref.id, ...newComment });
     } catch (error) {
         console.error("Error adding comment:", error);
         res.status(500).json({ error: "Failed to add comment" });
+    }
+});
+
+// POST /api/posts/:postId/like
+router.post('/:postId/like', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const likeRef = db.collection('posts').doc(postId).collection('likes').doc(uid);
+        const doc = await likeRef.get();
+
+        if (doc.exists) {
+            return res.status(400).json({ error: "Post already liked" });
+        }
+
+        await likeRef.set({
+            likedAt: new Date()
+        });
+
+        await db.collection('posts').doc(postId).update({
+            likesCount: admin.firestore.FieldValue.increment(1)
+        });
+
+        res.json({ message: "Post liked" });
+    } catch (error) {
+        console.error("Error liking post:", error);
+        res.status(500).json({ error: "Failed to like post" });
+    }
+});
+
+// DELETE /api/posts/:postId/like
+router.delete('/:postId/like', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const likeRef = db.collection('posts').doc(postId).collection('likes').doc(uid);
+        const doc = await likeRef.get();
+
+        if (!doc.exists) {
+            return res.status(400).json({ error: "Post not liked" });
+        }
+
+        await likeRef.delete();
+
+        await db.collection('posts').doc(postId).update({
+            likesCount: admin.firestore.FieldValue.increment(-1)
+        });
+
+        res.json({ message: "Post unliked" });
+    } catch (error) {
+        console.error("Error unliking post:", error);
+        res.status(500).json({ error: "Failed to unlike post" });
     }
 });
 

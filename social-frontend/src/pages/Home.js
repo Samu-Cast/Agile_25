@@ -60,6 +60,7 @@ const Feed = ({ isLoggedIn, user }) => {
     const [expandedPostId, setExpandedPostId] = React.useState(null);
     const [comments, setComments] = React.useState({});
     const [newComment, setNewComment] = React.useState("");
+    const [replyingTo, setReplyingTo] = React.useState(null); // { commentId, author }
     const [loadingComments, setLoadingComments] = React.useState(false);
 
     React.useEffect(() => {
@@ -74,13 +75,13 @@ const Feed = ({ isLoggedIn, user }) => {
                 // Map backend data to frontend format
                 const formattedPosts = data.map(post => ({
                     id: post.id,
-                    author: post.authorName, // Use the author name we fetched
+                    author: post.uid, // TODO: Fetch user details to show name
                     time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
-                    title: post.content.substring(0, 50) + (post.content.length > 50 ? "..." : ""), // Use content as title for now
-                    content: post.content,
-                    image: post.image,
-                    votes: post.likes || 0,
-                    comments: 0 // Default
+                    title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
+                    content: post.text,
+                    image: post.imageUrl,
+                    votes: post.likesCount || 0,
+                    comments: post.commentsCount || 0
                 }));
 
                 setPosts(formattedPosts);
@@ -111,6 +112,93 @@ const Feed = ({ isLoggedIn, user }) => {
         }
     };
 
+    const handleUpvote = async (postId) => {
+        if (!isLoggedIn) return;
+
+        // Optimistic update: +1
+        setPosts(prevPosts => prevPosts.map(p => {
+            if (p.id === postId) {
+                return { ...p, votes: p.votes + 1 };
+            }
+            return p;
+        }));
+
+        try {
+            const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    uid: user?.uid
+                }),
+            });
+
+            if (!response.ok) {
+                // If failed (e.g., already liked), revert the +1
+                setPosts(prevPosts => prevPosts.map(p => {
+                    if (p.id === postId) {
+                        return { ...p, votes: p.votes - 1 };
+                    }
+                    return p;
+                }));
+            }
+        } catch (error) {
+            console.error("Error liking post:", error);
+            // Revert on network error
+            setPosts(prevPosts => prevPosts.map(p => {
+                if (p.id === postId) {
+                    return { ...p, votes: p.votes - 1 };
+                }
+                return p;
+            }));
+        }
+    };
+
+    const handleDownvote = async (postId) => {
+        if (!isLoggedIn) return;
+
+        // Optimistic update: -1
+        setPosts(prevPosts => prevPosts.map(p => {
+            if (p.id === postId) {
+                return { ...p, votes: p.votes - 1 };
+            }
+            return p;
+        }));
+
+        try {
+            const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    uid: user?.uid
+                }),
+            });
+
+            if (!response.ok) {
+                // If failed (e.g., not liked yet), revert the -1
+                setPosts(prevPosts => prevPosts.map(p => {
+                    if (p.id === postId) {
+                        return { ...p, votes: p.votes + 1 };
+                    }
+                    return p;
+                }));
+            }
+        } catch (error) {
+            console.error("Error unliking post:", error);
+            // Revert on network error
+            setPosts(prevPosts => prevPosts.map(p => {
+                if (p.id === postId) {
+                    return { ...p, votes: p.votes + 1 };
+                }
+                return p;
+            }));
+        }
+    };
+
+
     const handleAddComment = async (postId) => {
         if (!newComment.trim()) return;
 
@@ -123,7 +211,7 @@ const Feed = ({ isLoggedIn, user }) => {
                 body: JSON.stringify({
                     text: newComment,
                     uid: user?.uid,
-                    author: user?.displayName || user?.email || "Anonymous"
+                    parentComment: replyingTo ? replyingTo.commentId : null
                 }),
             });
 
@@ -134,6 +222,7 @@ const Feed = ({ isLoggedIn, user }) => {
                     [postId]: [...(prev[postId] || []), addedComment]
                 }));
                 setNewComment("");
+                setReplyingTo(null);
 
                 // Update comment count locally
                 setPosts(prevPosts => prevPosts.map(p => {
@@ -153,9 +242,9 @@ const Feed = ({ isLoggedIn, user }) => {
             {posts.map(post => (
                 <div key={post.id} className="post-card">
                     <div className="post-sidebar">
-                        <button className="vote-btn up">▲</button>
+                        <button className="vote-btn up" onClick={() => handleUpvote(post.id)}>▲</button>
                         <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                        <button className="vote-btn down">▼</button>
+                        <button className="vote-btn down" onClick={() => handleDownvote(post.id)}>▼</button>
                     </div>
                     <div className="post-content">
                         <div className="post-header">
@@ -181,9 +270,16 @@ const Feed = ({ isLoggedIn, user }) => {
                                     <>
                                         <div className="comments-list">
                                             {comments[post.id]?.map(comment => (
-                                                <div key={comment.id} className="comment">
-                                                    <span className="comment-author">{comment.author}</span>
+                                                <div key={comment.id} className="comment" style={{ marginLeft: comment.parentComment ? '20px' : '0' }}>
+                                                    <span className="comment-author">{comment.uid}</span>
                                                     <p className="comment-text">{comment.text}</p>
+                                                    <button
+                                                        className="reply-btn"
+                                                        style={{ fontSize: '0.8em', color: 'gray', background: 'none', border: 'none', cursor: 'pointer' }}
+                                                        onClick={() => setReplyingTo({ commentId: comment.id, author: comment.uid })}
+                                                    >
+                                                        Reply
+                                                    </button>
                                                 </div>
                                             ))}
                                             {(!comments[post.id] || comments[post.id].length === 0) && (
@@ -192,11 +288,17 @@ const Feed = ({ isLoggedIn, user }) => {
                                         </div>
                                         {isLoggedIn && (
                                             <div className="add-comment">
+                                                {replyingTo && (
+                                                    <div className="replying-indicator">
+                                                        Replying to {replyingTo.author}
+                                                        <button onClick={() => setReplyingTo(null)} style={{ marginLeft: '5px' }}>x</button>
+                                                    </div>
+                                                )}
                                                 <input
                                                     type="text"
                                                     value={newComment}
                                                     onChange={(e) => setNewComment(e.target.value)}
-                                                    placeholder="Add a comment..."
+                                                    placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
                                                 />
                                                 <button onClick={() => handleAddComment(post.id)}>Post</button>
                                             </div>

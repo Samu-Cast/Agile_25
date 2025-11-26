@@ -6,8 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import './Home.css';
 
 function CreatePost() {
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    const [text, setText] = useState('');
     const [image, setImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const { currentUser } = useAuth();
@@ -40,12 +39,14 @@ function CreatePost() {
             }
 
             const postData = {
-                title,
-                content,
-                image: imageUrl,
-                uid: currentUser?.uid,
-                authorName: currentUser?.displayName || currentUser?.email || "Anonymous",
-                createdAt: new Date().toISOString()
+                uid: currentUser.uid,
+                entityType: "user", // Hardcoded for now as per requirements
+                entityId: currentUser.uid,
+                text: text,
+                imageUrl: imageUrl,
+                createdAt: new Date().toISOString(),
+                likesCount: 0,
+                commentsCount: 0
             };
 
             const response = await fetch('http://localhost:3001/api/posts', {
@@ -86,40 +87,9 @@ function CreatePost() {
                     </h1>
 
                     <form onSubmit={handleSubmit}>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label
-                                htmlFor="title"
-                                style={{
-                                    display: 'block',
-                                    marginBottom: '0.5rem',
-                                    fontWeight: '600',
-                                    color: 'var(--text-primary)'
-                                }}
-                            >
-                                Title
-                            </label>
-                            <input
-                                id="title"
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Enter your post title..."
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem',
-                                    border: '1px solid var(--bg-secondary)',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    backgroundColor: 'var(--bg-primary)',
-                                    color: 'var(--text-primary)'
-                                }}
-                            />
-                        </div>
-
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label
-                                htmlFor="content"
+                                htmlFor="text"
                                 style={{
                                     display: 'block',
                                     marginBottom: '0.5rem',
@@ -130,9 +100,9 @@ function CreatePost() {
                                 Content
                             </label>
                             <textarea
-                                id="content"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
+                                id="text"
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
                                 placeholder="What's on your mind?"
                                 required
                                 rows="8"
