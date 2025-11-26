@@ -24,6 +24,35 @@ router.get('/', async (req, res) => {
     }
 });
 
+// POST /api/posts
+router.post('/', async (req, res) => {
+    try {
+        const { title, content, image, uid, authorName, createdAt } = req.body;
+
+        if (!content || !uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const newPost = {
+            title: title || "",
+            content,
+            image: image || null,
+            uid,
+            authorName: authorName || "Anonymous",
+            likes: 0,
+            comments: 0,
+            createdAt: createdAt ? new Date(createdAt) : new Date()
+        };
+
+        const ref = await db.collection('posts').add(newPost);
+
+        res.json({ id: ref.id, ...newPost });
+    } catch (error) {
+        console.error("Error creating post:", error);
+        res.status(500).json({ error: "Failed to create post" });
+    }
+});
+
 // GET /api/posts/:postId/comments
 router.get('/:postId/comments', async (req, res) => {
     try {

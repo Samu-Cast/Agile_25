@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import './Home.css';
 import Header from '../components/Header';
 
@@ -41,29 +42,55 @@ const Sidebar = () => {
             <div className="sidebar-section">
                 <h3 className="sidebar-title">COMMUNITIES</h3>
                 <div className="sidebar-item">
-                    <span className="icon">💻</span> r/programming
+                    <span className="icon">☕</span> r/cappucinos
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🎨</span> r/design
+                    <span className="icon">🥛</span> r/latteArt
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🚀</span> r/startups
+                    <span className="icon">☕</span> r/coffeeChats
                 </div>
             </div>
         </aside>
     );
 };
 
-const Feed = ({ posts: initialPosts, isLoggedIn, user }) => {
-    const [posts, setPosts] = React.useState(initialPosts);
+const Feed = ({ isLoggedIn, user }) => {
+    const [posts, setPosts] = React.useState([]);
     const [expandedPostId, setExpandedPostId] = React.useState(null);
     const [comments, setComments] = React.useState({});
     const [newComment, setNewComment] = React.useState("");
     const [loadingComments, setLoadingComments] = React.useState(false);
 
     React.useEffect(() => {
-        setPosts(initialPosts);
-    }, [initialPosts]);
+        const fetchPosts = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/posts');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+
+                // Map backend data to frontend format
+                const formattedPosts = data.map(post => ({
+                    id: post.id,
+                    author: post.authorName, // Use the author name we fetched
+                    time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
+                    title: post.content.substring(0, 50) + (post.content.length > 50 ? "..." : ""), // Use content as title for now
+                    content: post.content,
+                    image: post.image,
+                    votes: post.likes || 0,
+                    comments: 0 // Default
+                }));
+
+                setPosts(formattedPosts);
+            } catch (error) {
+                console.error("Error fetching posts:", error);
+            }
+        };
+
+        fetchPosts();
+    }, []);
 
     const toggleComments = async (postId) => {
         if (expandedPostId === postId) {
@@ -185,12 +212,12 @@ const Feed = ({ posts: initialPosts, isLoggedIn, user }) => {
     );
 };
 
-const Home = ({ onLoginClick, isLoggedIn, posts }) => {
+const Home = ({ onLoginClick, isLoggedIn }) => {
     return (
         <div className="home-layout">
             <div className="main-container">
                 <Sidebar />
-                <Feed posts={posts} isLoggedIn={isLoggedIn} user={{ uid: "2jhOxL66yldZ6PbXUOj4p9iwmfd2", displayName: "Sam" }} />
+                <Feed isLoggedIn={isLoggedIn} user={{ uid: "2jhOxL66yldZ6PbXUOj4p9iwmfd2", displayName: "Sam" }} />
                 {/* TODO: Pass actual user object from context/props */}
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
@@ -198,9 +225,9 @@ const Home = ({ onLoginClick, isLoggedIn, posts }) => {
                         <div className="info-card">
                             <h3>Create Post</h3>
                             <p>Share your thoughts with the community.</p>
-                            <a href="/create-post" className="btn-primary" style={{ textDecoration: 'none', textAlign: 'center' }}>
+                            <Link to="/create-post" className="btn-primary" style={{ textDecoration: 'none', textAlign: 'center' }}>
                                 + New Post
-                            </a>
+                            </Link>
                         </div>
                     )}
 

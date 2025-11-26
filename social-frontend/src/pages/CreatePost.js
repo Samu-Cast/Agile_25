@@ -1,18 +1,73 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Home.css'; // Riutilizza gli stili per ora
+import { useAuth } from '../context/AuthContext';
+import { storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import './Home.css';
 
-function CreatePost({ onPostCreate }) {
+function CreatePost() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [image, setImage] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleImageChange = (e) => {
+        if (e.target.files[0]) {
+            setImage(e.target.files[0]);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Chiama la funzione per aggiungere il post
-        onPostCreate({ title, content });
-        // Torna alla home dopo la creazione
-        navigate('/');
+        console.log("Submitting post. Current User:", currentUser);
+
+        if (!currentUser) {
+            alert("You must be logged in to create a post.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            let imageUrl = null;
+
+            if (image) {
+                const storageRef = ref(storage, `posts/${Date.now()}_${image.name}`);
+                const snapshot = await uploadBytes(storageRef, image);
+                imageUrl = await getDownloadURL(snapshot.ref);
+            }
+
+            const postData = {
+                title,
+                content,
+                image: imageUrl,
+                uid: currentUser?.uid,
+                authorName: currentUser?.displayName || currentUser?.email || "Anonymous",
+                createdAt: new Date().toISOString()
+            };
+
+            const response = await fetch('http://localhost:3001/api/posts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(postData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create post');
+            }
+
+            navigate('/');
+        } catch (error) {
+            console.error("Error creating post:", error);
+            alert(`Failed to create post: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -95,25 +150,52 @@ function CreatePost({ onPostCreate }) {
                             />
                         </div>
 
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label
+                                htmlFor="image"
+                                style={{
+                                    display: 'block',
+                                    marginBottom: '0.5rem',
+                                    fontWeight: '600',
+                                    color: 'var(--text-primary)'
+                                }}
+                            >
+                                Image (Optional)
+                            </label>
+                            <input
+                                id="image"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    border: '1px solid var(--bg-secondary)',
+                                    borderRadius: '8px',
+                                    backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)'
+                                }}
+                            />
+                        </div>
+
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
                                 type="submit"
+                                disabled={loading}
                                 style={{
                                     flex: 1,
                                     padding: '0.75rem',
-                                    backgroundColor: 'var(--accent-color)',
+                                    backgroundColor: loading ? 'var(--bg-secondary)' : 'var(--accent-color)',
                                     color: 'var(--white)',
                                     border: 'none',
                                     borderRadius: '20px',
                                     fontSize: '16px',
                                     fontWeight: '600',
-                                    cursor: 'pointer',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
                                     transition: 'opacity 0.2s'
                                 }}
-                                onMouseOver={(e) => e.target.style.opacity = '0.9'}
-                                onMouseOut={(e) => e.target.style.opacity = '1'}
                             >
-                                Post
+                                {loading ? 'Posting...' : 'Post'}
                             </button>
                             <button
                                 type="button"
@@ -130,8 +212,6 @@ function CreatePost({ onPostCreate }) {
                                     cursor: 'pointer',
                                     transition: 'background-color 0.2s'
                                 }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = 'var(--bg-primary)'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = 'var(--bg-secondary)'}
                             >
                                 Cancel
                             </button>
