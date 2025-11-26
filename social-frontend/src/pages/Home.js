@@ -54,7 +54,73 @@ const Sidebar = () => {
     );
 };
 
-const Feed = ({ posts }) => {
+const Feed = ({ posts: initialPosts, isLoggedIn, user }) => {
+    const [posts, setPosts] = React.useState(initialPosts);
+    const [expandedPostId, setExpandedPostId] = React.useState(null);
+    const [comments, setComments] = React.useState({});
+    const [newComment, setNewComment] = React.useState("");
+    const [loadingComments, setLoadingComments] = React.useState(false);
+
+    React.useEffect(() => {
+        setPosts(initialPosts);
+    }, [initialPosts]);
+
+    const toggleComments = async (postId) => {
+        if (expandedPostId === postId) {
+            setExpandedPostId(null);
+            return;
+        }
+
+        setExpandedPostId(postId);
+        setLoadingComments(true);
+        try {
+            const response = await fetch(`http://localhost:3001/api/posts/${postId}/comments`);
+            const data = await response.json();
+            setComments(prev => ({ ...prev, [postId]: data }));
+        } catch (error) {
+            console.error("Error fetching comments:", error);
+        } finally {
+            setLoadingComments(false);
+        }
+    };
+
+    const handleAddComment = async (postId) => {
+        if (!newComment.trim()) return;
+
+        try {
+            const response = await fetch(`http://localhost:3001/api/posts/${postId}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: newComment,
+                    uid: user?.uid,
+                    author: user?.displayName || user?.email || "Anonymous"
+                }),
+            });
+
+            if (response.ok) {
+                const addedComment = await response.json();
+                setComments(prev => ({
+                    ...prev,
+                    [postId]: [...(prev[postId] || []), addedComment]
+                }));
+                setNewComment("");
+
+                // Update comment count locally
+                setPosts(prevPosts => prevPosts.map(p => {
+                    if (p.id === postId) {
+                        return { ...p, comments: (p.comments || 0) + 1 };
+                    }
+                    return p;
+                }));
+            }
+        } catch (error) {
+            console.error("Error adding comment:", error);
+        }
+    };
+
     return (
         <main className="feed">
             {posts.map(post => (
@@ -73,10 +139,45 @@ const Feed = ({ posts }) => {
                         {post.image && <img src={post.image} alt="Post content" className="post-image" />}
                         <p className="post-text">{post.content}</p>
                         <div className="post-footer">
-                            <button className="action-btn">💬 {post.comments} Comments</button>
+                            <button className="action-btn" onClick={() => toggleComments(post.id)}>
+                                💬 {post.comments} Comments
+                            </button>
                             <button className="action-btn">↗ Share</button>
                             <button className="action-btn">★ Save</button>
                         </div>
+
+                        {expandedPostId === post.id && (
+                            <div className="comments-section">
+                                {loadingComments ? (
+                                    <p>Loading comments...</p>
+                                ) : (
+                                    <>
+                                        <div className="comments-list">
+                                            {comments[post.id]?.map(comment => (
+                                                <div key={comment.id} className="comment">
+                                                    <span className="comment-author">{comment.author}</span>
+                                                    <p className="comment-text">{comment.text}</p>
+                                                </div>
+                                            ))}
+                                            {(!comments[post.id] || comments[post.id].length === 0) && (
+                                                <p className="no-comments">No comments yet.</p>
+                                            )}
+                                        </div>
+                                        {isLoggedIn && (
+                                            <div className="add-comment">
+                                                <input
+                                                    type="text"
+                                                    value={newComment}
+                                                    onChange={(e) => setNewComment(e.target.value)}
+                                                    placeholder="Add a comment..."
+                                                />
+                                                <button onClick={() => handleAddComment(post.id)}>Post</button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             ))}
@@ -89,7 +190,8 @@ const Home = ({ onLoginClick, isLoggedIn, posts }) => {
         <div className="home-layout">
             <div className="main-container">
                 <Sidebar />
-                <Feed posts={posts} />
+                <Feed posts={posts} isLoggedIn={isLoggedIn} user={{ uid: "2jhOxL66yldZ6PbXUOj4p9iwmfd2", displayName: "Sam" }} />
+                {/* TODO: Pass actual user object from context/props */}
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
                     {isLoggedIn && (
