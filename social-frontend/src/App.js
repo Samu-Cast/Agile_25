@@ -8,7 +8,6 @@ import CreatePost from './pages/CreatePost';
 import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
-import { createPost, getPosts, updateVotes, toggleCoffee, updateRating } from './services/postService';
 
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -19,33 +18,6 @@ function AppContent() {
 
 
   const navigate = useNavigate();
-
-  // Carica i post da Firebase all'avvio
-  useEffect(() => {
-    loadPosts();
-  }, []);
-
-  const loadPosts = async () => {
-    try {
-      setLoading(true);
-      const fetchedPosts = await getPosts();
-      setPosts(fetchedPosts);
-    } catch (error) {
-      console.error('Errore nel caricamento dei post:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Salva lo stato di login e utente in localStorage
-  useEffect(() => {
-    localStorage.setItem('isLoggedIn', isLoggedIn);
-    if (currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('currentUser');
-    }
-  }, [isLoggedIn, currentUser]);
 
   const handleLoginClick = () => {
     setAuthMode('login');
@@ -80,7 +52,6 @@ function AppContent() {
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} />} />
         <Route path="/create-post" element={<CreatePost />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/create-post" element={<CreatePost onPostCreate={addPost} />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />
