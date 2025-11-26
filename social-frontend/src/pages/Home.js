@@ -1,5 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import CommentSection from '../components/CommentSection';
+import StarRating from '../components/StarRating';
+import { updateRating } from '../services/postService';
+import { useAuth } from '../context/AuthContext';
 import './Home.css';
 
 const Navbar = ({ onLoginClick }) => {
@@ -57,269 +61,221 @@ const Sidebar = () => {
 const Feed = ({ isLoggedIn, user }) => {
     const [posts, setPosts] = React.useState([]);
     const [expandedPostId, setExpandedPostId] = React.useState(null);
-    const [comments, setComments] = React.useState({});
-    const [newComment, setNewComment] = React.useState("");
-    const [replyingTo, setReplyingTo] = React.useState(null); // { commentId, author }
-    const [loadingComments, setLoadingComments] = React.useState(false);
+    // Local state to track user votes: { [postId]: 1 (up) | -1 (down) | 0 (none) }
+    const [userVotes, setUserVotes] = React.useState({});
 
     React.useEffect(() => {
         const fetchPosts = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/posts');
+                const url = user?.uid
+                    ? `http://localhost:3001/api/posts?uid=${user.uid}`
+                    : 'http://localhost:3001/api/posts';
+
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 const data = await response.json();
 
+                // Initialize votes state
+                const initialVotes = {};
+
                 // Map backend data to frontend format
-                const formattedPosts = data.map(post => ({
-                    id: post.id,
-                    author: post.uid, // TODO: Fetch user details to show name
-                    time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
-                    title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
-                    content: post.text,
-                    image: post.imageUrl,
-                    votes: post.likesCount || 0,
-                    comments: post.commentsCount || 0
+                const formattedPosts = await Promise.all(data.map(async post => {
+                    let authorName = post.uid;
+                    try {
+                        // Fetch author name
+                        const userRes = await fetch(`http://localhost:3001/api/users/${post.uid}`);
+                        if (userRes.ok) {
+                            const userData = await userRes.json();
+                            authorName = userData.displayName || userData.name || post.uid;
+                        }
+                    } catch (e) {
+                        console.warn("Failed to fetch user name", e);
+                    }
+
+                    // Set initial vote state for this post
+                    if (post.userVote) {
+                        initialVotes[post.id] = post.userVote;
+                    }
+
+                    return {
+                        id: post.id,
+                        author: authorName,
+                        authorId: post.uid,
+                        time: new Date(post.createdAt).toLocaleDateString(),
+                        title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
+                        content: post.text,
+                        image: post.imageUrl,
+                        votes: post.likesCount || 0,
+                        comments: post.commentsCount || 0,
+                        ratingBy: post.ratingBy || {} // Ensure ratingBy is passed
+                    };
                 }));
 
                 setPosts(formattedPosts);
+                setUserVotes(initialVotes);
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }
         };
 
         fetchPosts();
-    }, []);
+    }, [user?.uid]); // Re-fetch when user changes
 
-    const toggleComments = async (postId) => {
+    const toggleComments = (postId) => {
         if (expandedPostId === postId) {
             setExpandedPostId(null);
-            return;
-        }
-
-        setExpandedPostId(postId);
-        setLoadingComments(true);
-        try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}/comments`);
-            const data = await response.json();
-            setComments(prev => ({ ...prev, [postId]: data }));
-        } catch (error) {
-            console.error("Error fetching comments:", error);
-        } finally {
-            setLoadingComments(false);
+        } else {
+            setExpandedPostId(postId);
         }
     };
 
     const handleUpvote = async (postId) => {
         if (!isLoggedIn) return;
 
-        // Optimistic update: +1
+        const currentVote = userVotes[postId] || 0;
+        const newVote = currentVote === 1 ? 0 : 1; // Toggle if already upvoted
+
+        // Optimistic update
+        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
-                return { ...p, votes: p.votes + 1 };
+                let voteChange = 0;
+                if (currentVote === 1) voteChange = -1; // Remove upvote
+                else if (currentVote === -1) voteChange = 2; // Change down to up
+                else voteChange = 1; // Add upvote
+                return { ...p, votes: p.votes + voteChange };
             }
             return p;
         }));
 
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    uid: user?.uid
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: user?.uid, value: 1 }),
             });
-
-            if (!response.ok) {
-                // If failed (e.g., already liked), revert the +1
-                setPosts(prevPosts => prevPosts.map(p => {
-                    if (p.id === postId) {
-                        return { ...p, votes: p.votes - 1 };
-                    }
-                    return p;
-                }));
-            }
         } catch (error) {
             console.error("Error liking post:", error);
-            // Revert on network error
-            setPosts(prevPosts => prevPosts.map(p => {
-                if (p.id === postId) {
-                    return { ...p, votes: p.votes - 1 };
-                }
-                return p;
-            }));
+            // Revert logic could be added here
         }
     };
 
     const handleDownvote = async (postId) => {
         if (!isLoggedIn) return;
 
-        // Optimistic update: -1
+        const currentVote = userVotes[postId] || 0;
+        const newVote = currentVote === -1 ? 0 : -1; // Toggle if already downvoted
+
+        // Optimistic update
+        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
-                return { ...p, votes: p.votes - 1 };
+                let voteChange = 0;
+                if (currentVote === -1) voteChange = 1; // Remove downvote
+                else if (currentVote === 1) voteChange = -2; // Change up to down
+                else voteChange = -1; // Add downvote
+                return { ...p, votes: p.votes + voteChange };
             }
             return p;
         }));
 
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    uid: user?.uid
-                }),
+            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: user?.uid, value: -1 }),
             });
-
-            if (!response.ok) {
-                // If failed (e.g., not liked yet), revert the -1
-                setPosts(prevPosts => prevPosts.map(p => {
-                    if (p.id === postId) {
-                        return { ...p, votes: p.votes + 1 };
-                    }
-                    return p;
-                }));
-            }
         } catch (error) {
             console.error("Error unliking post:", error);
-            // Revert on network error
-            setPosts(prevPosts => prevPosts.map(p => {
-                if (p.id === postId) {
-                    return { ...p, votes: p.votes + 1 };
-                }
-                return p;
-            }));
         }
     };
 
+    const handleRatingChange = async (postId, newRating) => {
+        if (!isLoggedIn || !user?.uid) return;
 
-    const handleAddComment = async (postId) => {
-        if (!newComment.trim()) return;
+        // Optimistic update
+        setPosts(prevPosts => prevPosts.map(p => {
+            if (p.id === postId) {
+                const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
+                return { ...p, ratingBy: newRatingBy };
+            }
+            return p;
+        }));
 
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    text: newComment,
-                    uid: user?.uid,
-                    parentComment: replyingTo ? replyingTo.commentId : null
-                }),
-            });
-
-            if (response.ok) {
-                const addedComment = await response.json();
-                setComments(prev => ({
-                    ...prev,
-                    [postId]: [...(prev[postId] || []), addedComment]
-                }));
-                setNewComment("");
-                setReplyingTo(null);
-
-                // Update comment count locally
-                setPosts(prevPosts => prevPosts.map(p => {
-                    if (p.id === postId) {
-                        return { ...p, comments: (p.comments || 0) + 1 };
-                    }
-                    return p;
-                }));
-            }
+            await updateRating(postId, user.uid, newRating);
         } catch (error) {
-            console.error("Error adding comment:", error);
+            console.error("Error updating rating:", error);
         }
     };
 
     return (
         <main className="feed">
-            {posts.map(post => (
-                <div key={post.id} className="post-card">
-                    <div className="post-sidebar">
-                        <button className="vote-btn up" onClick={() => handleUpvote(post.id)}>▲</button>
-                        <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                        <button className="vote-btn down" onClick={() => handleDownvote(post.id)}>▼</button>
-                    </div>
-                    <div className="post-content">
-                        <div className="post-header">
-                            <span className="post-author">{post.author}</span>
-                            <span className="post-time">• {post.time}</span>
-                        </div>
-                        <h3 className="post-title">{post.title}</h3>
-                        {post.image && <img src={post.image} alt="Post content" className="post-image" />}
-                        <p className="post-text">{post.content}</p>
-                        <div className="post-footer">
-                            <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                💬 {post.comments} Comments
-                            </button>
-                            <button className="action-btn">↗ Share</button>
-                            <button className="action-btn">★ Save</button>
-                        </div>
+            {posts.map(post => {
+                const userVote = userVotes[post.id] || 0;
 
-                        {expandedPostId === post.id && (
-                            <div className="comments-section">
-                                {loadingComments ? (
-                                    <p>Loading comments...</p>
-                                ) : (
-                                    <>
-                                        <div className="comments-list">
-                                            {comments[post.id]?.map(comment => (
-                                                <div key={comment.id} className="comment" style={{ marginLeft: comment.parentComment ? '20px' : '0' }}>
-                                                    <span className="comment-author">{comment.uid}</span>
-                                                    <p className="comment-text">{comment.text}</p>
-                                                    <button
-                                                        className="reply-btn"
-                                                        style={{ fontSize: '0.8em', color: 'gray', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                        onClick={() => setReplyingTo({ commentId: comment.id, author: comment.uid })}
-                                                    >
-                                                        Reply
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {(!comments[post.id] || comments[post.id].length === 0) && (
-                                                <p className="no-comments">No comments yet.</p>
-                                            )}
-                                        </div>
-                                        {isLoggedIn && (
-                                            <div className="add-comment">
-                                                {replyingTo && (
-                                                    <div className="replying-indicator">
-                                                        Replying to {replyingTo.author}
-                                                        <button onClick={() => setReplyingTo(null)} style={{ marginLeft: '5px' }}>x</button>
-                                                    </div>
-                                                )}
-                                                <input
-                                                    type="text"
-                                                    value={newComment}
-                                                    onChange={(e) => setNewComment(e.target.value)}
-                                                    placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
-                                                />
-                                                <button onClick={() => handleAddComment(post.id)}>Post</button>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
+                return (
+                    <div key={post.id} className="post-card">
+                        <div className="post-sidebar">
+                            <button
+                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                                onClick={() => handleUpvote(post.id)}
+                                style={{ color: userVote === 1 ? '#4169E1' : '' }}
+                            >
+                                ▲
+                            </button>
+                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
+                            <button
+                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                                onClick={() => handleDownvote(post.id)}
+                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                            >
+                                ▼
+                            </button>
+                        </div>
+                        <div className="post-content">
+                            <div className="post-header">
+                                <span className="post-author">{post.author}</span>
+                                <span className="post-time">• {post.time}</span>
                             </div>
-                        )}
+                            <h3 className="post-title">{post.title}</h3>
+                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+                            <p className="post-text">{post.content}</p>
+                            <div className="post-footer">
+                                <button className="action-btn" onClick={() => toggleComments(post.id)}>
+                                    💬 {post.comments} Comments
+                                </button>
+                                <button className="action-btn">↗ Share</button>
+                                <StarRating
+                                    postId={post.id}
+                                    userRatingMap={post.ratingBy || {}}
+                                    currentUserId={user?.uid}
+                                    onRatingChange={handleRatingChange}
+                                />
+                            </div>
+                            {expandedPostId === post.id && (
+                                <CommentSection postId={post.id} currentUser={user} />
+                            )}
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </main>
     );
 };
 
+
+
 const Home = ({ onLoginClick, isLoggedIn }) => {
+    const { currentUser } = useAuth();
+
     return (
         <div className="home-layout">
             <div className="main-container">
                 <Sidebar />
-                <Feed isLoggedIn={isLoggedIn} user={{ uid: "2jhOxL66yldZ6PbXUOj4p9iwmfd2", displayName: "Sam" }} />
-                {/* TODO: Pass actual user object from context/props */}
+                <Feed isLoggedIn={isLoggedIn} user={currentUser} />
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
                     {isLoggedIn && (

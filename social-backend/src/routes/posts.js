@@ -5,17 +5,29 @@ const { db, admin } = require('../firebase');
 // GET /api/posts
 router.get('/', async (req, res) => {
     try {
+        const { uid } = req.query;
         const postsSnapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
 
-        const posts = postsSnapshot.docs.map(doc => {
+        const posts = await Promise.all(postsSnapshot.docs.map(async doc => {
             const postData = doc.data();
+            let userVote = 0;
+
+            if (uid) {
+                const likeDoc = await db.collection('posts').doc(doc.id).collection('likes').doc(uid).get();
+                if (likeDoc.exists) {
+                    const data = likeDoc.data();
+                    userVote = data.value !== undefined ? data.value : 1; // Default to 1 ONLY if value is missing
+                }
+            }
+
             return {
                 id: doc.id,
                 ...postData,
+                userVote,
                 // Ensure createdAt is a string for frontend
                 createdAt: postData.createdAt ? postData.createdAt.toDate().toISOString() : null
             };
-        });
+        }));
 
         res.json(posts);
     } catch (error) {
@@ -107,31 +119,43 @@ router.post('/:postId/comments', async (req, res) => {
 router.post('/:postId/like', async (req, res) => {
     try {
         const { postId } = req.params;
-        const { uid } = req.body;
+        const { uid, value } = req.body; // value: 1 (up) or -1 (down)
 
-        if (!uid) {
+        if (!uid || !value) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
         const likeRef = db.collection('posts').doc(postId).collection('likes').doc(uid);
         const doc = await likeRef.get();
+        let voteChange = 0;
 
         if (doc.exists) {
-            return res.status(400).json({ error: "Post already liked" });
+            const currentVote = doc.data().value || 1; // Default to 1 if old schema
+            console.log(`[DEBUG] Existing vote for user ${uid} on post ${postId}: ${currentVote}`);
+
+            if (currentVote === value) {
+                // User clicked same vote -> remove it (toggle)
+                await likeRef.delete();
+                voteChange = -value;
+            } else {
+                // User changed vote -> update it
+                await likeRef.set({ value, likedAt: new Date() });
+                voteChange = value - currentVote; // e.g., -1 - 1 = -2
+            }
+        } else {
+            // New vote
+            await likeRef.set({ value, likedAt: new Date() });
+            voteChange = value;
         }
 
-        await likeRef.set({
-            likedAt: new Date()
-        });
-
         await db.collection('posts').doc(postId).update({
-            likesCount: admin.firestore.FieldValue.increment(1)
+            likesCount: admin.firestore.FieldValue.increment(voteChange)
         });
 
-        res.json({ message: "Post liked" });
+        res.json({ message: "Vote updated", voteChange });
     } catch (error) {
-        console.error("Error liking post:", error);
-        res.status(500).json({ error: "Failed to like post" });
+        console.error("Error updating vote:", error);
+        res.status(500).json({ error: "Failed to update vote" });
     }
 });
 
@@ -149,19 +173,20 @@ router.delete('/:postId/like', async (req, res) => {
         const doc = await likeRef.get();
 
         if (!doc.exists) {
-            return res.status(400).json({ error: "Post not liked" });
+            return res.status(400).json({ error: "Post not voted" });
         }
 
+        const currentVote = doc.data().value || 1;
         await likeRef.delete();
 
         await db.collection('posts').doc(postId).update({
-            likesCount: admin.firestore.FieldValue.increment(-1)
+            likesCount: admin.firestore.FieldValue.increment(-currentVote)
         });
 
-        res.json({ message: "Post unliked" });
+        res.json({ message: "Vote removed" });
     } catch (error) {
-        console.error("Error unliking post:", error);
-        res.status(500).json({ error: "Failed to unlike post" });
+        console.error("Error removing vote:", error);
+        res.status(500).json({ error: "Failed to remove vote" });
     }
 });
 

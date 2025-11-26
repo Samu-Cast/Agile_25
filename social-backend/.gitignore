@@ -12,8 +12,9 @@ firebase-debug.*.log*
 
 # Firebase config
 
-#Firebase kyes
+#Firebase keys
 src/firebase-key.json
+firebase-key.json
 
 
 # Uncomment this if you'd like others to create their own Firebase project.
