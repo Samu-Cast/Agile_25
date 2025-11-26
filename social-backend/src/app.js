@@ -21,5 +21,6 @@ app.use('/api/users', usersRouter);
 app.use('/api/bars', barsRouter);
 app.use('/api/roasters', roastersRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/comments', require('./routes/comments'));
 
 module.exports = app;

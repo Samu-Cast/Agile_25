@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { addComment, getComments } from '../services/postService';
+import { useAuth } from '../context/AuthContext';
 import './CommentSection.css';
 
-const CommentSection = ({ postId, currentUser }) => {
+const CommentSection = ({ postId }) => {
+    const { currentUser } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ const CommentSection = ({ postId, currentUser }) => {
         try {
             const commentData = {
                 text: newComment,
-                uid: currentUser.uid || currentUser.email, // Backend expects uid
+                authorUid: currentUser.uid || currentUser.email, // Fixed: postService expects authorUid
                 parentComment: null // Simple comments for now
             };
 

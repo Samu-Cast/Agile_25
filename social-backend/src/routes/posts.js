@@ -190,4 +190,61 @@ router.delete('/:postId/like', async (req, res) => {
     }
 });
 
+// POST /api/posts/:postId/save
+router.post('/:postId/save', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Get post data to save reference
+        const postDoc = await db.collection('posts').doc(postId).get();
+        if (!postDoc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        // Save to user's savedPosts subcollection
+        const savedPostRef = db.collection('users').doc(uid).collection('savedPosts').doc(postId);
+        await savedPostRef.set({
+            savedAt: new Date(),
+            postId: postId
+        });
+
+        res.json({ message: "Post saved successfully" });
+    } catch (error) {
+        console.error("Error saving post:", error);
+        res.status(500).json({ error: "Failed to save post" });
+    }
+});
+
+// DELETE /api/posts/:postId/save
+router.delete('/:postId/save', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Remove from user's savedPosts subcollection
+        const savedPostRef = db.collection('users').doc(uid).collection('savedPosts').doc(postId);
+        const doc = await savedPostRef.get();
+
+        if (!doc.exists) {
+            return res.status(400).json({ error: "Post not saved" });
+        }
+
+        await savedPostRef.delete();
+
+        res.json({ message: "Post unsaved successfully" });
+    } catch (error) {
+        console.error("Error unsaving post:", error);
+        res.status(500).json({ error: "Failed to unsave post" });
+    }
+});
+
 module.exports = router;

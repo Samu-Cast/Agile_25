@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import CommentSection from '../components/CommentSection';
 import StarRating from '../components/StarRating';
-import { updateRating } from '../services/postService';
+import { updateRating, toggleSavePost } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 import PostCard from '../components/PostCard';
@@ -65,6 +65,8 @@ const Feed = ({ isLoggedIn, user }) => {
     const [expandedPostId, setExpandedPostId] = React.useState(null);
     // Local state to track user votes: { [postId]: 1 (up) | -1 (down) | 0 (none) }
     const [userVotes, setUserVotes] = React.useState({});
+    // Local state to track saved posts: { [postId]: true/false }
+    const [savedPosts, setSavedPosts] = React.useState({});
 
     React.useEffect(() => {
         const fetchPosts = async () => {
@@ -118,7 +120,23 @@ const Feed = ({ isLoggedIn, user }) => {
             }
         };
 
+        const fetchSavedPosts = async () => {
+            if (!user?.uid) return;
+            try {
+                const response = await fetch(`http://localhost:3001/api/users/${user.uid}/savedPosts`);
+                if (response.ok) {
+                    const savedPostIds = await response.json();
+                    const savedMap = {};
+                    savedPostIds.forEach(id => { savedMap[id] = true; });
+                    setSavedPosts(savedMap);
+                }
+            } catch (error) {
+                console.error("Error fetching saved posts:", error);
+            }
+        };
+
         fetchPosts();
+        fetchSavedPosts();
     }, [user?.uid]); // Re-fetch when user changes
 
     const toggleComments = (postId) => {
@@ -198,81 +216,104 @@ const Feed = ({ isLoggedIn, user }) => {
             return p;
         }));
     };
-};
 
-const handleRatingChange = async (postId, newRating) => {
-    if (!isLoggedIn || !user?.uid) return;
+    const handleRatingChange = async (postId, newRating) => {
+        if (!isLoggedIn || !user?.uid) return;
 
-    // Optimistic update
-    setPosts(prevPosts => prevPosts.map(p => {
-        if (p.id === postId) {
-            const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
-            return { ...p, ratingBy: newRatingBy };
+        // Optimistic update
+        setPosts(prevPosts => prevPosts.map(p => {
+            if (p.id === postId) {
+                const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
+                return { ...p, ratingBy: newRatingBy };
+            }
+            return p;
+        }));
+
+        try {
+            await updateRating(postId, user.uid, newRating);
+        } catch (error) {
+            console.error("Error updating rating:", error);
         }
-        return p;
-    }));
+    };
 
-    try {
-        await updateRating(postId, user.uid, newRating);
-    } catch (error) {
-        console.error("Error updating rating:", error);
-    }
-};
+    const handleToggleSave = async (postId) => {
+        if (!isLoggedIn || !user?.uid) return;
 
-return (
-    <main className="feed">
-        {posts.map(post => {
-            const userVote = userVotes[post.id] || 0;
+        const isSaved = savedPosts[postId] || false;
 
-            return (
-                <div key={post.id} className="post-card">
-                    <div className="post-sidebar">
-                        <button
-                            className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
-                            onClick={() => handleVote(post.id)}
-                            style={{ color: userVote === 1 ? '#4169E1' : '' }}
-                        >
-                            ▲
-                        </button>
-                        <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                        <button
-                            className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
-                            onClick={() => handleDownvote(post.id)}
-                            style={{ color: userVote === -1 ? '#4169E1' : '' }}
-                        >
-                            ▼
-                        </button>
-                    </div>
-                    <div className="post-content">
-                        <div className="post-header">
-                            <span className="post-author">{post.author}</span>
-                            <span className="post-time">• {post.time}</span>
-                        </div>
-                        <h3 className="post-title">{post.title}</h3>
-                        {post.image && <img src={post.image} alt="Post content" className="post-image" />}
-                        <p className="post-text">{post.content}</p>
-                        <div className="post-footer">
-                            <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                💬 {post.comments} Comments
+        // Optimistic update
+        setSavedPosts(prev => ({ ...prev, [postId]: !isSaved }));
+
+        try {
+            await toggleSavePost(postId, user.uid, isSaved);
+        } catch (error) {
+            console.error("Error toggling save:", error);
+            // Revert on error
+            setSavedPosts(prev => ({ ...prev, [postId]: isSaved }));
+        }
+    };
+
+    return (
+        <main className="feed">
+            {posts.map(post => {
+                const userVote = userVotes[post.id] || 0;
+
+                return (
+                    <div key={post.id} className="post-card">
+                        <div className="post-sidebar">
+                            <button
+                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                                onClick={() => handleVote(post.id)}
+                                style={{ color: userVote === 1 ? '#4169E1' : '' }}
+                            >
+                                ▲
                             </button>
-                            <button className="action-btn">↗ Share</button>
-                            <StarRating
-                                postId={post.id}
-                                userRatingMap={post.ratingBy || {}}
-                                currentUserId={user?.uid}
-                                onRatingChange={handleRatingChange}
-                            />
+                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
+                            <button
+                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                                onClick={() => handleDownvote(post.id)}
+                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                            >
+                                ▼
+                            </button>
                         </div>
-                        {expandedPostId === post.id && (
-                            <CommentSection postId={post.id} currentUser={user} />
-                        )}
+                        <div className="post-content">
+                            <div className="post-header">
+                                <span className="post-author">{post.author}</span>
+                                <span className="post-time">• {post.time}</span>
+                            </div>
+                            <h3 className="post-title">{post.title}</h3>
+                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+                            <p className="post-text">{post.content}</p>
+                            <div className="post-footer">
+                                <button className="action-btn" onClick={() => toggleComments(post.id)}>
+                                    💬 {post.comments} Comments
+                                </button>
+                                <button className="action-btn">↗ Share</button>
+                                <button
+                                    className="action-btn"
+                                    onClick={() => handleToggleSave(post.id)}
+                                    style={{ color: savedPosts[post.id] ? '#FFD700' : 'inherit' }}
+                                >
+                                    {savedPosts[post.id] ? '🔖' : '📑'} {savedPosts[post.id] ? 'Salvato' : 'Salva'}
+                                </button>
+                                <StarRating
+                                    postId={post.id}
+                                    userRatingMap={post.ratingBy || {}}
+                                    currentUserId={user?.uid}
+                                    onRatingChange={handleRatingChange}
+                                />
+                            </div>
+                            {expandedPostId === post.id && (
+                                <CommentSection postId={post.id} currentUser={user} />
+                            )}
+                        </div>
                     </div>
-                </div>
-            );
-        })}
-    </main>
-);
-
+                );
+            })}
+        </main>
+    );
+};
 
 
 

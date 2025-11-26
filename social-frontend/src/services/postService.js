@@ -297,22 +297,72 @@ export const getUserPosts = async (userId) => {
     }
 };
 
+/**
+ * Toggle save state of a post for a user
+ * @param {string} postId - ID of the post
+ * @param {string} userId - ID of the user
+ * @param {boolean} isSaved - Current save state
+ * @returns {Promise<boolean>} - New save state
+ */
+export const toggleSavePost = async (postId, userId, isSaved) => {
+    try {
+        const method = isSaved ? 'DELETE' : 'POST';
+        const response = await fetch(`http://localhost:3001/api/posts/${postId}/save`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid: userId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to ${isSaved ? 'unsave' : 'save'} post`);
+        }
+
+        return !isSaved; // Return new state
+    } catch (error) {
+        console.error(`Error ${isSaved ? 'unsaving' : 'saving'} post:`, error);
+        throw error;
+    }
+};
+
 export const getUserSavedPosts = async (userId) => {
     try {
         const savedRef = collection(db, 'users', userId, 'savedPosts');
         const q = query(savedRef, orderBy('savedAt', 'desc'));
         const querySnapshot = await getDocs(q);
 
-        const postPromises = querySnapshot.docs.map(docSnap => getDoc(doc(db, 'posts', docSnap.id)));
+        const postPromises = querySnapshot.docs.map(async docSnap => {
+            const postDoc = await getDoc(doc(db, 'posts', docSnap.id));
+            if (!postDoc.exists()) return null;
+
+            const postData = postDoc.data();
+            let userVote = 0;
+
+            // Fetch user vote
+            try {
+                const likeDoc = await getDoc(doc(db, 'posts', docSnap.id, 'likes', userId));
+                if (likeDoc.exists()) {
+                    const data = likeDoc.data();
+                    userVote = data.value !== undefined ? data.value : 1;
+                }
+            } catch (e) {
+                console.error("Error fetching vote for saved post:", e);
+            }
+
+            return {
+                id: postDoc.id,
+                ...postData,
+                userVote,
+                time: formatTimestamp(postData.createdAt)
+            };
+        });
+
         const postDocs = await Promise.all(postPromises);
 
         return postDocs
-            .filter(docSnap => docSnap.exists())
-            .map(docSnap => ({
-                id: docSnap.id,
-                ...docSnap.data(),
-                time: formatTimestamp(docSnap.data().createdAt)
-            }));
+            .filter(post => post !== null)
+            .map(post => post);
     } catch (error) {
         console.error("Error getting saved posts:", error);
         return [];
@@ -342,4 +392,4 @@ export const getUserSavedGuides = async (userId) => {
     }
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides };
+export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, toggleSavePost, getUserSavedPosts, getUserSavedGuides };

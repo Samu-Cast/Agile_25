@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
 import { doc, updateDoc, setDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, updateRating, toggleSavePost } from '../services/postService';
 import { searchUsers, getUsersByUids } from '../services/userService';
+import PostCard from '../components/PostCard';
 import './Profile.css';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
@@ -224,6 +225,104 @@ function Profile() {
         }
     };
 
+    const handleVote = async (postId, type) => {
+        if (!currentUser) return;
+
+        // Find the post in savedPosts
+        const postIndex = savedPosts.findIndex(p => p.id === postId);
+        if (postIndex === -1) return;
+
+        const post = savedPosts[postIndex];
+        const currentVote = post.userVote || 0;
+        let newVote = 0;
+        let voteChange = 0;
+
+        if (type === 'up') {
+            newVote = currentVote === 1 ? 0 : 1;
+            voteChange = currentVote === 1 ? -1 : (currentVote === -1 ? 2 : 1);
+        } else { // down
+            newVote = currentVote === -1 ? 0 : -1;
+            voteChange = currentVote === -1 ? 1 : (currentVote === 1 ? -2 : -1);
+        }
+
+        // Optimistic update
+        const updatedPosts = [...savedPosts];
+        updatedPosts[postIndex] = {
+            ...post,
+            userVote: newVote,
+            votes: (post.votes || 0) + voteChange
+        };
+        setSavedPosts(updatedPosts);
+
+        try {
+            const valueToSend = newVote === 0 ? currentVote : newVote;
+            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: currentUser.uid, value: valueToSend }),
+            });
+        } catch (error) {
+            console.error("Error voting in profile:", error);
+            // Revert
+            setSavedPosts(savedPosts);
+        }
+    };
+
+    const handleToggleSave = async (postId) => {
+        if (!currentUser) return;
+
+        // Optimistic update for savedPosts list
+        // If we are in "savedPosts" tab, toggling save (unsaving) should remove it from the list
+        if (activeTab === 'savedPosts') {
+            setSavedPosts(prev => prev.filter(p => p.id !== postId));
+        }
+
+        try {
+            // We assume it's currently saved if it's in the savedPosts list
+            await toggleSavePost(postId, currentUser.uid, true);
+        } catch (error) {
+            console.error("Error toggling save in profile:", error);
+            // Revert if error (fetch again)
+            const posts = await getUserSavedPosts(currentUser.uid);
+            setSavedPosts(posts);
+        }
+    };
+
+    const handleRatingChange = async (postId, newRating) => {
+        if (!currentUser) return;
+
+        // Optimistic update
+        setSavedPosts(prevPosts =>
+            prevPosts.map(post => {
+                if (post.id === postId) {
+                    const currentRating = post.ratingBy?.[currentUser.uid] || 0;
+                    const ratingDiff = newRating - currentRating;
+                    const oldTotalRating = (post.rating || 0) * (post.ratingCount || 0);
+                    const newRatingCount = currentRating === 0 ? (post.ratingCount || 0) + 1 : (post.ratingCount || 0);
+                    const newTotalRating = oldTotalRating + ratingDiff;
+
+                    return {
+                        ...post,
+                        ratingBy: {
+                            ...post.ratingBy,
+                            [currentUser.uid]: newRating
+                        },
+                        rating: newRatingCount > 0 ? newTotalRating / newRatingCount : 0,
+                        ratingCount: newRatingCount
+                    };
+                }
+                return post;
+            })
+        );
+
+        try {
+            await updateRating(postId, currentUser.uid, newRating);
+        } catch (error) {
+            console.error("Error updating rating:", error);
+            // Revert logic could be added here
+        }
+    };
+
     // Fetch Data based on Role and Tab
     useEffect(() => {
         if (!currentUser || !user) return;
@@ -248,15 +347,37 @@ function Profile() {
                 const posts = await getUserVotedPosts(currentUser.uid, -1);
                 setDownvotedPosts(posts);
             } else if (activeTab === 'reviews') {
-                // Fetch MY comments/reviews (works for User and Bar)
-                const comments = await getUserComments(currentUser.uid);
-                setMyReviews(comments);
+                // Fetch MY reviews (TODO: Implement reviews fetching)
+                // For now, leave empty or fetch actual reviews if endpoint exists
+                setMyReviews([]);
             } else if (activeTab === 'comments') {
                 const comments = await getUserComments(currentUser.uid);
                 setMyComments(comments);
             } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
                 const posts = await getUserSavedPosts(currentUser.uid);
-                setSavedPosts(posts);
+
+                // Fetch author names for saved posts
+                const uids = [...new Set(posts.map(p => p.uid))];
+                const users = await getUsersByUids(uids);
+                const userMap = {};
+                users.forEach(u => {
+                    userMap[u.uid] = u.nickname || u.name;
+                });
+
+                // Map to PostCard format
+                const formattedPosts = posts.map(p => ({
+                    ...p,
+                    author: userMap[p.uid] || p.uid,
+                    authorName: userMap[p.uid] || p.uid, // PostCard uses authorName or author
+                    title: p.text ? (p.text.substring(0, 50) + (p.text.length > 50 ? "..." : "")) : "No Title",
+                    content: p.text,
+                    image: p.imageUrl,
+                    votes: p.likesCount || 0,
+                    comments: p.commentsCount || 0,
+                    time: p.time || new Date(p.createdAt?.seconds * 1000).toLocaleDateString()
+                }));
+
+                setSavedPosts(formattedPosts);
             } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
                 const guides = await getUserSavedGuides(currentUser.uid);
                 setSavedGuides(guides);
@@ -299,7 +420,11 @@ function Profile() {
                 type = 'comment';
                 data = myComments;
             }
-            if (activeTab === 'savedPosts') data = savedPosts.map(p => ({ ...p, image: p.imageUrl || "https://via.placeholder.com/400", type: "Saved Post" }));
+            if (activeTab === 'savedPosts') {
+                // For saved posts, we want to use the PostCard component
+                // We map the data but we'll render it differently in the return
+                data = savedPosts;
+            }
             if (activeTab === 'savedGuides') data = savedGuides.map(p => ({ ...p, image: p.image || "https://via.placeholder.com/400", type: "Saved Guide" }));
             if (activeTab === 'communities') return <div className="empty-state">Comunità in arrivo...</div>;
         }
@@ -318,9 +443,34 @@ function Profile() {
                 <div className="profile-comments-list">
                     {data.map(item => (
                         <div key={item.id} className="profile-comment-item">
+                            {item.postTitle && (
+                                <p className="comment-post-title">
+                                    Su: <strong>{item.postTitle}</strong>
+                                </p>
+                            )}
                             <p className="comment-text">"{item.text}"</p>
-                            <span className="comment-date">{item.createdAt?.toDate().toLocaleDateString()}</span>
+                            <span className="comment-date">
+                                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Date unknown'}
+                            </span>
                         </div>
+                    ))}
+                </div>
+            );
+        }
+
+        if (activeTab === 'savedPosts') {
+            return (
+                <div className="profile-feed">
+                    {data.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            user={currentUser}
+                            onVote={handleVote}
+                            isSaved={true} // In saved tab, they are all saved
+                            onToggleSave={handleToggleSave}
+                            onRatingChange={handleRatingChange}
+                        />
                     ))}
                 </div>
             );
