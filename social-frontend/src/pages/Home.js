@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
-import PostCard from '../components/PostCard';
+import PostCard from '../components/PostCard.js';
 import { getUsersByUids } from '../services/userService';
 
 const Navbar = ({ onLoginClick }) => {

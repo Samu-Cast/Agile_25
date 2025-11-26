@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getUsersByUids } from '../services/userService';
 
 const PostCard = ({ post, user, onVote, onComment }) => {
     const [expanded, setExpanded] = useState(false);
@@ -13,6 +14,7 @@ const PostCard = ({ post, user, onVote, onComment }) => {
     const toggleComments = async () => {
         if (expanded) {
             setExpanded(false);
+            setComments([]); // clear previous comments
             return;
         }
 
@@ -21,7 +23,13 @@ const PostCard = ({ post, user, onVote, onComment }) => {
         try {
             const response = await fetch(`http://localhost:3001/api/posts/${post.id}/comments`);
             const data = await response.json();
-            setComments(data);
+            // Resolve author names for comments
+            const commentUids = [...new Set(data.map(c => c.uid))];
+            const users = await getUsersByUids(commentUids);
+            const userMap = {};
+            users.forEach(u => { userMap[u.uid] = u.nickname || u.name || u.displayName || u.uid; });
+            const enrichedComments = data.map(c => ({ ...c, authorName: userMap[c.uid] || c.uid }));
+            setComments(enrichedComments);
         } catch (error) {
             console.error("Error fetching comments:", error);
         } finally {
@@ -47,7 +55,12 @@ const PostCard = ({ post, user, onVote, onComment }) => {
 
             if (response.ok) {
                 const addedComment = await response.json();
-                setComments(prev => [...prev, addedComment]);
+                // Add authorName for immediate UI update
+                const enriched = {
+                    ...addedComment,
+                    authorName: currentUser?.displayName || currentUser?.uid
+                };
+                setComments(prev => [...prev, enriched]);
                 setNewComment("");
                 setReplyingTo(null);
                 if (onComment) onComment(post.id);
@@ -88,7 +101,7 @@ const PostCard = ({ post, user, onVote, onComment }) => {
                                 <div className="comments-list">
                                     {comments.map(comment => (
                                         <div key={comment.id} className="comment" style={{ marginLeft: comment.parentComment ? '20px' : '0' }}>
-                                            <span className="comment-author">{comment.uid}</span>
+                                            <span className="comment-author">{comment.authorName || comment.uid}</span>
                                             <p className="comment-text">{comment.text}</p>
                                             <button
                                                 className="reply-btn"
