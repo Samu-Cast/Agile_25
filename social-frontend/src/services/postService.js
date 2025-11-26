@@ -12,7 +12,9 @@ import {
     increment,
     arrayUnion,
     arrayRemove,
-    getDoc
+    getDoc,
+    where,
+    collectionGroup
 } from 'firebase/firestore';
 
 // Reference alla collection "posts"
@@ -209,4 +211,135 @@ export const updateRating = async (postId, userId, rating) => {
     }
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating };
+// ... existing imports ...
+
+export const addComment = async (postId, commentData) => {
+    try {
+        // Use subcollection to match backend
+        const commentsRef = collection(db, 'posts', postId, 'comments');
+        const newComment = {
+            text: commentData.text,
+            uid: commentData.authorUid, // Use uid to match backend
+            parentComment: null,
+            createdAt: serverTimestamp()
+        };
+        const docRef = await addDoc(commentsRef, newComment);
+        return { id: docRef.id, ...newComment };
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        throw error;
+    }
+};
+
+export const getComments = async (postId) => {
+    try {
+        // Use subcollection
+        const commentsRef = collection(db, 'posts', postId, 'comments');
+        const q = query(commentsRef, orderBy("createdAt", "asc")); // Backend uses asc
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error getting comments:", error);
+        return [];
+    }
+};
+
+export const getUserComments = async (userId) => {
+    try {
+        // Use backend API to ensure consistency
+        const response = await fetch(`http://localhost:3001/api/comments?uid=${userId}`);
+        if (!response.ok) {
+            console.log("Comments API returned:", response.status);
+            return [];
+        }
+        const comments = await response.json();
+        return comments;
+    } catch (error) {
+        console.error("Error getting user comments:", error);
+        return [];
+    }
+};
+
+export const getUserVotedPosts = async (userId, voteType) => {
+    try {
+        // Backend only supports "likes" (upvotes). voteType 1 = like.
+        if (voteType !== 1) return [];
+
+        // Use collectionGroup on 'likes' subcollection
+        // Requires 'uid' to be stored in the like document (which we just added to backend)
+        const q = query(collectionGroup(db, 'likes'), where("uid", "==", userId));
+        const querySnapshot = await getDocs(q);
+
+        // We need to fetch the actual posts. 
+        // The parent of the like doc is the 'likes' collection, parent of that is the post doc.
+        const postPromises = querySnapshot.docs.map(doc => getDoc(doc.ref.parent.parent));
+        const postDocs = await Promise.all(postPromises);
+
+        return postDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error getting user voted posts:", error);
+        return [];
+    }
+};
+
+export const getUserPosts = async (userId) => {
+    try {
+        // Use backend API to ensure consistency
+        const response = await fetch(`http://localhost:3001/api/posts?uid=${userId}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch user posts');
+        }
+        const posts = await response.json();
+        return posts;
+    } catch (error) {
+        console.error("Error getting user posts:", error);
+        return [];
+    }
+};
+
+export const getUserSavedPosts = async (userId) => {
+    try {
+        const savedRef = collection(db, 'users', userId, 'savedPosts');
+        const q = query(savedRef, orderBy('savedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+
+        const postPromises = querySnapshot.docs.map(docSnap => getDoc(doc(db, 'posts', docSnap.id)));
+        const postDocs = await Promise.all(postPromises);
+
+        return postDocs
+            .filter(docSnap => docSnap.exists())
+            .map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data(),
+                time: formatTimestamp(docSnap.data().createdAt)
+            }));
+    } catch (error) {
+        console.error("Error getting saved posts:", error);
+        return [];
+    }
+};
+
+export const getUserSavedGuides = async (userId) => {
+    try {
+        // Assuming a similar structure for guides
+        const savedRef = collection(db, 'users', userId, 'savedGuides');
+        const q = query(savedRef, orderBy('savedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+
+        // Mocking guide data fetch since we don't have a guides collection yet
+        // In a real app, we would fetch from 'guides' collection
+        return querySnapshot.docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data(), // Expecting guide data to be duplicated here or fetched
+            // For now, let's return what's in the saved doc, or mock if empty
+            title: docSnap.data().title || "Guide Title",
+            image: docSnap.data().image || "https://via.placeholder.com/400",
+            type: "Guide"
+        }));
+    } catch (error) {
+        console.error("Error getting saved guides:", error);
+        return [];
+    }
+};
+
+export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides };

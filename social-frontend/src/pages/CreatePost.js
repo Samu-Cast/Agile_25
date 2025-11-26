@@ -1,55 +1,73 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import './Home.css';
-import { uploadImage, validateImage } from '../services/imageService';
 
-function CreatePost({ onPostCreate }) {
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
-    const [uploading, setUploading] = useState(false);
+function CreatePost() {
+    const [text, setText] = useState('');
+    const [image, setImage] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
 
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file && validateImage(file)) {
-            setImageFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+        if (e.target.files[0]) {
+            setImage(e.target.files[0]);
         }
-    };
-
-    const removeImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setUploading(true);
+        console.log("Submitting post. Current User:", currentUser);
+
+        if (!currentUser) {
+            alert("You must be logged in to create a post.");
+            return;
+        }
+
+        setLoading(true);
 
         try {
             let imageUrl = null;
-            if (imageFile) {
-                imageUrl = await uploadImage(imageFile, 'posts');
+
+            if (image) {
+                const storageRef = ref(storage, `posts/${Date.now()}_${image.name}`);
+                const snapshot = await uploadBytes(storageRef, image);
+                imageUrl = await getDownloadURL(snapshot.ref);
             }
 
-            await onPostCreate({
-                title,
-                content,
-                imageUrl
+            const postData = {
+                uid: currentUser.uid,
+                entityType: "user", // Hardcoded for now as per requirements
+                entityId: currentUser.uid,
+                text: text,
+                imageUrl: imageUrl,
+                createdAt: new Date().toISOString(),
+                likesCount: 0,
+                commentsCount: 0
+            };
+
+            const response = await fetch('http://localhost:3001/api/posts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(postData),
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create post');
+            }
 
             navigate('/');
         } catch (error) {
-            console.error('Errore nella creazione del post:', error);
-            alert('Errore nel caricamento. Riprova.');
+            console.error("Error creating post:", error);
+            alert(`Failed to create post: ${error.message}`);
         } finally {
-            setUploading(false);
+            setLoading(false);
         }
     };
 
@@ -69,40 +87,9 @@ function CreatePost({ onPostCreate }) {
                     </h1>
 
                     <form onSubmit={handleSubmit}>
-                        <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ marginBottom: '1.5rem' }}>
                             <label
-                                htmlFor="title"
-                                style={{
-                                    display: 'block',
-                                    marginBottom: '0.5rem',
-                                    fontWeight: '600',
-                                    color: 'var(--text-primary)'
-                                }}
-                            >
-                                Title
-                            </label>
-                            <input
-                                id="title"
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Enter your post title..."
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem',
-                                    border: '1px solid var(--bg-secondary)',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    backgroundColor: 'var(--bg-primary)',
-                                    color: 'var(--text-primary)'
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label
-                                htmlFor="content"
+                                htmlFor="text"
                                 style={{
                                     display: 'block',
                                     marginBottom: '0.5rem',
@@ -113,9 +100,9 @@ function CreatePost({ onPostCreate }) {
                                 Content
                             </label>
                             <textarea
-                                id="content"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
+                                id="text"
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
                                 placeholder="What's on your mind?"
                                 required
                                 rows="8"
@@ -133,9 +120,9 @@ function CreatePost({ onPostCreate }) {
                             />
                         </div>
 
-                        {/* Image upload */}
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label
+                                htmlFor="image"
                                 style={{
                                     display: 'block',
                                     marginBottom: '0.5rem',
@@ -146,6 +133,7 @@ function CreatePost({ onPostCreate }) {
                                 Image (Optional)
                             </label>
                             <input
+                                id="image"
                                 type="file"
                                 accept="image/*"
                                 onChange={handleImageChange}
@@ -155,69 +143,33 @@ function CreatePost({ onPostCreate }) {
                                     border: '1px solid var(--bg-secondary)',
                                     borderRadius: '8px',
                                     backgroundColor: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)'
                                 }}
                             />
-
-                            {imagePreview && (
-                                <div style={{ marginTop: '1rem', position: 'relative' }}>
-                                    <img
-                                        src={imagePreview}
-                                        alt="Preview"
-                                        style={{
-                                            maxWidth: '100%',
-                                            borderRadius: '8px',
-                                            maxHeight: '300px',
-                                            objectFit: 'contain'
-                                        }}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={removeImage}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '10px',
-                                            right: '10px',
-                                            backgroundColor: 'rgba(0,0,0,0.7)',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '50%',
-                                            width: '30px',
-                                            height: '30px',
-                                            cursor: 'pointer',
-                                            fontSize: '18px'
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
                                 type="submit"
-                                disabled={uploading}
+                                disabled={loading}
                                 style={{
                                     flex: 1,
                                     padding: '0.75rem',
-                                    backgroundColor: uploading ? '#ccc' : 'var(--accent-color)',
+                                    backgroundColor: loading ? 'var(--bg-secondary)' : 'var(--accent-color)',
                                     color: 'var(--white)',
                                     border: 'none',
                                     borderRadius: '20px',
                                     fontSize: '16px',
                                     fontWeight: '600',
-                                    cursor: uploading ? 'not-allowed' : 'pointer',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
                                     transition: 'opacity 0.2s'
                                 }}
-                                onMouseOver={(e) => !uploading && (e.target.style.opacity = '0.9')}
-                                onMouseOut={(e) => !uploading && (e.target.style.opacity = '1')}
                             >
-                                {uploading ? 'Uploading...' : 'Post'}
+                                {loading ? 'Posting...' : 'Post'}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => navigate('/')}
-                                disabled={uploading}
                                 style={{
                                     flex: 1,
                                     padding: '0.75rem',
@@ -227,11 +179,9 @@ function CreatePost({ onPostCreate }) {
                                     borderRadius: '20px',
                                     fontSize: '16px',
                                     fontWeight: '600',
-                                    cursor: uploading ? 'not-allowed' : 'pointer',
+                                    cursor: 'pointer',
                                     transition: 'background-color 0.2s'
                                 }}
-                                onMouseOver={(e) => !uploading && (e.target.style.backgroundColor = 'var(--bg-primary)')}
-                                onMouseOut={(e) => !uploading && (e.target.style.backgroundColor = 'var(--bg-secondary)')}
                             >
                                 Cancel
                             </button>

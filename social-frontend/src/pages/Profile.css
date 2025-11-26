@@ -257,6 +257,8 @@
 
 .content-info {
     padding: 1rem;
+    text-align: center;
+
 }
 
 .content-title {
@@ -267,6 +269,38 @@
 
 .content-preview {
     font-size: 0.9rem;
+}
+
+/* Text-only posts styling */
+.content-item.text-only {
+    background: linear-gradient(135deg, #f9f9f9 0%, #eaeaea 100%);
+    border: 1px solid #d0d0d0;
+}
+
+.content-item.text-only .content-info {
+    padding: 2.5rem 1.5rem;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.content-item.text-only .content-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.6;
+    color: #3E2723;
+    font-style: italic;
+}
+
+.content-item.text-only .content-preview {
+    margin-top: 1rem;
+    color: #5D4037;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
 }
 
 
@@ -293,7 +327,7 @@
 
 .edit-profile-btn:hover {
     background-color: #D7CCC8;
-    color: #3E2723;
+    color: #696766;
     transform: scale(1.05);
 }
 
@@ -473,4 +507,177 @@
     font-size: 0.85rem;
     color: #8D6E63;
     margin-bottom: 1.5rem;
+}
+
+/* Profile Comments List */
+.profile-comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.profile-comment-item {
+    background-color: #FFFFFF;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #6F4E37;
+}
+
+.profile-comment-item .comment-text {
+    font-size: 1rem;
+    color: #3E2723;
+    margin-bottom: 0.5rem;
+    font-style: italic;
+}
+
+.profile-comment-item .comment-date {
+    font-size: 0.8rem;
+    color: #8D6E63;
+    display: block;
+    text-align: right;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #A1887F;
+    font-size: 1.1rem;
+    background-color: #FAFAFA;
+    border-radius: 8px;
+    border: 2px dashed #D7CCC8;
+}
+
+/* Barista Association Styles */
+.barista-search-container {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #D7CCC8;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.search-results li {
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.search-results li:hover {
+    background-color: #f5f5f5;
+}
+
+.search-results li img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-result-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.search-result-role {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.selected-baristas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.selected-barista-item {
+    background-color: #EFEBE9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #5D4037;
+}
+
+.selected-barista-item button {
+    background: none;
+    border: none;
+    color: #8D6E63;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0;
+    line-height: 1;
+}
+
+.selected-barista-item button:hover {
+    color: #3E2723;
+}
+
+/* Display List */
+.baristas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.barista-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #FAFAFA;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #EFEBE9;
+}
+
+.barista-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.barista-name {
+    font-weight: 600;
+    color: #3E2723;
+    font-size: 0.95rem;
+}
+
+.profile-cover-image {
+    width: 100%;
+    height: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.profile-cover-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }

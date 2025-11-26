@@ -1,229 +1,167 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, updateDoc, increment, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useAuth } from '../context/AuthContext';
 import './PostDetails.css';
-import '../pages/Home.css'; // Reuse some styles
+import StarRating from '../components/StarRating';
+import { updateRating, addComment, getComments } from '../services/postService';
 
-const PostDetails = () => {
+function PostDetails({ posts, onVote, onCoffee, currentUser }) {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
     const [post, setPost] = useState(null);
+    const [comment, setComment] = useState('');
     const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [newComment, setNewComment] = useState('');
-    const [commentImage, setCommentImage] = useState(null);
-    const fileInputRef = useRef(null);
 
-    // Fetch Post
     useEffect(() => {
-        const fetchPost = async () => {
-            try {
-                const docRef = doc(db, 'posts', id);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setPost({ id: docSnap.id, ...docSnap.data() });
-                } else {
-                    console.log("No such document!");
+        // Find the post by ID
+        // Note: id from params is string, post.id might be number or string
+        const foundPost = posts.find(p => String(p.id) === id);
+        setPost(foundPost);
+
+        // Load comments
+        if (foundPost) {
+            const loadComments = async () => {
+                try {
+                    const fetchedComments = await getComments(foundPost.id);
+                    setComments(fetchedComments);
+                } catch (error) {
+                    console.error("Error loading comments:", error);
                 }
-            } catch (error) {
-                console.error("Error fetching post:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPost();
-    }, [id]);
-
-    // Listen for Comments
-    useEffect(() => {
-        const commentsRef = collection(db, 'posts', id, 'comments');
-        const q = query(commentsRef, orderBy('createdAt', 'desc'));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const commentsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setComments(commentsData);
-        });
-
-        return () => unsubscribe();
-    }, [id]);
-
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCommentImage(reader.result);
             };
-            reader.readAsDataURL(file);
+            loadComments();
         }
-    };
+    }, [id, posts]);
 
-    const handleSubmitComment = async (e) => {
+    const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!currentUser) {
-            alert("Devi essere loggato per commentare.");
-            return;
-        }
-        if (!newComment.trim() && !commentImage) return;
+        if (!comment.trim() || !currentUser) return;
+
+        const commentData = {
+            author: currentUser.displayName || currentUser.email.split('@')[0],
+            authorUid: currentUser.uid, // Add UID for querying
+            text: comment,
+            // timestamp will be added by server
+        };
 
         try {
-            const commentsRef = collection(db, 'posts', id, 'comments');
-            await addDoc(commentsRef, {
-                text: newComment,
-                imageUrl: commentImage,
-                author: currentUser.displayName || currentUser.email.split('@')[0],
-                authorId: currentUser.uid,
-                authorPic: currentUser.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
-                createdAt: serverTimestamp(),
-                coffees: 0,
-                coffeeBy: []
-            });
-
-            // Update comment count on post
-            const postRef = doc(db, 'posts', id);
-            await updateDoc(postRef, {
-                comments: increment(1)
-            });
-
-            setNewComment('');
-            setCommentImage(null);
+            const newComment = await addComment(post.id, commentData);
+            // Add locally for immediate feedback (with temporary timestamp)
+            setComments([{ ...newComment, timestamp: 'Just now' }, ...comments]);
+            setComment('');
         } catch (error) {
             console.error("Error adding comment:", error);
         }
     };
 
-    const handleCoffeeVote = async (commentId, currentCoffees, coffeeBy) => {
+    const handleRatingChange = async (postId, rating) => {
         if (!currentUser) {
-            alert("Devi essere loggato per votare.");
+            alert('Devi essere loggato per valutare!');
             return;
         }
-
-        const hasVoted = coffeeBy?.includes(currentUser.uid);
-        const commentRef = doc(db, 'posts', id, 'comments', commentId);
-
         try {
-            if (hasVoted) {
-                await updateDoc(commentRef, {
-                    coffees: increment(-1),
-                    coffeeBy: arrayRemove(currentUser.uid)
-                });
-            } else {
-                await updateDoc(commentRef, {
-                    coffees: increment(1),
-                    coffeeBy: arrayUnion(currentUser.uid)
-                });
-            }
-        } catch (error) {
-            console.error("Error toggling coffee:", error);
+            await updateRating(postId, currentUser.email, rating);
+            // Update local state to reflect change immediately
+            setPost(prev => ({
+                ...prev,
+                ratingBy: {
+                    ...prev.ratingBy,
+                    [currentUser.email]: rating
+                }
+            }));
+        } catch (err) {
+            console.error('Errore nell\'aggiornamento della valutazione:', err);
         }
     };
 
-    if (loading) return <div className="loading">Caricamento...</div>;
-    if (!post) return <div className="error">Post non trovato.</div>;
+    if (!post) {
+        return (
+            <div className="post-details-container">
+                <div className="loading">Loading post or post not found...</div>
+                <button className="back-button" onClick={() => navigate('/')}>← Back to Feed</button>
+            </div>
+        );
+    }
 
     return (
-        <div className="home-layout">
-            <div className="post-details-container">
-                <button className="back-button" onClick={() => navigate('/')}>
-                    ← Torna alla Home
-                </button>
+        <div className="post-details-container">
+            <button className="back-button" onClick={() => navigate('/')}>
+                ← Back to Feed
+            </button>
 
-                {/* Post Card (Simplified version of Home card) */}
-                <div className="post-details-card">
-                    <div className="post-header">
-                        <span className="post-author">{post.author}</span>
-                        {/* <span className="post-time">• {new Date(post.createdAt?.toDate()).toLocaleDateString()}</span> */}
+            <div className="single-post-card">
+                <div className="single-post-header">
+                    <div className="author-avatar">
+                        {post.author.charAt(0).toUpperCase()}
                     </div>
-                    <div className="post-content">
-                        <h1 className="post-title">{post.title}</h1>
-                        <p className="post-text">{post.content}</p>
-                        {post.imageUrl && (
-                            <img src={post.imageUrl} alt={post.title} className="post-image" />
-                        )}
-                    </div>
-                    <div className="post-footer">
-                        <div className="vote-actions">
-                            <span className="vote-count">{post.votes} Voti</span>
-                        </div>
-                        <div className="social-actions">
-                            <span className="action-btn">💬 {comments.length} Commenti</span>
-                        </div>
+                    <div className="post-meta">
+                        <span className="post-author-name">{post.author}</span>
+                        <span className="post-timestamp">{post.time}</span>
                     </div>
                 </div>
 
-                {/* Add Comment */}
-                <div className="add-comment-form">
-                    <textarea
-                        className="comment-input"
-                        placeholder="Scrivi un commento..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    {commentImage && (
-                        <div className="preview-image-container">
-                            <img src={commentImage} alt="Preview" className="preview-image" />
-                            <button className="remove-image-btn" onClick={() => setCommentImage(null)}>×</button>
-                        </div>
+                <div className="single-post-content">
+                    <h1 className="single-post-title">{post.title}</h1>
+                    <p className="single-post-text">{post.content}</p>
+                    {post.image && (
+                        <img src={post.image} alt={post.title} className="single-post-image" />
                     )}
-                    <div className="form-actions">
-                        <button className="image-upload-btn" onClick={() => fileInputRef.current.click()}>
-                            📷 Aggiungi Immagine
-                        </button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            style={{ display: 'none' }}
-                            accept="image/*"
-                        />
-                        <button
-                            className="submit-comment-btn"
-                            onClick={handleSubmitComment}
-                            disabled={!newComment.trim() && !commentImage}
-                        >
-                            Pubblica
-                        </button>
-                    </div>
                 </div>
 
-                {/* Comments List */}
-                <div className="comments-section">
-                    <h3 className="comments-header">Commenti ({comments.length})</h3>
-                    <div className="comments-list">
-                        {comments.map(comment => (
-                            <div key={comment.id} className="comment-card">
-                                <img src={comment.authorPic} alt={comment.author} className="comment-avatar" />
-                                <div className="comment-content-wrapper">
-                                    <div className="comment-header">
-                                        <span className="comment-author">{comment.author}</span>
-                                        {/* <span className="comment-time">Just now</span> */}
-                                    </div>
-                                    <p className="comment-text">{comment.text}</p>
-                                    {comment.imageUrl && (
-                                        <img src={comment.imageUrl} alt="Comment attachment" className="comment-image" />
-                                    )}
-                                    <div className="comment-footer">
-                                        <button
-                                            className={`coffee-vote-btn ${comment.coffeeBy?.includes(currentUser?.uid) ? 'active' : ''}`}
-                                            onClick={() => handleCoffeeVote(comment.id, comment.coffees, comment.coffeeBy)}
-                                        >
-                                            ☕ {comment.coffees || 0}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                <div className="single-post-actions">
+                    <div className="interaction-group">
+                        <div className="vote-actions">
+                            <button className="vote-btn" onClick={() => onVote(post.id, 1)}>▲</button>
+                            <span className="vote-count">{post.votes}</span>
+                            <button className="vote-btn" onClick={() => onVote(post.id, -1)}>▼</button>
+                        </div>
                     </div>
+                    <div className="rating-container">
+                        <StarRating
+                            postId={post.id}
+                            userRatingMap={post.ratingBy || {}}
+                            currentUserId={currentUser?.email}
+                            onRatingChange={handleRatingChange}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="comments-section">
+                <h3 className="comments-header">Comments ({comments.length})</h3>
+
+                {currentUser ? (
+                    <form className="comment-form" onSubmit={handleCommentSubmit}>
+                        <input
+                            type="text"
+                            className="comment-input"
+                            placeholder="Add a comment..."
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                        />
+                        <button type="submit" className="submit-comment-btn" disabled={!comment.trim()}>
+                            Post
+                        </button>
+                    </form>
+                ) : (
+                    <p className="login-prompt">Please log in to comment.</p>
+                )}
+
+                <div className="comments-list">
+                    {comments.map(c => (
+                        <div key={c.id} className="comment-item">
+                            <div className="comment-avatar">
+                                {c.author.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="comment-content">
+                                <span className="comment-author">{c.author}</span>
+                                <p className="comment-text">{c.text}</p>
+                                <span className="comment-timestamp">{c.timestamp}</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
-};
+}
 
 export default PostDetails;
