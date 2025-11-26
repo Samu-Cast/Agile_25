@@ -9,6 +9,7 @@ const Register = ({ onLoginSuccess }) => {
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [nickname, setNickname] = useState('');
     const [role, setRole] = useState('Appassionato'); // Default role
     const [bio, setBio] = useState('');
 
@@ -32,6 +33,7 @@ const Register = ({ onLoginSuccess }) => {
             const profileData = {
                 uid: uid,
                 name: `${firstName} ${lastName}`,
+                nickname: nickname,
                 role: role,
                 bio: bio,
                 email: email,
@@ -99,15 +101,25 @@ const Register = ({ onLoginSuccess }) => {
                 </div>
 
                 <div className="form-group">
+                    <label>Soprannome (Opzionale):</label>
+                    <input
+                        type="text"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder="Es. TheCoffeeGuy"
+                    />
+                </div>
+
+                <div className="form-group">
                     <label>Tag:</label>
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="role-select"
                     >
-                        <option value="Bar">Bar</option>
-                        <option value="Barista">Barista</option>
                         <option value="Appassionato">Appassionato</option>
+                        <option value="Barista">Barista (Professionista)</option>
+                        <option value="Bar">Bar (Attività Commerciale)</option>
                         <option value="Torrefazione">Torrefazione</option>
                     </select>
                 </div>

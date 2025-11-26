@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
+import PostCard from '../components/PostCard';
+import { getUsersByUids } from '../services/userService';
 
 const Navbar = ({ onLoginClick }) => {
     return (
@@ -28,26 +30,26 @@ const Sidebar = () => {
         <aside className="sidebar">
             <div className="sidebar-section">
                 <div className="sidebar-item active">
-                    <span className="icon">🏠</span> Home
+                    <span className="icon"></span> Home
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🔥</span> Popular
+                    <span className="icon"></span> Popular
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🌐</span> All
+                    <span className="icon"></span> All
                 </div>
             </div>
 
             <div className="sidebar-section">
                 <h3 className="sidebar-title">COMMUNITIES</h3>
                 <div className="sidebar-item">
-                    <span className="icon">☕</span> r/cappucinos
+                    <span className="icon"></span> cappucinos
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">🥛</span> r/latteArt
+                    <span className="icon"></span> latteArt
                 </div>
                 <div className="sidebar-item">
-                    <span className="icon">☕</span> r/coffeeChats
+                    <span className="icon"></span> coffeeChats
                 </div>
             </div>
         </aside>
@@ -71,10 +73,19 @@ const Feed = ({ isLoggedIn, user }) => {
                 }
                 const data = await response.json();
 
+                // Extract unique UIDs
+                const uids = [...new Set(data.map(post => post.uid))];
+                const users = await getUsersByUids(uids);
+                const userMap = {};
+                users.forEach(u => {
+                    userMap[u.uid] = u.nickname || u.name;
+                });
+
                 // Map backend data to frontend format
                 const formattedPosts = data.map(post => ({
                     id: post.id,
-                    author: post.uid, // TODO: Fetch user details to show name
+                    author: post.uid,
+                    authorName: userMap[post.uid] || post.uid, // Use name/nickname if available
                     time: new Date(post.createdAt).toLocaleDateString(), // Simple formatting
                     title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
                     content: post.text,
@@ -111,20 +122,21 @@ const Feed = ({ isLoggedIn, user }) => {
         }
     };
 
-    const handleUpvote = async (postId) => {
+    const handleVote = async (postId, type) => {
         if (!isLoggedIn) return;
 
-        // Optimistic update: +1
+        // Optimistic update
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
-                return { ...p, votes: p.votes + 1 };
+                return { ...p, votes: p.votes + (type === 'up' ? 1 : -1) };
             }
             return p;
         }));
 
         try {
+            const method = type === 'up' ? 'POST' : 'DELETE';
             const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
-                method: 'POST',
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -134,67 +146,33 @@ const Feed = ({ isLoggedIn, user }) => {
             });
 
             if (!response.ok) {
-                // If failed (e.g., already liked), revert the +1
+                // Revert
                 setPosts(prevPosts => prevPosts.map(p => {
                     if (p.id === postId) {
-                        return { ...p, votes: p.votes - 1 };
+                        return { ...p, votes: p.votes - (type === 'up' ? 1 : -1) };
                     }
                     return p;
                 }));
             }
         } catch (error) {
-            console.error("Error liking post:", error);
-            // Revert on network error
+            console.error(`Error ${type}voting post:`, error);
+            // Revert
             setPosts(prevPosts => prevPosts.map(p => {
                 if (p.id === postId) {
-                    return { ...p, votes: p.votes - 1 };
+                    return { ...p, votes: p.votes - (type === 'up' ? 1 : -1) };
                 }
                 return p;
             }));
         }
     };
 
-    const handleDownvote = async (postId) => {
-        if (!isLoggedIn) return;
-
-        // Optimistic update: -1
+    const handleCommentUpdate = (postId) => {
         setPosts(prevPosts => prevPosts.map(p => {
             if (p.id === postId) {
-                return { ...p, votes: p.votes - 1 };
+                return { ...p, comments: (p.comments || 0) + 1 };
             }
             return p;
         }));
-
-        try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    uid: user?.uid
-                }),
-            });
-
-            if (!response.ok) {
-                // If failed (e.g., not liked yet), revert the -1
-                setPosts(prevPosts => prevPosts.map(p => {
-                    if (p.id === postId) {
-                        return { ...p, votes: p.votes + 1 };
-                    }
-                    return p;
-                }));
-            }
-        } catch (error) {
-            console.error("Error unliking post:", error);
-            // Revert on network error
-            setPosts(prevPosts => prevPosts.map(p => {
-                if (p.id === postId) {
-                    return { ...p, votes: p.votes + 1 };
-                }
-                return p;
-            }));
-        }
     };
 
 
@@ -239,75 +217,13 @@ const Feed = ({ isLoggedIn, user }) => {
     return (
         <main className="feed">
             {posts.map(post => (
-                <div key={post.id} className="post-card">
-                    <div className="post-sidebar">
-                        <button className="vote-btn up" onClick={() => handleUpvote(post.id)}>▲</button>
-                        <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                        <button className="vote-btn down" onClick={() => handleDownvote(post.id)}>▼</button>
-                    </div>
-                    <div className="post-content">
-                        <div className="post-header">
-                            <span className="post-author">{post.author}</span>
-                            <span className="post-time">• {post.time}</span>
-                        </div>
-                        <h3 className="post-title">{post.title}</h3>
-                        {post.image && <img src={post.image} alt="Post content" className="post-image" />}
-                        <p className="post-text">{post.content}</p>
-                        <div className="post-footer">
-                            <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                💬 {post.comments} Comments
-                            </button>
-                            <button className="action-btn">↗ Share</button>
-                            <button className="action-btn">★ Save</button>
-                        </div>
-
-                        {expandedPostId === post.id && (
-                            <div className="comments-section">
-                                {loadingComments ? (
-                                    <p>Loading comments...</p>
-                                ) : (
-                                    <>
-                                        <div className="comments-list">
-                                            {comments[post.id]?.map(comment => (
-                                                <div key={comment.id} className="comment" style={{ marginLeft: comment.parentComment ? '20px' : '0' }}>
-                                                    <span className="comment-author">{comment.uid}</span>
-                                                    <p className="comment-text">{comment.text}</p>
-                                                    <button
-                                                        className="reply-btn"
-                                                        style={{ fontSize: '0.8em', color: 'gray', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                        onClick={() => setReplyingTo({ commentId: comment.id, author: comment.uid })}
-                                                    >
-                                                        Reply
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {(!comments[post.id] || comments[post.id].length === 0) && (
-                                                <p className="no-comments">No comments yet.</p>
-                                            )}
-                                        </div>
-                                        {isLoggedIn && (
-                                            <div className="add-comment">
-                                                {replyingTo && (
-                                                    <div className="replying-indicator">
-                                                        Replying to {replyingTo.author}
-                                                        <button onClick={() => setReplyingTo(null)} style={{ marginLeft: '5px' }}>x</button>
-                                                    </div>
-                                                )}
-                                                <input
-                                                    type="text"
-                                                    value={newComment}
-                                                    onChange={(e) => setNewComment(e.target.value)}
-                                                    placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
-                                                />
-                                                <button onClick={() => handleAddComment(post.id)}>Post</button>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    user={user}
+                    onVote={handleVote}
+                    onComment={handleCommentUpdate}
+                />
             ))}
         </main>
     );
