@@ -10,8 +10,6 @@ import {
     doc,
     updateDoc,
     increment,
-    arrayUnion,
-    arrayRemove,
     getDoc,
     where,
     collectionGroup
@@ -131,6 +129,7 @@ export const updateVotes = async (postId, userId, value) => {
  */
 export const toggleCoffee = async (postId, userId) => {
     try {
+        // Prima controlliamo lo stato attuale
         const postRef = doc(db, 'posts', postId);
         const postSnap = await getDoc(postRef);
 
@@ -142,21 +141,20 @@ export const toggleCoffee = async (postId, userId) => {
         const coffeeBy = postData.coffeeBy || [];
         const hasGivenCoffee = coffeeBy.includes(userId);
 
-        if (hasGivenCoffee) {
-            // Rimuovi il caffè
-            await updateDoc(postRef, {
-                coffees: increment(-1),
-                coffeeBy: arrayRemove(userId)
-            });
-            return { success: true, hasGivenCoffee: false };
-        } else {
-            // Aggiungi il caffè
-            await updateDoc(postRef, {
-                coffees: increment(1),
-                coffeeBy: arrayUnion(userId)
-            });
-            return { success: true, hasGivenCoffee: true };
+        const method = hasGivenCoffee ? 'DELETE' : 'POST';
+        const response = await fetch(`http://localhost:3001/api/posts/${postId}/coffee`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid: userId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to ${hasGivenCoffee ? 'remove' : 'add'} coffee`);
         }
+
+        return { success: true, hasGivenCoffee: !hasGivenCoffee };
     } catch (error) {
         console.error('Errore nel toggle del caffè:', error);
         throw error;
@@ -190,29 +188,9 @@ const formatTimestamp = (timestamp) => {
     return `${diffWeeks}w ago`;
 };
 
-export const updateRating = async (postId, userId, rating) => {
-    if (rating < 0 || rating > 5) {
-        throw new Error('Rating must be between 0 and 5');
-    }
-    try {
-        const postRef = doc(db, 'posts', postId);
-        const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) {
-            throw new Error('Post not found');
-        }
-        const postData = postSnap.data();
-        const ratingBy = postData.ratingBy || {};
-        ratingBy[userId] = rating;
-        await updateDoc(postRef, { ratingBy });
-        return { success: true, ratingBy };
-    } catch (error) {
-        console.error('Error updating rating:', error);
-        throw error;
-    }
-};
 
-// ... existing imports ...
 
+// Comment functions - using Firestore subcollection approach
 export const addComment = async (postId, commentData) => {
     try {
         // Use subcollection to match backend
@@ -297,22 +275,72 @@ export const getUserPosts = async (userId) => {
     }
 };
 
+/**
+ * Toggle save state of a post for a user
+ * @param {string} postId - ID of the post
+ * @param {string} userId - ID of the user
+ * @param {boolean} isSaved - Current save state
+ * @returns {Promise<boolean>} - New save state
+ */
+export const toggleSavePost = async (postId, userId, isSaved) => {
+    try {
+        const method = isSaved ? 'DELETE' : 'POST';
+        const response = await fetch(`http://localhost:3001/api/posts/${postId}/save`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid: userId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to ${isSaved ? 'unsave' : 'save'} post`);
+        }
+
+        return !isSaved; // Return new state
+    } catch (error) {
+        console.error(`Error ${isSaved ? 'unsaving' : 'saving'} post:`, error);
+        throw error;
+    }
+};
+
 export const getUserSavedPosts = async (userId) => {
     try {
         const savedRef = collection(db, 'users', userId, 'savedPosts');
         const q = query(savedRef, orderBy('savedAt', 'desc'));
         const querySnapshot = await getDocs(q);
 
-        const postPromises = querySnapshot.docs.map(docSnap => getDoc(doc(db, 'posts', docSnap.id)));
+        const postPromises = querySnapshot.docs.map(async docSnap => {
+            const postDoc = await getDoc(doc(db, 'posts', docSnap.id));
+            if (!postDoc.exists()) return null;
+
+            const postData = postDoc.data();
+            let userVote = 0;
+
+            // Fetch user vote
+            try {
+                const likeDoc = await getDoc(doc(db, 'posts', docSnap.id, 'likes', userId));
+                if (likeDoc.exists()) {
+                    const data = likeDoc.data();
+                    userVote = data.value !== undefined ? data.value : 1;
+                }
+            } catch (e) {
+                console.error("Error fetching vote for saved post:", e);
+            }
+
+            return {
+                id: postDoc.id,
+                ...postData,
+                userVote,
+                time: formatTimestamp(postData.createdAt)
+            };
+        });
+
         const postDocs = await Promise.all(postPromises);
 
         return postDocs
-            .filter(docSnap => docSnap.exists())
-            .map(docSnap => ({
-                id: docSnap.id,
-                ...docSnap.data(),
-                time: formatTimestamp(docSnap.data().createdAt)
-            }));
+            .filter(post => post !== null)
+            .map(post => post);
     } catch (error) {
         console.error("Error getting saved posts:", error);
         return [];
@@ -342,4 +370,4 @@ export const getUserSavedGuides = async (userId) => {
     }
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides };
+export default { createPost, getPosts, updateVotes, toggleCoffee, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, toggleSavePost, getUserSavedPosts, getUserSavedGuides };

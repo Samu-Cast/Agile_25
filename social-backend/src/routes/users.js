@@ -31,4 +31,20 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/users/:uid/savedPosts
+router.get('/:uid/savedPosts', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const savedPostsSnapshot = await db.collection('users').doc(uid).collection('savedPosts').get();
+
+        // Return array of post IDs
+        const savedPostIds = savedPostsSnapshot.docs.map(doc => doc.id);
+
+        res.json(savedPostIds);
+    } catch (error) {
+        console.error("Error fetching saved posts:", error);
+        res.status(500).json({ error: "Failed to fetch saved posts" });
+    }
+});
+
 module.exports = router;
