@@ -10,8 +10,6 @@ import {
     doc,
     updateDoc,
     increment,
-    arrayUnion,
-    arrayRemove,
     getDoc,
     where,
     collectionGroup
@@ -131,6 +129,7 @@ export const updateVotes = async (postId, userId, value) => {
  */
 export const toggleCoffee = async (postId, userId) => {
     try {
+        // Prima controlliamo lo stato attuale
         const postRef = doc(db, 'posts', postId);
         const postSnap = await getDoc(postRef);
 
@@ -142,21 +141,20 @@ export const toggleCoffee = async (postId, userId) => {
         const coffeeBy = postData.coffeeBy || [];
         const hasGivenCoffee = coffeeBy.includes(userId);
 
-        if (hasGivenCoffee) {
-            // Rimuovi il caffè
-            await updateDoc(postRef, {
-                coffees: increment(-1),
-                coffeeBy: arrayRemove(userId)
-            });
-            return { success: true, hasGivenCoffee: false };
-        } else {
-            // Aggiungi il caffè
-            await updateDoc(postRef, {
-                coffees: increment(1),
-                coffeeBy: arrayUnion(userId)
-            });
-            return { success: true, hasGivenCoffee: true };
+        const method = hasGivenCoffee ? 'DELETE' : 'POST';
+        const response = await fetch(`http://localhost:3001/api/posts/${postId}/coffee`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid: userId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to ${hasGivenCoffee ? 'remove' : 'add'} coffee`);
         }
+
+        return { success: true, hasGivenCoffee: !hasGivenCoffee };
     } catch (error) {
         console.error('Errore nel toggle del caffè:', error);
         throw error;
@@ -190,26 +188,6 @@ const formatTimestamp = (timestamp) => {
     return `${diffWeeks}w ago`;
 };
 
-export const updateRating = async (postId, userId, rating) => {
-    if (rating < 0 || rating > 5) {
-        throw new Error('Rating must be between 0 and 5');
-    }
-    try {
-        const postRef = doc(db, 'posts', postId);
-        const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) {
-            throw new Error('Post not found');
-        }
-        const postData = postSnap.data();
-        const ratingBy = postData.ratingBy || {};
-        ratingBy[userId] = rating;
-        await updateDoc(postRef, { ratingBy });
-        return { success: true, ratingBy };
-    } catch (error) {
-        console.error('Error updating rating:', error);
-        throw error;
-    }
-};
 
 
 // Comment functions - using Firestore subcollection approach
@@ -392,4 +370,4 @@ export const getUserSavedGuides = async (userId) => {
     }
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, toggleSavePost, getUserSavedPosts, getUserSavedGuides };
+export default { createPost, getPosts, updateVotes, toggleCoffee, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, toggleSavePost, getUserSavedPosts, getUserSavedGuides };

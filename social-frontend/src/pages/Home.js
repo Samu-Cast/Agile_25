@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import CommentSection from '../components/CommentSection';
-import StarRating from '../components/StarRating';
-import { updateRating, toggleSavePost } from '../services/postService';
+import { toggleSavePost } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
 import PostCard from '../components/PostCard';
@@ -108,8 +107,7 @@ const Feed = ({ isLoggedIn, user }) => {
                         content: post.text,
                         image: post.imageUrl,
                         votes: post.likesCount || 0,
-                        comments: post.commentsCount || 0,
-                        ratingBy: post.ratingBy || {} // Ensure ratingBy is passed
+                        comments: post.commentsCount || 0
                     };
                 });
 
@@ -217,24 +215,6 @@ const Feed = ({ isLoggedIn, user }) => {
         }));
     };
 
-    const handleRatingChange = async (postId, newRating) => {
-        if (!isLoggedIn || !user?.uid) return;
-
-        // Optimistic update
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                const newRatingBy = { ...p.ratingBy, [user.uid]: newRating };
-                return { ...p, ratingBy: newRatingBy };
-            }
-            return p;
-        }));
-
-        try {
-            await updateRating(postId, user.uid, newRating);
-        } catch (error) {
-            console.error("Error updating rating:", error);
-        }
-    };
 
     const handleToggleSave = async (postId) => {
         if (!isLoggedIn || !user?.uid) return;
@@ -297,12 +277,6 @@ const Feed = ({ isLoggedIn, user }) => {
                                 >
                                     {savedPosts[post.id] ? '🔖' : '📑'} {savedPosts[post.id] ? 'Salvato' : 'Salva'}
                                 </button>
-                                <StarRating
-                                    postId={post.id}
-                                    userRatingMap={post.ratingBy || {}}
-                                    currentUserId={user?.uid}
-                                    onRatingChange={handleRatingChange}
-                                />
                             </div>
                             {expandedPostId === post.id && (
                                 <CommentSection postId={post.id} currentUser={user} />

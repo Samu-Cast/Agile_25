@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
 import { doc, updateDoc, setDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, updateRating, toggleSavePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
 import { searchUsers, getUsersByUids } from '../services/userService';
 import PostCard from '../components/PostCard';
 import './Profile.css';
@@ -288,40 +288,6 @@ function Profile() {
         }
     };
 
-    const handleRatingChange = async (postId, newRating) => {
-        if (!currentUser) return;
-
-        // Optimistic update
-        setSavedPosts(prevPosts =>
-            prevPosts.map(post => {
-                if (post.id === postId) {
-                    const currentRating = post.ratingBy?.[currentUser.uid] || 0;
-                    const ratingDiff = newRating - currentRating;
-                    const oldTotalRating = (post.rating || 0) * (post.ratingCount || 0);
-                    const newRatingCount = currentRating === 0 ? (post.ratingCount || 0) + 1 : (post.ratingCount || 0);
-                    const newTotalRating = oldTotalRating + ratingDiff;
-
-                    return {
-                        ...post,
-                        ratingBy: {
-                            ...post.ratingBy,
-                            [currentUser.uid]: newRating
-                        },
-                        rating: newRatingCount > 0 ? newTotalRating / newRatingCount : 0,
-                        ratingCount: newRatingCount
-                    };
-                }
-                return post;
-            })
-        );
-
-        try {
-            await updateRating(postId, currentUser.uid, newRating);
-        } catch (error) {
-            console.error("Error updating rating:", error);
-            // Revert logic could be added here
-        }
-    };
 
     // Fetch Data based on Role and Tab
     useEffect(() => {
@@ -467,9 +433,7 @@ function Profile() {
                             post={post}
                             user={currentUser}
                             onVote={handleVote}
-                            isSaved={true} // In saved tab, they are all saved
                             onToggleSave={handleToggleSave}
-                            onRatingChange={handleRatingChange}
                         />
                     ))}
                 </div>

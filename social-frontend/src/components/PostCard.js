@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import StarRating from './StarRating';
 
-const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave, onRatingChange }) => {
+const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
     const [expanded, setExpanded] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
     const [comments, setComments] = useState([]);
@@ -85,14 +84,6 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave, onRati
                     >
                         {isSaved ? '🔖' : '📑'} {isSaved ? 'Salvato' : 'Salva'}
                     </button>
-                    {onRatingChange && (
-                        <StarRating
-                            postId={post.id}
-                            userRatingMap={post.ratingBy || {}}
-                            currentUserId={currentUser?.uid}
-                            onRatingChange={onRatingChange}
-                        />
-                    )}
                 </div>
 
                 {expanded && (

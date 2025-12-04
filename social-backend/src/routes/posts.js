@@ -247,4 +247,80 @@ router.delete('/:postId/save', async (req, res) => {
     }
 });
 
+// POST /api/posts/:postId/coffee
+router.post('/:postId/coffee', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+        const coffeeBy = postData.coffeeBy || [];
+
+        if (coffeeBy.includes(uid)) {
+            return res.status(400).json({ error: "User already gave coffee" });
+        }
+
+        coffeeBy.push(uid);
+
+        await postRef.update({
+            coffees: admin.firestore.FieldValue.increment(1),
+            coffeeBy: coffeeBy
+        });
+
+        res.json({ message: "Coffee added", coffees: (postData.coffees || 0) + 1 });
+    } catch (error) {
+        console.error("Error adding coffee:", error);
+        res.status(500).json({ error: "Failed to add coffee" });
+    }
+});
+
+// DELETE /api/posts/:postId/coffee
+router.delete('/:postId/coffee', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+        const coffeeBy = postData.coffeeBy || [];
+
+        if (!coffeeBy.includes(uid)) {
+            return res.status(400).json({ error: "User has not given coffee" });
+        }
+
+        const updatedCoffeeBy = coffeeBy.filter(id => id !== uid);
+
+        await postRef.update({
+            coffees: admin.firestore.FieldValue.increment(-1),
+            coffeeBy: updatedCoffeeBy
+        });
+
+        res.json({ message: "Coffee removed", coffees: Math.max(0, (postData.coffees || 1) - 1) });
+    } catch (error) {
+        console.error("Error removing coffee:", error);
+        res.status(500).json({ error: "Failed to remove coffee" });
+    }
+});
+
 module.exports = router;
