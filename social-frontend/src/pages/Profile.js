@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { doc, updateDoc, setDoc, collection, addDoc } from "firebase/firestore";
-import { db } from "../firebase";
 import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
-import { searchUsers, getUsersByUids } from '../services/userService';
+import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile } from '../services/userService';
 import PostCard from '../components/PostCard';
 import './Profile.css';
 
@@ -112,8 +110,7 @@ function Profile() {
 
         try {
             // 1. Update User Basic Info
-            const userRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userRef, {
+            await updateUserProfile(currentUser.uid, {
                 name: editForm.name,
                 nickname: editForm.nickname,
                 bio: editForm.bio,
@@ -146,21 +143,25 @@ function Profile() {
 
                 if (roleData && roleData.id) {
                     // Update existing
-                    const roleRef = doc(db, collectionName, roleData.id);
                     console.log("Updating existing role doc:", roleData.id, roleSpecificData);
-                    await updateDoc(roleRef, roleSpecificData);
+                    await updateRoleProfile(collectionName, roleData.id, roleSpecificData);
                 } else {
                     // Create new
                     console.log("Creating new role doc in:", collectionName, roleSpecificData);
-                    await addDoc(collection(db, collectionName), {
+                    await createRoleProfile(collectionName, {
                         ...roleSpecificData,
-                        createdAt: new Date(),
+                        createdAt: new Date(), // Backend might handle this, but sending it is fine or let backend default
                         stats: { posts: 0, reviews: 0, avgRating: 0, ...(user.role === 'Torrefazione' ? { products: 0 } : {}) }
                     });
                 }
             }
 
             setIsEditing(false);
+            // Refresh data? useUserData hook should handle it if it polls or we trigger a refresh.
+            // Since we removed onSnapshot, we might need to manually trigger refresh or reload page.
+            // For now, let's reload page or assume user accepts a refresh.
+            // Ideally we'd have a context method to refresh user data.
+            window.location.reload();
         } catch (error) {
             console.error("Error updating profile:", error);
             alert("Errore durante il salvataggio.");
@@ -297,13 +298,11 @@ function Profile() {
             if (activeTab === 'posts') {
                 // Fetch MY posts (works for User and Bar)
                 console.log("Fetching posts for user:", currentUser.uid);
-                const response = await fetch('http://localhost:3001/api/posts');
+                const response = await fetch(`http://localhost:3001/api/posts?authorUid=${currentUser.uid}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch posts');
                 }
-                const allPosts = await response.json();
-                // Filter to only current user's posts
-                const posts = allPosts.filter(p => p.uid === currentUser.uid);
+                const posts = await response.json();
                 console.log("Posts fetched:", posts);
                 setMyPosts(posts);
             } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
@@ -340,7 +339,7 @@ function Profile() {
                     image: p.imageUrl,
                     votes: p.likesCount || 0,
                     comments: p.commentsCount || 0,
-                    time: p.time || new Date(p.createdAt?.seconds * 1000).toLocaleDateString()
+                    time: p.time || new Date(p.createdAt).toLocaleDateString()
                 }));
 
                 setSavedPosts(formattedPosts);

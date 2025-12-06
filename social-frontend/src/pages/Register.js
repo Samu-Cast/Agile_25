@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { createUserProfile } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 
 const Register = ({ onLoginSuccess }) => {
@@ -46,8 +46,8 @@ const Register = ({ onLoginSuccess }) => {
                 createdAt: new Date()
             };
 
-            // Salva su Firestore
-            await setDoc(doc(db, "users", uid), profileData);
+            // Salva su Firestore tramite API
+            await createUserProfile(uid, profileData);
 
             // Aggiorna stato locale - Non serve più con il nuovo AuthContext che ascolta le modifiche
             // updateProfile(profileData); 

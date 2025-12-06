@@ -3,12 +3,19 @@ const router = express.Router();
 const { db, admin } = require('../firebase');
 
 // GET /api/posts
+// GET /api/posts
 router.get('/', async (req, res) => {
     try {
-        const { uid } = req.query;
-        const postsSnapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
+        const { uid, authorUid } = req.query;
+        let query = db.collection('posts');
 
-        const posts = await Promise.all(postsSnapshot.docs.map(async doc => {
+        if (authorUid) {
+            query = query.where('uid', '==', authorUid);
+        }
+
+        const postsSnapshot = await query.get();
+
+        let posts = await Promise.all(postsSnapshot.docs.map(async doc => {
             const postData = doc.data();
             let userVote = 0;
 
@@ -25,9 +32,16 @@ router.get('/', async (req, res) => {
                 ...postData,
                 userVote,
                 // Ensure createdAt is a string for frontend
-                createdAt: postData.createdAt ? postData.createdAt.toDate().toISOString() : null
+                createdAt: postData.createdAt ? postData.createdAt.toDate().toISOString() : null,
+                createdAtObj: postData.createdAt ? postData.createdAt.toDate() : new Date(0) // For sorting
             };
         }));
+
+        // Sort in memory (descending)
+        posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
+
+        // Remove temp sorting key
+        posts = posts.map(({ createdAtObj, ...rest }) => rest);
 
         res.json(posts);
     } catch (error) {
@@ -320,6 +334,40 @@ router.delete('/:postId/coffee', async (req, res) => {
     } catch (error) {
         console.error("Error removing coffee:", error);
         res.status(500).json({ error: "Failed to remove coffee" });
+    }
+});
+
+// POST /api/posts/:postId/rating
+router.post('/:postId/rating', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid, rating } = req.body;
+
+        if (!uid || rating === undefined) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        if (rating < 0 || rating > 5) {
+            return res.status(400).json({ error: "Rating must be between 0 and 5" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+        const ratingBy = postData.ratingBy || {};
+        ratingBy[uid] = rating;
+
+        await postRef.update({ ratingBy });
+
+        res.json({ message: "Rating updated", ratingBy });
+    } catch (error) {
+        console.error("Error updating rating:", error);
+        res.status(500).json({ error: "Failed to update rating" });
     }
 });
 
