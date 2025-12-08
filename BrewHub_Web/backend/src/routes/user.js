@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { admin, db } = require('../firebase');
+const { admin, db } = require('../config/firebase');
 
 router.get('/me', async (req, res) => {
     const token = req.headers.authorization?.split("Bearer ")[1];

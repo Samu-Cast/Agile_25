@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db, admin } = require('../firebase');
+const { db, admin } = require('../config/firebase');
 
 // GET /api/posts
 router.get('/', async (req, res) => {

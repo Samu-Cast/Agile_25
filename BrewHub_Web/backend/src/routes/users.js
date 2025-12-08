@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../firebase');
+const { db } = require('../config/firebase');
 
 // GET /api/users/:uid
 router.get('/:uid', async (req, res) => {

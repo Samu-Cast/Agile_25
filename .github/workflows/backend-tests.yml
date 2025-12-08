@@ -1,0 +1,40 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: BrewHub_Web/backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: BrewHub_Web/backend
+        run: npm ci
+      
+      - name: Run tests
+        working-directory: BrewHub_Web/backend
+        run: npm test
+      
+      - name: Run tests with coverage
+        working-directory: BrewHub_Web/backend
+        run: npm run test:coverage
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: BrewHub_Web/backend/coverage
+          fail_ci_if_error: false
