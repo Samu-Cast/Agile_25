@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
-import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile } from '../services/userService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
+import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile } from '../services/userService';
 import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
@@ -10,10 +11,49 @@ const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function Profile() {
+    const { uid } = useParams(); // Get uid from URL
     const { currentUser } = useAuth();
-    const user = useUserData();
-    const roleData = useRoleData(user);
+    const currentUserData = useUserData(); // Data for the logged-in user
+    const currentUserRoleData = useRoleData(currentUserData);
 
+    // State for the profile being viewed
+    const [profileUser, setProfileUser] = useState(null);
+    const [profileRoleData, setProfileRoleData] = useState(null);
+
+    // Determine if we are viewing our own profile
+    const isOwnProfile = !uid || (currentUser && uid === currentUser.uid);
+
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (isOwnProfile) {
+                setProfileUser(currentUserData);
+                setProfileRoleData(currentUserRoleData);
+            } else {
+                // Fetch other user's data
+                if (uid) {
+                    const user = await getUser(uid);
+                    setProfileUser(user);
+
+                    // Fetch role data if applicable
+                    if (user && (user.role === 'Bar' || user.role === 'Torrefazione')) {
+                        const collectionName = user.role === 'Bar' ? 'bars' : 'roasteries';
+                        const roleData = await getRoleProfile(collectionName, uid);
+                        setProfileRoleData(roleData);
+                    } else {
+                        setProfileRoleData(null);
+                    }
+                }
+            }
+        };
+
+        fetchProfileData();
+    }, [uid, currentUserData, currentUserRoleData, isOwnProfile]);
+
+    // Use profileUser and profileRoleData for rendering
+    const user = profileUser;
+    const roleData = profileRoleData;
+
+    console.log("Profile Render:", { currentUser, user, roleData, isOwnProfile });
 
     const [activeTab, setActiveTab] = useState('posts');
     const [isEditing, setIsEditing] = useState(false);
@@ -33,6 +73,11 @@ function Profile() {
     const [searchResults, setSearchResults] = useState([]);
     const [selectedBaristas, setSelectedBaristas] = useState([]); // For edit form
 
+    // Follow System State
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followersCount, setFollowersCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
+
     // Edit Form State
     const [editForm, setEditForm] = useState({
         name: '',
@@ -42,7 +87,7 @@ function Profile() {
     });
 
     useEffect(() => {
-        if (user) {
+        if (user && isOwnProfile) {
             setEditForm({
                 name: user.name || '',
                 nickname: user.nickname || '',
@@ -68,7 +113,45 @@ function Profile() {
                 setSelectedBaristas([]);
             }
         }
-    }, [user, roleData]);
+    }, [user, roleData, isOwnProfile]);
+
+    // Check Follow Status and Counts
+    useEffect(() => {
+        if (currentUser && user && currentUser.uid !== user.uid) {
+            checkFollowStatus(currentUser.uid, user.uid).then(status => {
+                setIsFollowing(status.isFollowing);
+            });
+        }
+        if (user) {
+            // Initialize counts from user stats or defaults
+            setFollowersCount(user.stats?.followers || 0);
+            setFollowingCount(user.stats?.following || 0);
+        }
+    }, [currentUser, user]);
+
+    const handleFollowToggle = async () => {
+        if (!currentUser || !user) return;
+
+        const originalIsFollowing = isFollowing;
+        const originalFollowersCount = followersCount;
+
+        // Optimistic Update
+        setIsFollowing(!isFollowing);
+        setFollowersCount(prev => isFollowing ? prev - 1 : prev + 1);
+
+        try {
+            if (isFollowing) {
+                await unfollowUser(user.uid, currentUser.uid);
+            } else {
+                await followUser(user.uid, currentUser.uid);
+            }
+        } catch (error) {
+            console.error("Error toggling follow:", error);
+            // Revert on error
+            setIsFollowing(originalIsFollowing);
+            setFollowersCount(originalFollowersCount);
+        }
+    };
 
     const handleEditClick = () => {
         setEditForm({
@@ -285,64 +368,75 @@ function Profile() {
 
     // Fetch Data based on Role and Tab
     useEffect(() => {
-        if (!currentUser || !user) return;
+        // If viewing another profile, we might want to fetch THEIR posts
+        // For now, let's assume we fetch posts authored by the profileUser
+        if (!user) return;
 
         const fetchData = async () => {
             if (activeTab === 'posts') {
-                // Fetch MY posts (works for User and Bar)
-                const response = await fetch(`${API_URL}/posts?authorUid=${currentUser.uid}`);
+                // Fetch posts for the profile user
+                console.log("Fetching posts for user:", user.uid);
+                const response = await fetch(`http://localhost:3001/api/posts?authorUid=${user.uid}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch posts');
                 }
                 const posts = await response.json();
                 setMyPosts(posts);
             } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
-                const posts = await getUserVotedPosts(currentUser.uid, 1);
-                setUpvotedPosts(posts);
+                // Only show upvoted if it's own profile? Or public? Let's assume public for now or restrict
+                if (isOwnProfile) {
+                    const posts = await getUserVotedPosts(user.uid, 1);
+                    setUpvotedPosts(posts);
+                }
             } else if (activeTab === 'downvoted' && user.role === 'Appassionato') {
-                const posts = await getUserVotedPosts(currentUser.uid, -1);
-                setDownvotedPosts(posts);
+                if (isOwnProfile) {
+                    const posts = await getUserVotedPosts(user.uid, -1);
+                    setDownvotedPosts(posts);
+                }
             } else if (activeTab === 'reviews') {
-                // Fetch MY reviews (TODO: Implement reviews fetching)
-                // For now, leave empty or fetch actual reviews if endpoint exists
+                // Fetch reviews
                 setMyReviews([]);
             } else if (activeTab === 'comments') {
-                const comments = await getUserComments(currentUser.uid);
+                const comments = await getUserComments(user.uid);
                 setMyComments(comments);
             } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
-                const posts = await getUserSavedPosts(currentUser.uid);
+                if (isOwnProfile) {
+                    const posts = await getUserSavedPosts(user.uid);
 
-                // Fetch author names for saved posts
-                const uids = [...new Set(posts.map(p => p.uid))];
-                const users = await getUsersByUids(uids);
-                const userMap = {};
-                users.forEach(u => {
-                    userMap[u.uid] = u.nickname || u.name;
-                });
+                    // Fetch author names for saved posts
+                    const uids = [...new Set(posts.map(p => p.uid))];
+                    const users = await getUsersByUids(uids);
+                    const userMap = {};
+                    users.forEach(u => {
+                        userMap[u.uid] = u.nickname || u.name;
+                    });
 
-                // Map to PostCard format
-                const formattedPosts = posts.map(p => ({
-                    ...p,
-                    author: userMap[p.uid] || p.uid,
-                    authorName: userMap[p.uid] || p.uid, // PostCard uses authorName or author
-                    title: p.text ? (p.text.substring(0, 50) + (p.text.length > 50 ? "..." : "")) : "No Title",
-                    content: p.text,
-                    image: p.imageUrl,
-                    votes: p.likesCount || 0,
-                    comments: p.commentsCount || 0,
-                    time: p.time || new Date(p.createdAt).toLocaleDateString()
-                }));
+                    // Map to PostCard format
+                    const formattedPosts = posts.map(p => ({
+                        ...p,
+                        author: userMap[p.uid] || p.uid,
+                        authorName: userMap[p.uid] || p.uid, // PostCard uses authorName or author
+                        title: p.text ? (p.text.substring(0, 50) + (p.text.length > 50 ? "..." : "")) : "No Title",
+                        content: p.text,
+                        image: p.imageUrl,
+                        votes: p.likesCount || 0,
+                        comments: p.commentsCount || 0,
+                        time: p.time || new Date(p.createdAt).toLocaleDateString()
+                    }));
 
-                setSavedPosts(formattedPosts);
+                    setSavedPosts(formattedPosts);
+                }
             } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
-                const guides = await getUserSavedGuides(currentUser.uid);
-                setSavedGuides(guides);
+                if (isOwnProfile) {
+                    const guides = await getUserSavedGuides(user.uid);
+                    setSavedGuides(guides);
+                }
             }
             // Guides would be fetched here if we had a backend for them
         };
 
         fetchData();
-    }, [activeTab, currentUser, user]);
+    }, [activeTab, user, isOwnProfile]);
 
     // Mock Content Data (Removed static mocks for dynamic tabs)
     const guides = [
@@ -423,6 +517,7 @@ function Profile() {
                             user={currentUser}
                             onVote={handleVote}
                             onToggleSave={handleToggleSave}
+                            isSaved={true}
                         />
                     ))}
                 </div>
@@ -444,7 +539,7 @@ function Profile() {
         );
     };
 
-    if (!currentUser) {
+    if (!currentUser && isOwnProfile) {
         return (
             <div className="profile-container">
                 <div className="empty-state">
@@ -468,14 +563,18 @@ function Profile() {
         <div className="profile-container">
             {/* Header Section */}
             <div className="profile-header">
-                <button className="edit-profile-btn" onClick={handleEditClick} title="Modifica Profilo">
-                    ✎
-                </button>
-                <div className="profile-pic-container" onClick={handleImageClick} style={{ cursor: 'pointer' }}>
+                {isOwnProfile && (
+                    <button className="edit-profile-btn" onClick={handleEditClick} title="Modifica Profilo">
+                        ✎
+                    </button>
+                )}
+                <div className={`profile-pic-container ${isOwnProfile ? 'editable' : ''}`} onClick={isOwnProfile ? handleEditClick : undefined} style={{ cursor: isOwnProfile ? 'pointer' : 'default' }}>
                     <img src={user.profilePic || DEFAULT_AVATAR} alt={user.name} className="profile-pic" />
-                    <div className="profile-pic-overlay">
-                        <span>Cambia Foto</span>
-                    </div>
+                    {isOwnProfile && (
+                        <div className="profile-pic-overlay">
+                            <span>Cambia Foto</span>
+                        </div>
+                    )}
                 </div>
                 <input
                     type="file"
@@ -492,6 +591,18 @@ function Profile() {
                         </h1>
                         <span className={`role-tag ${String(user.role || 'Appassionato').toLowerCase()}`}>{user.role || 'Appassionato'}</span>
                     </div>
+
+                    {currentUser && user && currentUser.uid !== user.uid && (
+                        <div className="profile-actions">
+                            <button
+                                className={`follow-btn ${isFollowing ? 'following' : ''}`}
+                                onClick={handleFollowToggle}
+                            >
+                                {isFollowing ? 'Unfollow' : 'Follow'}
+                            </button>
+                        </div>
+                    )}
+
                     <p className="profile-bio">{user.bio}</p>
                     {user.location && (
                         <p className="profile-location">
@@ -551,11 +662,11 @@ function Profile() {
                     <span className="stat-label">Post</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats?.followers || 0}</span>
+                    <span className="stat-value">{followersCount}</span>
                     <span className="stat-label">Follower</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats?.following || 0}</span>
+                    <span className="stat-value">{followingCount}</span>
                     <span className="stat-label">Following</span>
                 </div>
             </div >
@@ -568,49 +679,85 @@ function Profile() {
                 >
                     Post
                 </button>
-                <button
-                    className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('upvoted')}
-                >
-                    Upvoted
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('downvoted')}
-                >
-                    Downvoted
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('reviews')}
-                >
-                    Recensioni
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('comments')}
-                >
-                    Commenti
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('savedPosts')}
-                >
-                    Post Salvati
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('savedGuides')}
-                >
-                    Guide Salvate
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('communities')}
-                >
-                    Comunità
-                </button>
-            </div>
+
+                {
+                    user.role === 'Appassionato' && (
+                        <>
+                            {isOwnProfile && (
+                                <>
+                                    <button
+                                        className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('upvoted')}
+                                    >
+                                        Upvoted
+                                    </button>
+                                    <button
+                                        className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('downvoted')}
+                                    >
+                                        Downvoted
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('reviews')}
+                            >
+                                Recensioni
+                            </button>
+                            <button
+                                className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('comments')}
+                            >
+                                Commenti
+                            </button>
+                            {isOwnProfile && (
+                                <>
+                                    <button
+                                        className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('savedPosts')}
+                                    >
+                                        Post Salvati
+                                    </button>
+                                    <button
+                                        className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('savedGuides')}
+                                    >
+                                        Guide Salvate
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('communities')}
+                            >
+                                Comunità
+                            </button>
+                        </>
+                    )
+                }
+
+                {
+                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
+                        <button
+                            className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('reviews')}
+                        >
+                            Recensioni
+                        </button>
+                    )
+                }
+                {
+                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
+                        <button
+                            className={`tab-button ${activeTab === 'guides' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('guides')}
+                        >
+                            Guide
+                        </button>
+                    )
+                }
+            </div >
 
             {/* Content Area */}
             {renderContent()}
@@ -626,8 +773,8 @@ function Profile() {
                 </div>
                 <div className="drawer-content">
                     <div className="edit-form-group">
-                        <div className="edit-pic-container">
-                            <img src={editForm.profilePic} alt="Preview" className="edit-pic-preview" />
+                        <div className="edit-pic-container" onClick={handleImageClick}>
+                            <img src={editForm.profilePic} alt="Preview" className="edit-pic-preview" title="Clicca per cambiare foto" />
                         </div>
                     </div>
                     <div className="edit-form-group">

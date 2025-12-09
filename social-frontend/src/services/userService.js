@@ -153,3 +153,66 @@ export const getRoleProfile = async (collectionName, ownerUid) => {
         return null;
     }
 };
+
+export const followUser = async (targetUid, currentUid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${targetUid}/follow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentUid })
+        });
+        if (!response.ok) throw new Error('Follow failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error following user:", error);
+        throw error;
+    }
+};
+
+export const unfollowUser = async (targetUid, currentUid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${targetUid}/unfollow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentUid })
+        });
+        if (!response.ok) throw new Error('Unfollow failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error unfollowing user:", error);
+        throw error;
+    }
+};
+
+export const checkFollowStatus = async (currentUid, targetUid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${currentUid}/checkFollow/${targetUid}`);
+        if (!response.ok) throw new Error('Check follow status failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error checking follow status:", error);
+        return { isFollowing: false };
+    }
+};
+
+export const getFollowers = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/followers`);
+        if (!response.ok) throw new Error('Fetch followers failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching followers:", error);
+        return [];
+    }
+};
+
+export const getFollowing = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/following`);
+        if (!response.ok) throw new Error('Fetch following failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching following:", error);
+        return [];
+    }
+};
