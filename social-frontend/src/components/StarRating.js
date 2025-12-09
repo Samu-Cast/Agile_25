@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './StarRating.css'; // optional styling file
+import '../styles/components/StarRating.css'; // optional styling file
 
 /**
  * StarRating component renders 5 clickable stars for rating.

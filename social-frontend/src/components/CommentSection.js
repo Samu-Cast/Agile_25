@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { addComment, getComments } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
-import './CommentSection.css';
+import '../styles/components/CommentSection.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const CommentSection = ({ postId }) => {
     const { currentUser } = useAuth();
@@ -23,7 +25,7 @@ const CommentSection = ({ postId }) => {
                 let authorName = comment.uid;
                 let authorPic = null;
                 try {
-                    const userRes = await fetch(`http://localhost:3001/api/users/${comment.uid}`);
+                    const userRes = await fetch(`${API_URL}/users/${comment.uid}`);
                     if (userRes.ok) {
                         const userData = await userRes.json();
                         authorName = userData.displayName || userData.name || comment.uid;
@@ -50,13 +52,13 @@ const CommentSection = ({ postId }) => {
         try {
             const commentData = {
                 text: newComment,
-                authorUid: currentUser.uid || currentUser.email, // Fixed: postService expects authorUid
-                parentComment: null // Simple comments for now
+                authorUid: currentUser.uid || currentUser.email,
+                parentComment: null
             };
 
             await addComment(postId, commentData);
             setNewComment('');
-            loadComments(); // Refresh comments
+            loadComments();
         } catch (error) {
             console.error("Error adding comment:", error);
         }

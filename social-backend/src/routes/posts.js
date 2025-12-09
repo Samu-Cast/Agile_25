@@ -15,16 +15,13 @@ router.get('/', async (req, res) => {
 
         const postsSnapshot = await query.get();
 
-        let posts = await Promise.all(postsSnapshot.docs.map(async doc => {
+        let posts = postsSnapshot.docs.map(doc => {
             const postData = doc.data();
             let userVote = 0;
 
-            if (uid) {
-                const likeDoc = await db.collection('posts').doc(doc.id).collection('likes').doc(uid).get();
-                if (likeDoc.exists) {
-                    const data = likeDoc.data();
-                    userVote = data.value !== undefined ? data.value : 1; // Default to 1 ONLY if value is missing
-                }
+            // Get user's vote from votedBy map
+            if (uid && postData.votedBy && postData.votedBy[uid] !== undefined) {
+                userVote = postData.votedBy[uid];
             }
 
             return {
@@ -35,7 +32,7 @@ router.get('/', async (req, res) => {
                 createdAt: postData.createdAt ? postData.createdAt.toDate().toISOString() : null,
                 createdAtObj: postData.createdAt ? postData.createdAt.toDate() : new Date(0) // For sorting
             };
-        }));
+        });
 
         // Sort in memory (descending)
         posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
@@ -53,7 +50,7 @@ router.get('/', async (req, res) => {
 // POST /api/posts
 router.post('/', async (req, res) => {
     try {
-        const { uid, entityType, entityId, text, imageUrl, createdAt, likesCount, commentsCount } = req.body;
+        const { uid, entityType, entityId, text, imageUrl, createdAt, commentsCount } = req.body;
 
         if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -66,7 +63,8 @@ router.post('/', async (req, res) => {
             text,
             imageUrl: imageUrl || null,
             createdAt: createdAt ? new Date(createdAt) : new Date(),
-            likesCount: likesCount || 0,
+            votes: 0,
+            votedBy: {},
             commentsCount: commentsCount || 0
         };
 
@@ -139,31 +137,37 @@ router.post('/:postId/like', async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        const likeRef = db.collection('posts').doc(postId).collection('likes').doc(uid);
-        const doc = await likeRef.get();
+        const postRef = db.collection('posts').doc(postId);
+        const postDoc = await postRef.get();
+
+        if (!postDoc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = postDoc.data();
+        const votedBy = postData.votedBy || {};
+        const currentVote = votedBy[uid];
         let voteChange = 0;
 
-        if (doc.exists) {
-            const currentVote = doc.data().value || 1; // Default to 1 if old schema
-            console.log(`[DEBUG] Existing vote for user ${uid} on post ${postId}: ${currentVote}`);
-
+        if (currentVote !== undefined) {
             if (currentVote === value) {
                 // User clicked same vote -> remove it (toggle)
-                await likeRef.delete();
+                delete votedBy[uid];
                 voteChange = -value;
             } else {
                 // User changed vote -> update it
-                await likeRef.set({ value, likedAt: new Date() });
+                votedBy[uid] = value;
                 voteChange = value - currentVote; // e.g., -1 - 1 = -2
             }
         } else {
             // New vote
-            await likeRef.set({ value, likedAt: new Date() });
+            votedBy[uid] = value;
             voteChange = value;
         }
 
-        await db.collection('posts').doc(postId).update({
-            likesCount: admin.firestore.FieldValue.increment(voteChange)
+        await postRef.update({
+            votedBy,
+            votes: admin.firestore.FieldValue.increment(voteChange)
         });
 
         res.json({ message: "Vote updated", voteChange });
@@ -183,18 +187,26 @@ router.delete('/:postId/like', async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        const likeRef = db.collection('posts').doc(postId).collection('likes').doc(uid);
-        const doc = await likeRef.get();
+        const postRef = db.collection('posts').doc(postId);
+        const postDoc = await postRef.get();
 
-        if (!doc.exists) {
+        if (!postDoc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = postDoc.data();
+        const votedBy = postData.votedBy || {};
+        const currentVote = votedBy[uid];
+
+        if (currentVote === undefined) {
             return res.status(400).json({ error: "Post not voted" });
         }
 
-        const currentVote = doc.data().value || 1;
-        await likeRef.delete();
+        delete votedBy[uid];
 
-        await db.collection('posts').doc(postId).update({
-            likesCount: admin.firestore.FieldValue.increment(-currentVote)
+        await postRef.update({
+            votedBy,
+            votes: admin.firestore.FieldValue.increment(-currentVote)
         });
 
         res.json({ message: "Vote removed" });

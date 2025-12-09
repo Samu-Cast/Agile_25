@@ -15,6 +15,7 @@ const usersRouter = require('./routes/users');
 const barsRouter = require('./routes/bars');
 const roastersRouter = require('./routes/roasters');
 const searchRouter = require('./routes/search');
+const uploadRouter = require('./routes/upload');
 
 app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
@@ -22,5 +23,6 @@ app.use('/api/bars', barsRouter);
 app.use('/api/roasters', roastersRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/upload', uploadRouter);
 
 module.exports = app;

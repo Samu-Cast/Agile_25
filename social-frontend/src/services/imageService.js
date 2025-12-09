@@ -1,26 +1,29 @@
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 /**
- * Carica un'immagine su Firebase Storage
+ * Carica un'immagine tramite backend API
  * @param {File} file - File immagine da caricare
  * @param {string} folder - Cartella dove salvare (es. 'posts')
  * @returns {Promise<string>} - URL dell'immagine caricata
  */
 export const uploadImage = async (file, folder = 'posts') => {
     try {
-        // Genera un nome unico per il file
-        const timestamp = Date.now();
-        const fileName = `${timestamp}_${file.name}`;
-        const storageRef = ref(storage, `${folder}/${fileName}`);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', folder);
 
-        // Carica il file
-        const snapshot = await uploadBytes(storageRef, file);
-        console.log('Immagine caricata:', snapshot.metadata.name);
+        const response = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            body: formData
+        });
 
-        // Ottieni l'URL pubblico
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        return downloadURL;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+        return data.url;
     } catch (error) {
         console.error('Errore nel caricamento dell\'immagine:', error);
         throw error;
@@ -50,3 +53,4 @@ export const validateImage = (file) => {
 };
 
 export default { uploadImage, validateImage };
+

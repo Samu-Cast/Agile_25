@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD:BrewHub_Web/backend/src/routes/users.js
-const { db } = require('../config/firebase');
-=======
-const { db, admin } = require('../firebase');
+const { db, admin } = require('../config/firebase');
 
 // GET /api/users/search
 router.get('/search', async (req, res) => {
@@ -63,7 +60,6 @@ router.get('/search', async (req, res) => {
         res.status(500).json({ error: "Failed to search users" });
     }
 });
->>>>>>> preRelease:social-backend/src/routes/users.js
 
 // GET /api/users/:uid
 router.get('/:uid', async (req, res) => {
@@ -241,22 +237,16 @@ router.get('/:uid/votedPosts', async (req, res) => {
             return res.status(400).json({ error: "Invalid vote type" });
         }
 
-        // Collection Group Query for likes
-        const likesSnapshot = await db.collectionGroup('likes')
-            .where('uid', '==', uid)
-            .where('value', '==', voteValue)
-            .get();
+        // Get all posts and filter where user voted with the specified value
+        const postsSnapshot = await db.collection('posts').get();
 
-        const postPromises = likesSnapshot.docs.map(doc => doc.ref.parent.parent.get());
-        const postDocs = await Promise.all(postPromises);
-
-        const posts = postDocs
-            .filter(doc => doc.exists)
+        const posts = postsSnapshot.docs
             .map(doc => ({
                 id: doc.id,
                 ...doc.data(),
                 createdAt: doc.data().createdAt ? doc.data().createdAt.toDate().toISOString() : null
-            }));
+            }))
+            .filter(post => post.votedBy && post.votedBy[uid] === voteValue);
 
         res.json(posts);
     } catch (error) {

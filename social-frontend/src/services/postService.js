@@ -1,5 +1,5 @@
 import { getUserVotedPosts, getUserSavedPostsDetails } from './userService';
-const API_URL = 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 /**
  * Crea un nuovo post tramite API

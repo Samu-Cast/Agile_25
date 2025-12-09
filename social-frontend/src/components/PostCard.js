@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUsersByUids } from '../services/userService';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+
 const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
     const [expanded, setExpanded] = useState(false);
     const [loadingComments, setLoadingComments] = useState(false);
@@ -21,7 +23,7 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
         setExpanded(true);
         setLoadingComments(true);
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${post.id}/comments`);
+            const response = await fetch(`${API_URL}/posts/${post.id}/comments`);
             const data = await response.json();
             // Resolve author names for comments
             const commentUids = [...new Set(data.map(c => c.uid))];
@@ -31,7 +33,7 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
             const enrichedComments = data.map(c => ({ ...c, authorName: userMap[c.uid] || c.uid }));
             setComments(enrichedComments);
         } catch (error) {
-            console.error("Error fetching comments:", error);
+            // Error fetching comments
         } finally {
             setLoadingComments(false);
         }
@@ -41,7 +43,7 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
         if (!newComment.trim()) return;
 
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${post.id}/comments`, {
+            const response = await fetch(`${API_URL}/posts/${post.id}/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -66,7 +68,7 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
                 if (onComment) onComment(post.id);
             }
         } catch (error) {
-            console.error("Error adding comment:", error);
+            // Error adding comment
         }
     };
 

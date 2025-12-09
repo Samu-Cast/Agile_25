@@ -3,30 +3,10 @@ import { Link } from 'react-router-dom';
 import CommentSection from '../components/CommentSection';
 import { toggleSavePost } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
-import './Home.css';
-import PostCard from '../components/PostCard.js';
+import '../styles/pages/Home.css';
 import { getUsersByUids } from '../services/userService';
 
-const Navbar = ({ onLoginClick }) => {
-    return (
-        <nav className="navbar">
-            <div className="navbar-logo">
-                <span className="logo-text">BrewHub</span>
-            </div>
-            <div className="navbar-search">
-                <input type="text" placeholder="Search BrewHub..." />
-            </div>
-            <div className="navbar-actions">
-                <button className="btn-login" onClick={onLoginClick}>
-                    Log In
-                </button>
-                <button className="btn-icon">
-                    ⋯
-                </button>
-            </div>
-        </nav>
-    );
-};
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const Sidebar = () => {
     return (
@@ -71,8 +51,8 @@ const Feed = ({ isLoggedIn, user }) => {
         const fetchPosts = async () => {
             try {
                 const url = user?.uid
-                    ? `http://localhost:3001/api/posts?uid=${user.uid}`
-                    : 'http://localhost:3001/api/posts';
+                    ? `${API_URL}/posts?uid=${user.uid}`
+                    : `${API_URL}/posts`;
 
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -106,7 +86,7 @@ const Feed = ({ isLoggedIn, user }) => {
                         title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
                         content: post.text,
                         image: post.imageUrl,
-                        votes: post.likesCount || 0,
+                        votes: post.votes || 0,
                         comments: post.commentsCount || 0
                     };
                 });
@@ -121,7 +101,7 @@ const Feed = ({ isLoggedIn, user }) => {
         const fetchSavedPosts = async () => {
             if (!user?.uid) return;
             try {
-                const response = await fetch(`http://localhost:3001/api/users/${user.uid}/savedPosts`);
+                const response = await fetch(`${API_URL}/users/${user.uid}/savedPosts`);
                 if (response.ok) {
                     const savedPostIds = await response.json();
                     const savedMap = {};
@@ -165,7 +145,7 @@ const Feed = ({ isLoggedIn, user }) => {
         }));
 
         try {
-            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+            await fetch(`${API_URL}/posts/${postId}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid: user?.uid, value: 1 }),
@@ -196,7 +176,7 @@ const Feed = ({ isLoggedIn, user }) => {
         }));
 
         try {
-            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+            await fetch(`${API_URL}/posts/${postId}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid: user?.uid, value: -1 }),
@@ -205,16 +185,6 @@ const Feed = ({ isLoggedIn, user }) => {
             console.error("Error unliking post:", error);
         }
     };
-
-    const handleCommentUpdate = (postId) => {
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                return { ...p, comments: (p.comments || 0) + 1 };
-            }
-            return p;
-        }));
-    };
-
 
     const handleToggleSave = async (postId) => {
         if (!isLoggedIn || !user?.uid) return;
@@ -267,7 +237,7 @@ const Feed = ({ isLoggedIn, user }) => {
                             <p className="post-text">{post.content}</p>
                             <div className="post-footer">
                                 <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                    💬 {post.comments} Comments
+                                    {post.comments} Comments
                                 </button>
                                 <button className="action-btn">↗ Share</button>
                                 <button

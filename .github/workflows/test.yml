@@ -1,0 +1,86 @@
+#Workflow GitHub Actions per eseguire automaticamente i test
+#Si attiva quando viene fatto un push o una pull request
+name: Test CI
+
+#Quando eseguire questo workflow
+on:
+  #Esegui quando viene fatto push su questi branch
+  push:
+    branches: [ main, develop ]
+  #Esegui quando viene creata una pull request verso questi branch
+  pull_request:
+    branches: [ main, develop ]
+
+#Lavori da eseguire
+jobs:
+  #Lavoro per testare il backend
+  test-backend:
+    #Usa una macchina virtuale Ubuntu
+    runs-on: ubuntu-latest
+    
+    #Passi da eseguire per testare il backend
+    steps:
+      #Scarica il codice del repository
+      - name: Scarica codice
+        uses: actions/checkout@v3
+      
+      #Installa Node.js versione 18
+      - name: Installa Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      #Entra nella cartella del backend
+      - name: Vai nella cartella backend
+        run: cd social-backend
+      
+      #Installa le dipendenze del backend
+      - name: Installa dipendenze backend
+        run: npm ci
+        working-directory: ./social-backend
+      
+      #Esegui i test del backend
+      - name: Esegui test backend
+        run: npm test
+        working-directory: ./social-backend
+        env:
+          NODE_ENV: test
+
+  #Lavoro per testare il frontend
+  test-frontend:
+    #Usa una macchina virtuale Ubuntu
+    runs-on: ubuntu-latest
+    
+    #Passi da eseguire per testare il frontend
+    steps:
+      #Scarica il codice del repository
+      - name: Scarica codice
+        uses: actions/checkout@v3
+      
+      #Installa Node.js versione 18
+      - name: Installa Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      #Installa le dipendenze del frontend
+      - name: Installa dipendenze frontend
+        run: npm ci
+        working-directory: ./social-frontend
+      
+      #Esegui i test del frontend
+      - name: Esegui test frontend
+        run: npm test -- --watchAll=false --coverage
+        working-directory: ./social-frontend
+        env:
+          CI: true
+          REACT_APP_API_URL: http://localhost:3001/api
+      
+      #Carica il report di copertura dei test
+      - name: Carica report copertura
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          directory: ./social-frontend/coverage
+          flags: frontend
+          name: frontend-coverage

@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile } from '../services/userService';
 import PostCard from '../components/PostCard';
-import './Profile.css';
+import '../styles/pages/Profile.css';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function Profile() {
     const { currentUser } = useAuth();
     const user = useUserData();
     const roleData = useRoleData(user);
 
-    console.log("Profile Render:", { currentUser, user, roleData });
 
     const [activeTab, setActiveTab] = useState('posts');
     const [isEditing, setIsEditing] = useState(false);
@@ -102,7 +102,6 @@ function Profile() {
     };
 
     const handleSave = async () => {
-        console.log("handleSave called");
         if (!currentUser || !user) {
             console.error("No current user or user data");
             return;
@@ -143,11 +142,9 @@ function Profile() {
 
                 if (roleData && roleData.id) {
                     // Update existing
-                    console.log("Updating existing role doc:", roleData.id, roleSpecificData);
                     await updateRoleProfile(collectionName, roleData.id, roleSpecificData);
                 } else {
                     // Create new
-                    console.log("Creating new role doc in:", collectionName, roleSpecificData);
                     await createRoleProfile(collectionName, {
                         ...roleSpecificData,
                         createdAt: new Date(), // Backend might handle this, but sending it is fine or let backend default
@@ -185,10 +182,8 @@ function Profile() {
     const handleBaristaSearch = async (e) => {
         const query = e.target.value;
         setBaristaSearchQuery(query);
-        console.log("Search query:", query);
         if (query.length > 1) {
             const results = await searchUsers(query, 'Barista');
-            console.log("Search results:", results);
             // Filter out already selected users and self
             const filtered = results.filter(r =>
                 r.uid !== currentUser.uid &&
@@ -196,7 +191,6 @@ function Profile() {
             );
             setSearchResults(filtered);
             if (filtered.length === 0) {
-                console.log("No matching baristas found.");
             }
         } else {
             setSearchResults([]);
@@ -204,7 +198,6 @@ function Profile() {
     };
 
     const addBarista = (barista) => {
-        console.log("Adding barista:", barista);
         setSelectedBaristas([...selectedBaristas, barista]);
         setBaristaSearchQuery('');
         setSearchResults([]);
@@ -297,13 +290,11 @@ function Profile() {
         const fetchData = async () => {
             if (activeTab === 'posts') {
                 // Fetch MY posts (works for User and Bar)
-                console.log("Fetching posts for user:", currentUser.uid);
-                const response = await fetch(`http://localhost:3001/api/posts?authorUid=${currentUser.uid}`);
+                const response = await fetch(`${API_URL}/posts?authorUid=${currentUser.uid}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch posts');
                 }
                 const posts = await response.json();
-                console.log("Posts fetched:", posts);
                 setMyPosts(posts);
             } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
                 const posts = await getUserVotedPosts(currentUser.uid, 1);
@@ -364,7 +355,6 @@ function Profile() {
 
         // Format posts data for display
         if (activeTab === 'posts') {
-            console.log("Rendering posts, count:", myPosts.length);
             data = myPosts.map(p => ({
                 ...p,
                 image: p.imageUrl || null,
@@ -571,84 +561,56 @@ function Profile() {
             </div >
 
             {/* Tabs Navigation */}
-            < div className="profile-tabs" >
+            <div className="profile-tabs">
                 <button
                     className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
                     onClick={() => setActiveTab('posts')}
                 >
                     Post
                 </button>
-
-                {
-                    user.role === 'Appassionato' && (
-                        <>
-                            <button
-                                className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('upvoted')}
-                            >
-                                Upvoted
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('downvoted')}
-                            >
-                                Downvoted
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('reviews')}
-                            >
-                                Recensioni
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('comments')}
-                            >
-                                Commenti
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('savedPosts')}
-                            >
-                                Post Salvati
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('savedGuides')}
-                            >
-                                Guide Salvate
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('communities')}
-                            >
-                                Comunità
-                            </button>
-                        </>
-                    )
-                }
-
-                {
-                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
-                        <button
-                            className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('reviews')}
-                        >
-                            Recensioni
-                        </button>
-                    )
-                }
-                {
-                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
-                        <button
-                            className={`tab-button ${activeTab === 'guides' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('guides')}
-                        >
-                            Guide
-                        </button>
-                    )
-                }
-            </div >
+                <button
+                    className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('upvoted')}
+                >
+                    Upvoted
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('downvoted')}
+                >
+                    Downvoted
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('reviews')}
+                >
+                    Recensioni
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('comments')}
+                >
+                    Commenti
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('savedPosts')}
+                >
+                    Post Salvati
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('savedGuides')}
+                >
+                    Guide Salvate
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('communities')}
+                >
+                    Comunità
+                </button>
+            </div>
 
             {/* Content Area */}
             {renderContent()}

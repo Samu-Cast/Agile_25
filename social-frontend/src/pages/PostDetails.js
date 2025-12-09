@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import './PostDetails.css';
+import '../styles/pages/PostDetails.css';
 import { addComment, getComments } from '../services/postService';
 
 function PostDetails({ posts, onVote, onCoffee, currentUser }) {
