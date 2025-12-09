@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { getUsersByUids } from '../services/userService';
+
+import CommentSection from './CommentSection';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
     const [expanded, setExpanded] = useState(false);
-    const [loadingComments, setLoadingComments] = useState(false);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState("");
-    const [replyingTo, setReplyingTo] = useState(null);
 
+<<<<<<< HEAD
     const { currentUser } = useAuth();
 
     const toggleComments = async () => {
@@ -70,6 +67,10 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
         } catch (error) {
             // Error adding comment
         }
+=======
+    const toggleComments = () => {
+        setExpanded(!expanded);
+>>>>>>> aa0b5aa57b079fc75a1bf85adb40ee2b29a27786
     };
 
     return (
@@ -102,54 +103,7 @@ const PostCard = ({ post, user, onVote, onComment, isSaved, onToggleSave }) => {
                 </div>
 
                 {expanded && (
-                    <div className="comments-section">
-                        {loadingComments ? (
-                            <p>Loading comments...</p>
-                        ) : (
-                            <>
-                                <div className="comments-list">
-                                    {comments.map(comment => (
-                                        <div key={comment.id} className="comment" style={{ marginLeft: comment.parentComment ? '20px' : '0' }}>
-                                            <span className="comment-author">{comment.authorName || comment.uid}</span>
-                                            <p className="comment-text">{comment.text}</p>
-                                            <button
-                                                className="reply-btn"
-                                                style={{ fontSize: '0.8em', color: 'gray', background: 'none', border: 'none', cursor: 'pointer' }}
-                                                onClick={() => setReplyingTo({ commentId: comment.id, author: comment.uid })}
-                                            >
-                                                Reply
-                                            </button>
-                                        </div>
-                                    ))}
-                                    {comments.length === 0 && (
-                                        <p className="no-comments">No comments yet.</p>
-                                    )}
-                                </div>
-                                {currentUser && (
-                                    <div className="add-comment">
-                                        {replyingTo && (
-                                            <div className="replying-indicator">
-                                                Replying to {replyingTo.author}
-                                                <button onClick={() => setReplyingTo(null)} style={{ marginLeft: '5px' }}>x</button>
-                                            </div>
-                                        )}
-                                        <input
-                                            type="text"
-                                            value={newComment}
-                                            onChange={(e) => setNewComment(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    handleAddComment();
-                                                }
-                                            }}
-                                            placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
-                                        />
-                                        <button onClick={handleAddComment}>Post</button>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
+                    <CommentSection postId={post.id} />
                 )}
             </div>
         </div>
