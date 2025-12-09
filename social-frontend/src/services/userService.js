@@ -1,0 +1,155 @@
+const API_URL = 'http://localhost:3001/api';
+
+/**
+ * Search users by nickname or email.
+ * @param {string} queryText - The search text.
+ * @param {string} role - Optional role filter.
+ * @returns {Promise<Array>} - List of found users.
+ */
+export const searchUsers = async (queryText, role = null) => {
+    try {
+        const params = new URLSearchParams({ q: queryText });
+        if (role) params.append('role', role);
+
+        const response = await fetch(`${API_URL}/users/search?${params.toString()}`);
+        if (!response.ok) throw new Error('Search failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+    }
+};
+
+/**
+ * Get user details for a list of UIDs.
+ * @param {Array<string>} uids - List of user IDs.
+ * @returns {Promise<Array>} - List of user details.
+ */
+export const getUsersByUids = async (uids) => {
+    try {
+        const response = await fetch(`${API_URL}/users/batch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uids })
+        });
+        if (!response.ok) throw new Error('Batch fetch failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching users by UIDs:", error);
+        return [];
+    }
+};
+
+export const createUserProfile = async (uid, userData) => {
+    try {
+        const response = await fetch(`${API_URL}/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid, ...userData })
+        });
+        if (!response.ok) throw new Error('Create profile failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error creating user profile:", error);
+        throw error;
+    }
+};
+
+export const updateUserProfile = async (uid, updates) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if (!response.ok) throw new Error('Update profile failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw error;
+    }
+};
+
+export const getUserVotedPosts = async (uid, type) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/votedPosts?type=${type}`);
+        if (!response.ok) throw new Error('Fetch voted posts failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching voted posts:", error);
+        return [];
+    }
+};
+
+export const getUserSavedPostsDetails = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/savedPosts/details`);
+        if (!response.ok) throw new Error('Fetch saved posts failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching saved posts:", error);
+        return [];
+    }
+};
+
+export const getUser = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}`);
+        if (!response.ok) throw new Error('Fetch user failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        return null;
+    }
+};
+
+export const createRoleProfile = async (collectionName, data) => {
+    try {
+        // Map collection name to endpoint
+        // collectionName comes from Profile.js: 'bars' or 'roasteries' (or 'roasters'?)
+        // Profile.js uses 'bars' and 'roasteries'.
+        // Backend routes: /api/bars and /api/roasters (which points to roasteries collection).
+        // So if collectionName is 'roasteries', we map to 'roasters'.
+        const endpoint = collectionName === 'bars' ? 'bars' : 'roasters';
+
+        const response = await fetch(`${API_URL}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Create role profile failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error creating role profile:", error);
+        throw error;
+    }
+};
+
+export const updateRoleProfile = async (collectionName, id, updates) => {
+    try {
+        const endpoint = collectionName === 'bars' ? 'bars' : 'roasters';
+        const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if (!response.ok) throw new Error('Update role profile failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error updating role profile:", error);
+        throw error;
+    }
+};
+
+export const getRoleProfile = async (collectionName, ownerUid) => {
+    try {
+        const endpoint = collectionName === 'bars' ? 'bars' : 'roasters';
+        const response = await fetch(`${API_URL}/${endpoint}?ownerUid=${ownerUid}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.length > 0 ? data[0] : null;
+    } catch (error) {
+        console.error("Error fetching role profile:", error);
+        return null;
+    }
+};
