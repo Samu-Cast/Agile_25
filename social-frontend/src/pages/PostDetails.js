@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import './PostDetails.css';
-import StarRating from '../components/StarRating';
-import { updateRating, addComment, getComments } from '../services/postService';
+import '../styles/pages/PostDetails.css';
+import { addComment, getComments } from '../services/postService';
 
 function PostDetails({ posts, onVote, onCoffee, currentUser }) {
     const { id } = useParams();
@@ -52,25 +51,6 @@ function PostDetails({ posts, onVote, onCoffee, currentUser }) {
         }
     };
 
-    const handleRatingChange = async (postId, rating) => {
-        if (!currentUser) {
-            alert('Devi essere loggato per valutare!');
-            return;
-        }
-        try {
-            await updateRating(postId, currentUser.email, rating);
-            // Update local state to reflect change immediately
-            setPost(prev => ({
-                ...prev,
-                ratingBy: {
-                    ...prev.ratingBy,
-                    [currentUser.email]: rating
-                }
-            }));
-        } catch (err) {
-            console.error('Errore nell\'aggiornamento della valutazione:', err);
-        }
-    };
 
     if (!post) {
         return (
@@ -113,14 +93,6 @@ function PostDetails({ posts, onVote, onCoffee, currentUser }) {
                             <span className="vote-count">{post.votes}</span>
                             <button className="vote-btn" onClick={() => onVote(post.id, -1)}>▼</button>
                         </div>
-                    </div>
-                    <div className="rating-container">
-                        <StarRating
-                            postId={post.id}
-                            userRatingMap={post.ratingBy || {}}
-                            currentUserId={currentUser?.email}
-                            onRatingChange={handleRatingChange}
-                        />
                     </div>
                 </div>
             </div>

@@ -1,20 +1,59 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { doc, updateDoc, setDoc, collection, addDoc } from "firebase/firestore";
-import { db } from "../firebase";
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides } from '../services/postService';
-import { searchUsers, getUsersByUids } from '../services/userService';
-import './Profile.css';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
+import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile } from '../services/userService';
+import PostCard from '../components/PostCard';
+import '../styles/pages/Profile.css';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function Profile() {
+    const { uid } = useParams(); // Get uid from URL
     const { currentUser } = useAuth();
-    const user = useUserData();
-    const roleData = useRoleData(user);
+    const currentUserData = useUserData(); // Data for the logged-in user
+    const currentUserRoleData = useRoleData(currentUserData);
 
-    console.log("Profile Render:", { currentUser, user, roleData });
+    // State for the profile being viewed
+    const [profileUser, setProfileUser] = useState(null);
+    const [profileRoleData, setProfileRoleData] = useState(null);
+
+    // Determine if we are viewing our own profile
+    const isOwnProfile = !uid || (currentUser && uid === currentUser.uid);
+
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (isOwnProfile) {
+                setProfileUser(currentUserData);
+                setProfileRoleData(currentUserRoleData);
+            } else {
+                // Fetch other user's data
+                if (uid) {
+                    const user = await getUser(uid);
+                    setProfileUser(user);
+
+                    // Fetch role data if applicable
+                    if (user && (user.role === 'Bar' || user.role === 'Torrefazione')) {
+                        const collectionName = user.role === 'Bar' ? 'bars' : 'roasteries';
+                        const roleData = await getRoleProfile(collectionName, uid);
+                        setProfileRoleData(roleData);
+                    } else {
+                        setProfileRoleData(null);
+                    }
+                }
+            }
+        };
+
+        fetchProfileData();
+    }, [uid, currentUserData, currentUserRoleData, isOwnProfile]);
+
+    // Use profileUser and profileRoleData for rendering
+    const user = profileUser;
+    const roleData = profileRoleData;
+
+    console.log("Profile Render:", { currentUser, user, roleData, isOwnProfile });
 
     const [activeTab, setActiveTab] = useState('posts');
     const [isEditing, setIsEditing] = useState(false);
@@ -34,6 +73,11 @@ function Profile() {
     const [searchResults, setSearchResults] = useState([]);
     const [selectedBaristas, setSelectedBaristas] = useState([]); // For edit form
 
+    // Follow System State
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followersCount, setFollowersCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
+
     // Edit Form State
     const [editForm, setEditForm] = useState({
         name: '',
@@ -43,7 +87,7 @@ function Profile() {
     });
 
     useEffect(() => {
-        if (user) {
+        if (user && isOwnProfile) {
             setEditForm({
                 name: user.name || '',
                 nickname: user.nickname || '',
@@ -69,7 +113,45 @@ function Profile() {
                 setSelectedBaristas([]);
             }
         }
-    }, [user, roleData]);
+    }, [user, roleData, isOwnProfile]);
+
+    // Check Follow Status and Counts
+    useEffect(() => {
+        if (currentUser && user && currentUser.uid !== user.uid) {
+            checkFollowStatus(currentUser.uid, user.uid).then(status => {
+                setIsFollowing(status.isFollowing);
+            });
+        }
+        if (user) {
+            // Initialize counts from user stats or defaults
+            setFollowersCount(user.stats?.followers || 0);
+            setFollowingCount(user.stats?.following || 0);
+        }
+    }, [currentUser, user]);
+
+    const handleFollowToggle = async () => {
+        if (!currentUser || !user) return;
+
+        const originalIsFollowing = isFollowing;
+        const originalFollowersCount = followersCount;
+
+        // Optimistic Update
+        setIsFollowing(!isFollowing);
+        setFollowersCount(prev => isFollowing ? prev - 1 : prev + 1);
+
+        try {
+            if (isFollowing) {
+                await unfollowUser(user.uid, currentUser.uid);
+            } else {
+                await followUser(user.uid, currentUser.uid);
+            }
+        } catch (error) {
+            console.error("Error toggling follow:", error);
+            // Revert on error
+            setIsFollowing(originalIsFollowing);
+            setFollowersCount(originalFollowersCount);
+        }
+    };
 
     const handleEditClick = () => {
         setEditForm({
@@ -103,7 +185,6 @@ function Profile() {
     };
 
     const handleSave = async () => {
-        console.log("handleSave called");
         if (!currentUser || !user) {
             console.error("No current user or user data");
             return;
@@ -111,8 +192,7 @@ function Profile() {
 
         try {
             // 1. Update User Basic Info
-            const userRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userRef, {
+            await updateUserProfile(currentUser.uid, {
                 name: editForm.name,
                 nickname: editForm.nickname,
                 bio: editForm.bio,
@@ -145,21 +225,23 @@ function Profile() {
 
                 if (roleData && roleData.id) {
                     // Update existing
-                    const roleRef = doc(db, collectionName, roleData.id);
-                    console.log("Updating existing role doc:", roleData.id, roleSpecificData);
-                    await updateDoc(roleRef, roleSpecificData);
+                    await updateRoleProfile(collectionName, roleData.id, roleSpecificData);
                 } else {
                     // Create new
-                    console.log("Creating new role doc in:", collectionName, roleSpecificData);
-                    await addDoc(collection(db, collectionName), {
+                    await createRoleProfile(collectionName, {
                         ...roleSpecificData,
-                        createdAt: new Date(),
+                        createdAt: new Date(), // Backend might handle this, but sending it is fine or let backend default
                         stats: { posts: 0, reviews: 0, avgRating: 0, ...(user.role === 'Torrefazione' ? { products: 0 } : {}) }
                     });
                 }
             }
 
             setIsEditing(false);
+            // Refresh data? useUserData hook should handle it if it polls or we trigger a refresh.
+            // Since we removed onSnapshot, we might need to manually trigger refresh or reload page.
+            // For now, let's reload page or assume user accepts a refresh.
+            // Ideally we'd have a context method to refresh user data.
+            window.location.reload();
         } catch (error) {
             console.error("Error updating profile:", error);
             alert("Errore durante il salvataggio.");
@@ -183,10 +265,8 @@ function Profile() {
     const handleBaristaSearch = async (e) => {
         const query = e.target.value;
         setBaristaSearchQuery(query);
-        console.log("Search query:", query);
         if (query.length > 1) {
             const results = await searchUsers(query, 'Barista');
-            console.log("Search results:", results);
             // Filter out already selected users and self
             const filtered = results.filter(r =>
                 r.uid !== currentUser.uid &&
@@ -194,7 +274,6 @@ function Profile() {
             );
             setSearchResults(filtered);
             if (filtered.length === 0) {
-                console.log("No matching baristas found.");
             }
         } else {
             setSearchResults([]);
@@ -202,7 +281,6 @@ function Profile() {
     };
 
     const addBarista = (barista) => {
-        console.log("Adding barista:", barista);
         setSelectedBaristas([...selectedBaristas, barista]);
         setBaristaSearchQuery('');
         setSearchResults([]);
@@ -224,48 +302,141 @@ function Profile() {
         }
     };
 
+    const handleVote = async (postId, type) => {
+        if (!currentUser) return;
+
+        // Find the post in savedPosts
+        const postIndex = savedPosts.findIndex(p => p.id === postId);
+        if (postIndex === -1) return;
+
+        const post = savedPosts[postIndex];
+        const currentVote = post.userVote || 0;
+        let newVote = 0;
+        let voteChange = 0;
+
+        if (type === 'up') {
+            newVote = currentVote === 1 ? 0 : 1;
+            voteChange = currentVote === 1 ? -1 : (currentVote === -1 ? 2 : 1);
+        } else { // down
+            newVote = currentVote === -1 ? 0 : -1;
+            voteChange = currentVote === -1 ? 1 : (currentVote === 1 ? -2 : -1);
+        }
+
+        // Optimistic update
+        const updatedPosts = [...savedPosts];
+        updatedPosts[postIndex] = {
+            ...post,
+            userVote: newVote,
+            votes: (post.votes || 0) + voteChange
+        };
+        setSavedPosts(updatedPosts);
+
+        try {
+            const valueToSend = newVote === 0 ? currentVote : newVote;
+            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: currentUser.uid, value: valueToSend }),
+            });
+        } catch (error) {
+            console.error("Error voting in profile:", error);
+            // Revert
+            setSavedPosts(savedPosts);
+        }
+    };
+
+    const handleToggleSave = async (postId) => {
+        if (!currentUser) return;
+
+        // Optimistic update for savedPosts list
+        // If we are in "savedPosts" tab, toggling save (unsaving) should remove it from the list
+        if (activeTab === 'savedPosts') {
+            setSavedPosts(prev => prev.filter(p => p.id !== postId));
+        }
+
+        try {
+            // We assume it's currently saved if it's in the savedPosts list
+            await toggleSavePost(postId, currentUser.uid, true);
+        } catch (error) {
+            console.error("Error toggling save in profile:", error);
+            // Revert if error (fetch again)
+            const posts = await getUserSavedPosts(currentUser.uid);
+            setSavedPosts(posts);
+        }
+    };
+
+
     // Fetch Data based on Role and Tab
     useEffect(() => {
-        if (!currentUser || !user) return;
+        // If viewing another profile, we might want to fetch THEIR posts
+        // For now, let's assume we fetch posts authored by the profileUser
+        if (!user) return;
 
         const fetchData = async () => {
             if (activeTab === 'posts') {
-                // Fetch MY posts (works for User and Bar)
-                console.log("Fetching posts for user:", currentUser.uid);
-                const response = await fetch('http://localhost:3001/api/posts');
+                // Fetch posts for the profile user
+                console.log("Fetching posts for user:", user.uid);
+                const response = await fetch(`http://localhost:3001/api/posts?authorUid=${user.uid}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch posts');
                 }
-                const allPosts = await response.json();
-                // Filter to only current user's posts
-                const posts = allPosts.filter(p => p.uid === currentUser.uid);
-                console.log("Posts fetched:", posts);
+                const posts = await response.json();
                 setMyPosts(posts);
             } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
-                const posts = await getUserVotedPosts(currentUser.uid, 1);
-                setUpvotedPosts(posts);
+                // Only show upvoted if it's own profile? Or public? Let's assume public for now or restrict
+                if (isOwnProfile) {
+                    const posts = await getUserVotedPosts(user.uid, 1);
+                    setUpvotedPosts(posts);
+                }
             } else if (activeTab === 'downvoted' && user.role === 'Appassionato') {
-                const posts = await getUserVotedPosts(currentUser.uid, -1);
-                setDownvotedPosts(posts);
+                if (isOwnProfile) {
+                    const posts = await getUserVotedPosts(user.uid, -1);
+                    setDownvotedPosts(posts);
+                }
             } else if (activeTab === 'reviews') {
-                // Fetch MY comments/reviews (works for User and Bar)
-                const comments = await getUserComments(currentUser.uid);
-                setMyReviews(comments);
+                // Fetch reviews
+                setMyReviews([]);
             } else if (activeTab === 'comments') {
-                const comments = await getUserComments(currentUser.uid);
+                const comments = await getUserComments(user.uid);
                 setMyComments(comments);
             } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
-                const posts = await getUserSavedPosts(currentUser.uid);
-                setSavedPosts(posts);
+                if (isOwnProfile) {
+                    const posts = await getUserSavedPosts(user.uid);
+
+                    // Fetch author names for saved posts
+                    const uids = [...new Set(posts.map(p => p.uid))];
+                    const users = await getUsersByUids(uids);
+                    const userMap = {};
+                    users.forEach(u => {
+                        userMap[u.uid] = u.nickname || u.name;
+                    });
+
+                    // Map to PostCard format
+                    const formattedPosts = posts.map(p => ({
+                        ...p,
+                        author: userMap[p.uid] || p.uid,
+                        authorName: userMap[p.uid] || p.uid, // PostCard uses authorName or author
+                        title: p.text ? (p.text.substring(0, 50) + (p.text.length > 50 ? "..." : "")) : "No Title",
+                        content: p.text,
+                        image: p.imageUrl,
+                        votes: p.likesCount || 0,
+                        comments: p.commentsCount || 0,
+                        time: p.time || new Date(p.createdAt).toLocaleDateString()
+                    }));
+
+                    setSavedPosts(formattedPosts);
+                }
             } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
-                const guides = await getUserSavedGuides(currentUser.uid);
-                setSavedGuides(guides);
+                if (isOwnProfile) {
+                    const guides = await getUserSavedGuides(user.uid);
+                    setSavedGuides(guides);
+                }
             }
             // Guides would be fetched here if we had a backend for them
         };
 
         fetchData();
-    }, [activeTab, currentUser, user]);
+    }, [activeTab, user, isOwnProfile]);
 
     // Mock Content Data (Removed static mocks for dynamic tabs)
     const guides = [
@@ -278,7 +449,6 @@ function Profile() {
 
         // Format posts data for display
         if (activeTab === 'posts') {
-            console.log("Rendering posts, count:", myPosts.length);
             data = myPosts.map(p => ({
                 ...p,
                 image: p.imageUrl || null,
@@ -299,7 +469,11 @@ function Profile() {
                 type = 'comment';
                 data = myComments;
             }
-            if (activeTab === 'savedPosts') data = savedPosts.map(p => ({ ...p, image: p.imageUrl || "https://via.placeholder.com/400", type: "Saved Post" }));
+            if (activeTab === 'savedPosts') {
+                // For saved posts, we want to use the PostCard component
+                // We map the data but we'll render it differently in the return
+                data = savedPosts;
+            }
             if (activeTab === 'savedGuides') data = savedGuides.map(p => ({ ...p, image: p.image || "https://via.placeholder.com/400", type: "Saved Guide" }));
             if (activeTab === 'communities') return <div className="empty-state">Comunità in arrivo...</div>;
         }
@@ -318,9 +492,33 @@ function Profile() {
                 <div className="profile-comments-list">
                     {data.map(item => (
                         <div key={item.id} className="profile-comment-item">
+                            {item.postTitle && (
+                                <p className="comment-post-title">
+                                    Su: <strong>{item.postTitle}</strong>
+                                </p>
+                            )}
                             <p className="comment-text">"{item.text}"</p>
-                            <span className="comment-date">{item.createdAt?.toDate().toLocaleDateString()}</span>
+                            <span className="comment-date">
+                                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Date unknown'}
+                            </span>
                         </div>
+                    ))}
+                </div>
+            );
+        }
+
+        if (activeTab === 'savedPosts') {
+            return (
+                <div className="profile-feed">
+                    {data.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            user={currentUser}
+                            onVote={handleVote}
+                            onToggleSave={handleToggleSave}
+                            isSaved={true}
+                        />
                     ))}
                 </div>
             );
@@ -341,7 +539,7 @@ function Profile() {
         );
     };
 
-    if (!currentUser) {
+    if (!currentUser && isOwnProfile) {
         return (
             <div className="profile-container">
                 <div className="empty-state">
@@ -365,14 +563,18 @@ function Profile() {
         <div className="profile-container">
             {/* Header Section */}
             <div className="profile-header">
-                <button className="edit-profile-btn" onClick={handleEditClick} title="Modifica Profilo">
-                    ✎
-                </button>
-                <div className="profile-pic-container" onClick={handleImageClick} style={{ cursor: 'pointer' }}>
+                {isOwnProfile && (
+                    <button className="edit-profile-btn" onClick={handleEditClick} title="Modifica Profilo">
+                        ✎
+                    </button>
+                )}
+                <div className={`profile-pic-container ${isOwnProfile ? 'editable' : ''}`} onClick={isOwnProfile ? handleEditClick : undefined} style={{ cursor: isOwnProfile ? 'pointer' : 'default' }}>
                     <img src={user.profilePic || DEFAULT_AVATAR} alt={user.name} className="profile-pic" />
-                    <div className="profile-pic-overlay">
-                        <span>Cambia Foto</span>
-                    </div>
+                    {isOwnProfile && (
+                        <div className="profile-pic-overlay">
+                            <span>Cambia Foto</span>
+                        </div>
+                    )}
                 </div>
                 <input
                     type="file"
@@ -389,6 +591,18 @@ function Profile() {
                         </h1>
                         <span className={`role-tag ${String(user.role || 'Appassionato').toLowerCase()}`}>{user.role || 'Appassionato'}</span>
                     </div>
+
+                    {currentUser && user && currentUser.uid !== user.uid && (
+                        <div className="profile-actions">
+                            <button
+                                className={`follow-btn ${isFollowing ? 'following' : ''}`}
+                                onClick={handleFollowToggle}
+                            >
+                                {isFollowing ? 'Unfollow' : 'Follow'}
+                            </button>
+                        </div>
+                    )}
+
                     <p className="profile-bio">{user.bio}</p>
                     {user.location && (
                         <p className="profile-location">
@@ -448,17 +662,17 @@ function Profile() {
                     <span className="stat-label">Post</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats?.followers || 0}</span>
+                    <span className="stat-value">{followersCount}</span>
                     <span className="stat-label">Follower</span>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-value">{user.stats?.following || 0}</span>
+                    <span className="stat-value">{followingCount}</span>
                     <span className="stat-label">Following</span>
                 </div>
             </div >
 
             {/* Tabs Navigation */}
-            < div className="profile-tabs" >
+            <div className="profile-tabs">
                 <button
                     className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
                     onClick={() => setActiveTab('posts')}
@@ -469,18 +683,22 @@ function Profile() {
                 {
                     user.role === 'Appassionato' && (
                         <>
-                            <button
-                                className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('upvoted')}
-                            >
-                                Upvoted
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('downvoted')}
-                            >
-                                Downvoted
-                            </button>
+                            {isOwnProfile && (
+                                <>
+                                    <button
+                                        className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('upvoted')}
+                                    >
+                                        Upvoted
+                                    </button>
+                                    <button
+                                        className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('downvoted')}
+                                    >
+                                        Downvoted
+                                    </button>
+                                </>
+                            )}
                             <button
                                 className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('reviews')}
@@ -493,18 +711,22 @@ function Profile() {
                             >
                                 Commenti
                             </button>
-                            <button
-                                className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('savedPosts')}
-                            >
-                                Post Salvati
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('savedGuides')}
-                            >
-                                Guide Salvate
-                            </button>
+                            {isOwnProfile && (
+                                <>
+                                    <button
+                                        className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('savedPosts')}
+                                    >
+                                        Post Salvati
+                                    </button>
+                                    <button
+                                        className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('savedGuides')}
+                                    >
+                                        Guide Salvate
+                                    </button>
+                                </>
+                            )}
                             <button
                                 className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('communities')}
@@ -551,8 +773,8 @@ function Profile() {
                 </div>
                 <div className="drawer-content">
                     <div className="edit-form-group">
-                        <div className="edit-pic-container">
-                            <img src={editForm.profilePic} alt="Preview" className="edit-pic-preview" />
+                        <div className="edit-pic-container" onClick={handleImageClick}>
+                            <img src={editForm.profilePic} alt="Preview" className="edit-pic-preview" title="Clicca per cambiare foto" />
                         </div>
                     </div>
                     <div className="edit-form-group">

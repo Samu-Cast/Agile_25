@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import './Home.css';
+import { uploadImage, validateImage } from '../services/imageService';
+import '../styles/pages/Home.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function CreatePost() {
     const [text, setText] = useState('');
@@ -20,7 +21,6 @@ function CreatePost() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Submitting post. Current User:", currentUser);
 
         if (!currentUser) {
             alert("You must be logged in to create a post.");
@@ -33,23 +33,24 @@ function CreatePost() {
             let imageUrl = null;
 
             if (image) {
-                const storageRef = ref(storage, `posts/${Date.now()}_${image.name}`);
-                const snapshot = await uploadBytes(storageRef, image);
-                imageUrl = await getDownloadURL(snapshot.ref);
+                if (!validateImage(image)) {
+                    setLoading(false);
+                    return;
+                }
+                imageUrl = await uploadImage(image, 'posts');
             }
 
             const postData = {
                 uid: currentUser.uid,
-                entityType: "user", // Hardcoded for now as per requirements
+                entityType: "user",
                 entityId: currentUser.uid,
                 text: text,
                 imageUrl: imageUrl,
                 createdAt: new Date().toISOString(),
-                likesCount: 0,
                 commentsCount: 0
             };
 
-            const response = await fetch('http://localhost:3001/api/posts', {
+            const response = await fetch(`${API_URL}/posts`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

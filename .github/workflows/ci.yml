@@ -1,0 +1,40 @@
+name: CI tests
+
+on:
+  push:
+    branches: [ main, preRelease, sam-branch ]
+  pull_request:
+    branches: [ main, preRelease, sam-branch ]
+
+jobs:
+  test-project:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+
+      - name: Install Backend Dependencies
+        run: |
+          cd social-backend
+          npm ci
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd social-frontend
+          npm ci
+
+      - name: Run Backend Tests
+        run: |
+          cd social-backend
+          npm test
+
+      - name: Run Frontend Tests
+        run: |
+          cd social-frontend
+          npm test -- --watchAll=false

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../firebase');
+const { db } = require('../config/firebase');
 
 // GET /api/search?q=query
 router.get('/', async (req, res) => {
@@ -12,20 +12,47 @@ router.get('/', async (req, res) => {
         }
 
         const searchTerm = q.toLowerCase();
+        const results = [];
 
-        // Note: Firestore does not support native full-text search or "contains" queries easily.
-        // The seed data includes `searchableKeywords` array which is perfect for `array-contains`.
-        // However, `array-contains` matches exact elements.
-        // For a simple implementation, we will try to match exact keywords if possible, 
-        // or fetch all and filter (not scalable but works for small datasets).
-        // Given the seed structure: searchableKeywords: ["sam", "appassionato", "castellani"]
+        // Search in users collection
+        const usersSnapshot = await db.collection('users').get();
+        usersSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const searchableText = `${data.name || ''} ${data.nickname || ''} ${data.email || ''}`.toLowerCase();
+            if (searchableText.includes(searchTerm)) {
+                results.push({ id: doc.id, type: 'user', ...data });
+            }
+        });
 
-        // Let's try array-contains first for exact keyword match
-        const snapshot = await db.collection('searchIndex')
-            .where('searchableKeywords', 'array-contains', searchTerm)
-            .get();
+        // Search in bars collection
+        const barsSnapshot = await db.collection('bars').get();
+        barsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const searchableText = `${data.name || ''} ${data.address || ''}`.toLowerCase();
+            if (searchableText.includes(searchTerm)) {
+                results.push({ id: doc.id, type: 'bar', ...data });
+            }
+        });
 
-        const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Search in roasters collection
+        const roastersSnapshot = await db.collection('roasters').get();
+        roastersSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const searchableText = `${data.name || ''} ${data.address || ''}`.toLowerCase();
+            if (searchableText.includes(searchTerm)) {
+                results.push({ id: doc.id, type: 'roaster', ...data });
+            }
+        });
+
+        // Search in posts collection (by text content)
+        const postsSnapshot = await db.collection('posts').get();
+        postsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const searchableText = `${data.text || ''}`.toLowerCase();
+            if (searchableText.includes(searchTerm)) {
+                results.push({ id: doc.id, type: 'post', ...data });
+            }
+        });
 
         res.json(results);
     } catch (error) {

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import './App.css';
+import './styles/App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import CreatePost from './pages/CreatePost';
 import ForgotPassword from './pages/ForgotPassword';
+
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
 
@@ -14,8 +15,6 @@ function AppContent() {
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const { currentUser, logout } = useAuth();
   const isLoggedIn = !!currentUser;
-
-
 
   const navigate = useNavigate();
 
@@ -38,8 +37,6 @@ function AppContent() {
     closeModal();
   };
 
-
-
   return (
     <div className="App">
       <Header
@@ -47,11 +44,12 @@ function AppContent() {
         onLogoutClick={handleLogout}
         showProfile={isLoggedIn}
         isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
       />
       <Routes>
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} />} />
         <Route path="/create-post" element={<CreatePost />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:uid?" element={<Profile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>
       {showAuthModal && (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './AuthModal.css';
+import '../styles/components/AuthModal.css';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 
