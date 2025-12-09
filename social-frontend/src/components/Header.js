@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { searchUsers } from '../services/userService';
-import './Header.css';
+import '../styles/components/Header.css';
 
 function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn }) {
     const location = useLocation();
