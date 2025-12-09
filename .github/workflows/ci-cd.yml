@@ -4,9 +4,9 @@ name: CI/CD Pipeline
 #Quando eseguire questo workflow
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, preRelease, sam-branch ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, preRelease, sam-branch ]
 
 #Lavori da eseguire
 jobs:

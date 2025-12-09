@@ -6,10 +6,10 @@ name: Test CI
 on:
   #Esegui quando viene fatto push su questi branch
   push:
-    branches: [ main, develop ]
+    branches: [ main, preRelease, sam-branch ]
   #Esegui quando viene creata una pull request verso questi branch
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, preRelease, sam-branch ]
 
 #Lavori da eseguire
 jobs:
