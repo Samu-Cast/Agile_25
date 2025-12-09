@@ -4,6 +4,7 @@ import { searchUsers } from '../services/userService';
 import '../styles/components/Header.css';
 
 function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentUser }) {
+    // console.log('Header props:', { isLoggedIn, showProfile }); // debugging removed
     const location = useLocation();
     const navigate = useNavigate();
     const hideSearch = location.pathname === '/forgot-password';

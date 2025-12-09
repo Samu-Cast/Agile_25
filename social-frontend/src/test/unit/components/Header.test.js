@@ -81,7 +81,7 @@ describe('Header Component', () => {
     //Test: verifica che il link al profilo venga mostrato quando richiesto
     it('dovrebbe mostrare link profilo quando showProfile è true', () => {
         //Mostra il componente Header con link profilo abilitato
-        render(<Header {...defaultProps} isLoggedIn={true} showProfile={true} />);
+        render(<Header {...defaultProps} isLoggedIn={true} showProfile={true} currentUser={{ uid: 'test-user', photoURL: null }} />);
         //Trova il link al profilo usando l'etichetta "Profile"
         const profileLink = screen.getByLabelText('Profile');
         //Verifica che il link sia presente
