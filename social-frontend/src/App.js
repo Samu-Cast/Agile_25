@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './styles/App.css';
@@ -47,7 +48,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} />} />
         <Route path="/create-post" element={<CreatePost />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:uid?" element={<Profile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>
       {showAuthModal && (

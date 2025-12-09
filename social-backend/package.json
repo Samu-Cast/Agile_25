@@ -4,11 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-<<<<<<< HEAD:BrewHub_Web/backend/package.json
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-=======
->>>>>>> preRelease:social-backend/package.json
     "start": "node src/server.js"
   },
   "keywords": [],
