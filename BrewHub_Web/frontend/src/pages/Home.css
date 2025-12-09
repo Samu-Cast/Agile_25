@@ -1,8 +1,8 @@
 /* Layout */
 .home-layout {
     min-height: 100vh;
-    background-color: #F0F2F5;
-    /* Softer background */
+    background-color: var(--bg-primary);
+    /* Cream background */
     display: flex;
     flex-direction: column;
     font-family: 'Segoe UI', Helvetica, Arial, sans-serif;

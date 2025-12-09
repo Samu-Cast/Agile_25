@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "brewhub-bd760",
+  "private_key_id": "1e90da209466daac4bc9658a2e24c1dcd8690935",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9f58yk8uqyxB2\ntQibgAmHmPkTiNHW9eiu7OkHm1jDLmymQKZkFlRN0NlGETZS2d1vL8p+gGzMLilW\nfSlw7FxXDRXRbMKhXnxuofPxmFkqXH/jdo/VMFMDMNG6Pxq/txWgGvf3NfVHv3dq\nfq87Xiad/UmkHS+uVu7VWbT0BMIQSUXnv4nM2wbwokf5ZuOievoheUNCGDcqbT8f\nmg88Kxp+O05wO/UElAPfU0gmEwaZhKwKL1WGlvVCXCMW3yYFyzq/v1Yg6KAjWtBb\nGEzgjj8aygk5pJ0xPMXRq0gS0FCF6HVhL1XddTCVcACLFnCGc2lp+83G4Jt2KGbm\nMu7NHMcnAgMBAAECggEAN5XwBM4FuBvIwIlp9PMh2Hyu02QW6Y9Iqccks+6FovtD\nM6FTLZi/MfRJR5xU6witQ6gpJeJWB66iwZQFS/KJQ5+6/quAjAVDStCG1h9ySFLJ\n0Nc+abK7JvxzCMbp+cKivUwr4IAbauhnBv4SOL/tY/qgV1uYWPN3K24c/ldG9a+G\n+zhvlVKMARngyiOsr9IXE1XG2x1iCIxe7IXaejcRwDl3XtjnCyY1wxaaBkFGHf1u\npvwwNd+CAo0KqXxOE5wR2MvGSH8ppJ3mr2vWRA9VPHqmQVkwVtsBBrhg5fBq6pvP\nnKd9f0W3podMWOXi9qQ/4T2VMhzynbuSRMDkV6SXwQKBgQDvxuAOIoA4mdd8fqQh\n3EtvuDauyXZc3EmP4i9tteA3919gnF1ptNt5GU77r9BZP6s05utLlSHVhHfIevFp\n9GN31ztcOIcGGfrS+lMOZxk6wx6ZpXoQJdluwCoSDTrV24mIfoMfrI233qTYl60u\num1wbwd5OzENm5G4VFjXy5STJQKBgQDKUeLa1Gg2KR4UMDwB96Ivd0IEo52F2goE\nWSh8qb9hNFv82DvKAXSPw2bhcAmfnjJb6bMp+3m03HrQ/MgHEZb9VJJ6HgBqJxqX\nrJa4PlzsUlgyYBQoDNXCN9aMp+xmK7gru+gOC1yQ8ndh5wYF3WYV4mED52HvS9ub\n7Asv7X3FWwKBgAtxuo/yJZyN+zL9+GeFVDRo3nNJOlUETp6HdSwPWjxRmkPKMssw\nzqjhBFwO8CrSVyGXQ/O/knXWdMEk3RDpkTXPGA42xHsOEmKvf/dYBGRBm9xJgaHz\nrIUUtu1VpFFAwTe6kheY7Mqx3bxYwPNSApczNXAb2yODIVli7TqfhN/hAoGAG+xD\nR/pqy5bPLPAfSBI6Uxy9gtBmDDQ0j7cSbGotHKhSTco2LkIXKURJrbF90obN4nuV\nm6S2fmyzkqZgoQEfeqUydiIv4na1J9vNDW6l+oO+4mz6OzDSS7TTKqR+bvd3uql7\ndHzC8MpWCbAN179fuIN+6kAD9zfb/mAMhzfa1OMCgYEA32nuweZnQRbdUmW9GVzC\nzL8mK2Oq7dpFkvKeQceWbEURq3FiJ0thFLP2ufrNVpmSoJ5VV6qCW1vtJCpdZVNu\ni5TbMNSZWAbDXvld9TSlqRCQbkWjLY7qO+NEbDEI5madIr2pdiK8gZ0rVAz5ye+y\n75/tgDqWbsslUxCCkkaDcIA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@brewhub-bd760.iam.gserviceaccount.com",
+  "client_id": "104973540274606153235",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40brewhub-bd760.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

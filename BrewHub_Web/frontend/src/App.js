@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './styles/App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import CreatePost from './pages/CreatePost';
-import PostDetails from './pages/PostDetails';
+import ForgotPassword from './pages/ForgotPassword';
 
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
@@ -15,8 +14,6 @@ function AppContent() {
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const { currentUser, logout } = useAuth();
   const isLoggedIn = !!currentUser;
-
-
 
   const navigate = useNavigate();
 
@@ -38,8 +35,6 @@ function AppContent() {
     // login(); // Non serve più, AuthContext gestisce lo stato
     closeModal();
   };
-
-
 
   return (
     <div className="App">
