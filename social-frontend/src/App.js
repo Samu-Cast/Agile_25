@@ -44,6 +44,7 @@ function AppContent() {
         onLogoutClick={handleLogout}
         showProfile={isLoggedIn}
         isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
       />
       <Routes>
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} />} />
