@@ -6,14 +6,24 @@ const { db, admin } = require('../config/firebase');
 // GET /api/posts
 router.get('/', async (req, res) => {
     try {
-        const { uid, authorUid } = req.query;
+        const { uid, authorUid, filter, sort } = req.query;
         let query = db.collection('posts');
 
+        // If filtering by specific author (Profile page usage)
         if (authorUid) {
             query = query.where('uid', '==', authorUid);
         }
 
         const postsSnapshot = await query.get();
+
+        // Fetch user's following list if filter is 'followed'
+        let followingIds = new Set();
+        if (filter === 'followed' && uid) {
+            const followingSnap = await db.collection('users').doc(uid).collection('following').get();
+            followingSnap.forEach(doc => followingIds.add(doc.id));
+            // Optional: Include self in feed?
+            // followingIds.add(uid); 
+        }
 
         let posts = postsSnapshot.docs.map(doc => {
             const postData = doc.data();
@@ -34,8 +44,19 @@ router.get('/', async (req, res) => {
             };
         });
 
-        // Sort in memory (descending)
-        posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
+        // Apply filters
+        if (filter === 'followed' && uid) {
+            posts = posts.filter(post => followingIds.has(post.uid));
+        }
+
+        // Apply sorting
+        if (sort === 'popular') {
+            // Sort by votes (descending)
+            posts.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+        } else {
+            // Default: Sort by createdAt (descending) - Newest first
+            posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
+        }
 
         // Remove temp sorting key
         posts = posts.map(({ createdAtObj, ...rest }) => rest);
