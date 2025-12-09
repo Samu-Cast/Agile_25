@@ -36,7 +36,7 @@ jobs:
       
       #Installa le dipendenze del backend
       - name: Installa dipendenze backend
-        run: npm ci
+        run: npm install
         working-directory: ./social-backend
       
       #Esegui i test del backend
@@ -65,7 +65,7 @@ jobs:
       
       #Installa le dipendenze del frontend
       - name: Installa dipendenze frontend
-        run: npm ci
+        run: npm install
         working-directory: ./social-frontend
       
       #Esegui i test del frontend
