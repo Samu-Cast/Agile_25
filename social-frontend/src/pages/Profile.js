@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
@@ -365,6 +366,45 @@ function Profile() {
         }
     };
 
+    const handleDeletePost = async (postId, e) => {
+        e.stopPropagation(); // Prevent navigating to post details if clicking container
+
+        const result = await Swal.fire({
+            title: 'Sei sicuro?',
+            text: "Non potrai annullare questa azione!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sì, elimina!',
+            cancelButtonText: 'Annulla'
+        });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        // Optimistic update
+        const originalPosts = [...myPosts];
+        setMyPosts(prev => prev.filter(p => p.id !== postId));
+
+        try {
+            const response = await fetch(`http://localhost:3001/api/posts/${postId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: currentUser.uid })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete post');
+            }
+        } catch (error) {
+            console.error("Error deleting post:", error);
+            alert("Errore durante l'eliminazione del post.");
+            setMyPosts(originalPosts);
+        }
+    };
+
 
     // Fetch Data based on Role and Tab
     useEffect(() => {
@@ -533,6 +573,15 @@ function Profile() {
                             <h3 className="content-title">{item.title}</h3>
                             <p className="content-preview">{item.type}</p>
                         </div>
+                        {isOwnProfile && activeTab === 'posts' && (
+                            <button
+                                className="delete-post-btn"
+                                onClick={(e) => handleDeletePost(item.id, e)}
+                                title="Elimina post"
+                            >
+                                ×
+                            </button>
+                        )}
                     </div>
                 ))}
             </div>

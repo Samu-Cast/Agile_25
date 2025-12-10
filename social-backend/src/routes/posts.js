@@ -404,4 +404,42 @@ router.post('/:postId/rating', async (req, res) => {
     }
 });
 
+// DELETE /api/posts/:postId
+router.delete('/:postId', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        console.log(`[DELETE] Attempting to delete post ${postId} by user ${uid}`);
+
+        if (!uid) {
+            console.warn(`[DELETE] Failed: Missing required fields (uid) for post ${postId}`);
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            console.warn(`[DELETE] Failed: Post ${postId} not found`);
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.uid !== uid) {
+            console.warn(`[DELETE] Failed: Unauthorized deletion attempt for post ${postId} by user ${uid} (Owner: ${postData.uid})`);
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        await postRef.delete();
+        console.log(`[DELETE] Success: Post ${postId} deleted by user ${uid}`);
+
+        res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+        console.error(`[DELETE] Error deleting post ${req.params.postId}:`, error);
+        res.status(500).json({ error: "Failed to delete post" });
+    }
+});
+
 module.exports = router;
