@@ -17,6 +17,13 @@ export const syncUserWithFirestore = async (firebaseUser) => {
 
         // Se NON esiste, creiamo il profilo base
         if (!existingUser) {
+            // Se la registrazione è via email/password, lasciamo che sia Register.js a creare il profilo
+            // per evitare race conditions che sovrascrivono il ruolo (es. Torrefazione -> Appassionato).
+            if (baseData.provider === 'password') {
+                console.log("Skipping auto-creation for password user (handled by Register.js)");
+                return;
+            }
+
             await createUserProfile(firebaseUser.uid, {
                 ...baseData,
                 role: 'Appassionato', // Default role
