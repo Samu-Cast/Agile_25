@@ -1,216 +1,186 @@
-# BrewHub - Coffee Social Platform
+# BrewHub - Piattaforma Social per il Caffè Artigianale
 
-> Piattaforma social dedicata alla community del caffè artigianale
-
-[![Status](https://img.shields.io/badge/status-in%20development-yellow)](https://github.com)
-[![License](https://img.shields.io/badge/license-Academic-blue)](LICENSE)
-
-## 📋 Indice
-
-- [Panoramica](#panoramica)
-- [Caratteristiche](#caratteristiche)
-- [Architettura](#architettura)
-- [Quick Start](#quick-start)
-- [Sviluppo](#sviluppo)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Team](#team)
-
-## 🎯 Panoramica
-
-BrewHub è una piattaforma social che connette tre tipologie di utenti:
-- **Appassionati di caffè** - Condividono esperienze e recensioni
-- **Baristi** - Professionisti del settore
-- **Torrefazioni** - Produttori e distributori
-
-Sviluppato seguendo la metodologia **Agile/Scrum** per il corso Agile 25/26.
-
-## ✨ Caratteristiche
-
-- 🔐 **Autenticazione** - Firebase Authentication
-- 📝 **Post & Commenti** - Sistema social completo
-- ⭐ **Valutazioni** - Rating a stelle per prodotti
-- 👤 **Profili Utente** - Gestione profilo con ruoli
-- 🖼️ **Upload Immagini** - Firebase Storage
-- 🔍 **Ricerca** - Ricerca utenti e contenuti
-- 📱 **Responsive** - Design mobile-first
-
-## 🏗️ Architettura
-
-```
-Agile_25/
-├── firebase/          # Configurazione Firebase unificata
-├── BrewHub_Web/
-│   ├── backend/       # Node.js + Express API
-│   ├── frontend/      # React App
-│   └── docs/          # Documentazione
-```
-
-Per dettagli completi vedi [STRUCTURE.md](./STRUCTURE.md)
-
-## 🚀 Quick Start
-
-### Prerequisiti
-
-- Node.js 18+
-- npm 9+
-- Firebase CLI (`npm install -g firebase-tools`)
-- Account Firebase
-
-### Installazione
-
-```bash
-# Clone repository
-git clone <repo-url>
-cd Agile_25
-
-# Installa dipendenze backend
-cd BrewHub_Web/backend
-npm install
-
-# Installa dipendenze frontend
-cd ../frontend
-npm install
-```
-
-### Configurazione
-
-1. **Backend**: Crea `.env` in `BrewHub_Web/backend/`
-```env
-PORT=3001
-FIREBASE_PROJECT_ID=brewhub-bd760
-```
-
-2. **Frontend**: Crea `.env` in `BrewHub_Web/frontend/`
-```env
-REACT_APP_API_URL=http://localhost:3001/api
-```
-
-3. **Firebase**: Posiziona `firebase-key.json` in `BrewHub_Web/backend/src/config/`
-
-### Avvio
-
-```bash
-# Terminal 1: Backend
-cd BrewHub_Web/backend
-npm start
-# Server: http://localhost:3001
-
-# Terminal 2: Frontend
-cd BrewHub_Web/frontend
-npm start
-# App: http://localhost:3000
-```
-
-## 💻 Sviluppo
-
-### Struttura Backend
-
-```
-backend/src/
-├── config/         # Configurazioni (Firebase, etc)
-├── controllers/    # Business logic
-├── routes/         # API endpoints
-├── services/       # Servizi esterni
-├── models/         # Data models
-├── middlewares/    # Auth, validation
-└── utils/          # Helper functions
-```
-
-### Struttura Frontend
-
-```
-frontend/src/
-├── components/     # Componenti riutilizzabili
-├── pages/          # Pagine dell'app
-├── context/        # React Context
-├── hooks/          # Custom hooks
-├── services/       # API services
-├── types/          # Type definitions
-└── styles/         # Global styles
-```
-
-### Comandi Utili
-
-```bash
-# Backend
-npm run dev        # Development con nodemon
-npm test           # Run tests
-npm run lint       # Lint code
-
-# Frontend
-npm start          # Development server
-npm test           # Run tests
-npm run build      # Production build
-```
-
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-cd BrewHub_Web/backend
-npm test                    # Run all tests
-npm test -- --coverage      # With coverage
-npm test -- posts.test.js   # Specific file
-```
-
-### Frontend Tests
-
-```bash
-cd BrewHub_Web/frontend
-npm test                    # Interactive mode
-npm test -- --coverage      # With coverage
-npm test -- --watchAll=false # Run once
-```
-
-## 🚢 Deployment
-
-### Firebase Hosting (Frontend)
-
-```bash
-cd firebase
-firebase login
-firebase deploy --only hosting
-```
-
-### Firebase Functions (Backend)
-
-```bash
-cd firebase
-firebase deploy --only functions
-```
-
-### Firestore Rules
-
-```bash
-cd firebase
-firebase deploy --only firestore:rules
-```
-
-## 📚 Documentazione
-
-- [STRUCTURE.md](./STRUCTURE.md) - Architettura dettagliata
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - Guida contribuzione
-- [docs/](./BrewHub_Web/docs/) - Documentazione Agile
-
-## 👥 Team
-
-**Progetto Agile 25/26**
-
-- Sam Castellani - [@username](https://github.com/username)
-- [Altri membri del team]
-
-## 📄 License
-
-Progetto accademico per il corso Agile 25/26
-
-## 🔗 Links
-
-- [Firebase Console](https://console.firebase.google.com/project/brewhub-bd760)
-- [Notion Board](https://notion.so/...)
-- [GitHub Issues](https://github.com/.../issues)
+**Descrizione**  
+BrewHub è una piattaforma social dedicata alla community del caffè artigianale, sviluppata come progetto accademico seguendo la metodologia **Agile/Scrum** per il corso Agile 25/26. L'applicazione consente a tre tipologie di utenti — appassionati di caffè, baristi professionisti (inclusi bar con baristi associati) e torrefazioni — di connettersi, condividere esperienze, recensire prodotti e scoprire nuove miscele. L'obiettivo è creare un ecosistema digitale dove la passione per il caffè incontra la tecnologia.
 
 ---
 
-**Made with ☕ by Team BrewHub**
+## Funzionalità Principali
+
+- **Autenticazione e Gestione Utenti**:
+    - Registrazione e login sicuri tramite Firebase Authentication.
+    - Profili utente personalizzati con ruoli distinti (Appassionato, Barista, Torrefazione).
+    - Gestione delle impostazioni account e preferenze personali.
+
+- **Sistema Social**:
+    - Creazione e pubblicazione di post con testo e immagini.
+    - Sistema di commenti per interagire con i contenuti.
+    - Follow/Unfollow per seguire altri utenti e rimanere aggiornati.
+    - Feed personalizzato con le attività dei profili seguiti.
+
+- **Valutazioni e Recensioni**:
+    - Sistema di voto per il post (upvote/downvote).
+    - Recensioni testuali dettagliate.
+    - Confronto tra diverse miscele di caffè.
+
+- **Collezioni Prodotti**:
+    - Creazione di collezioni personalizzate ("provati", "da provare").
+    - Esplorazione delle collezioni di altri utenti.
+    - Sistema di ricerca con filtri per categoria.
+
+- **Upload Media**:
+    - Caricamento immagini tramite Firebase Storage.
+    - Supporto per contenuti multimediali nei post.
+
+---
+
+## Tecnologie Utilizzate
+
+- **Frontend**:
+    - React.js per l'interfaccia utente
+    - React Router per la navigazione
+    - Context API per la gestione dello stato globale
+    - CSS Modules per lo styling
+
+- **Backend**:
+    - Node.js con Express.js come framework server
+    - Architettura REST API
+    - Middleware per autenticazione e validazione
+
+- **Database e Servizi Cloud**:
+    - Firebase Firestore (database NoSQL)
+    - Firebase Authentication (gestione utenti)
+    - Firebase Storage (archiviazione media)
+    - Firebase Hosting (deploy frontend)
+
+- **Testing**:
+    - Jest per unit testing
+    - React Testing Library per component testing
+
+- **CI/CD**:
+    - GitHub Actions per continuous integration
+
+---
+
+## Struttura del Progetto
+
+```
+Agile_25/
+├── .github/workflows/     # Workflow GitHub Actions per testing
+├── docs/                  # Documentazione Agile e di progetto
+├── firebase/              # Configurazione Firebase (rules, hosting)
+├── social-backend/        # Backend Node.js + Express
+│   ├── src/
+│   │   ├── config/        # Configurazioni (Firebase, env)
+│   │   ├── routes/        # API endpoints
+│   └── tests/             # Unit ed Integration tests backend
+├── social-frontend/       # Frontend React
+│   ├── src/
+│   │   ├── components/    # Componenti riutilizzabili
+│   │   ├── pages/         # Pagine dell'applicazione
+│   │   ├── context/       # React Context providers
+│   │   ├── hooks/         # Custom hooks
+│   │   ├── services/      # API services
+│   │   └── styles/        # Global styles
+│   │   └── tests/         # Unit ed Integration tests frontend
+│   └── public/            # Asset statici
+└── README.md              # Questo file
+```
+
+---
+
+## Prerequisiti
+
+Prima di iniziare, assicurati di avere installato:
+
+- **Node.js** versione 18 o superiore
+- **npm** versione 9 o superiore
+- **Firebase CLI** (`npm install -g firebase-tools`)
+- Un account Firebase con un progetto configurato
+
+---
+
+## Installazione
+
+1. **Clona il repository**:
+   ```bash
+   git clone <repo-url>
+   cd Agile_25
+   ```
+
+2. **Installa le dipendenze del backend**:
+   ```bash
+   cd social-backend
+   npm install
+   ```
+
+3. **Installa le dipendenze del frontend**:
+   ```bash
+   cd ../social-frontend
+   npm install
+   ```
+
+4. **Configura le variabili d'ambiente**:
+
+   Crea il file `.env` in `social-backend/`:
+   ```env
+   PORT=3001
+   FIREBASE_PROJECT_ID=brewhub-bd760
+   ```
+
+   Crea il file `.env` in `social-frontend/`:
+   ```env
+   REACT_APP_API_URL=http://localhost:3001/api
+   ```
+
+5. **Configura Firebase**:
+   - Scarica il file `firebase-key.json` dalla console Firebase
+   - Posizionalo in `social-backend/src/config/`
+
+---
+
+## Avvio dell'Applicazione
+
+**Backend** (Terminal 1):
+```bash
+cd social-backend
+npm start
+# Server disponibile su http://localhost:3001
+```
+
+**Frontend** (Terminal 2):
+```bash
+cd social-frontend
+npm start
+# Applicazione disponibile su http://localhost:3000
+```
+
+---
+
+## Testing
+
+**Esecuzione test backend**:
+```bash
+cd social-backend
+npm test                    # Esegue tutti i test
+npm test -- --coverage      # Con report coverage
+```
+
+**Esecuzione test frontend**:
+```bash
+cd social-frontend
+npm test                    # Modalità interattiva
+npm test -- --watchAll=false # Esecuzione singola
+```
+
+
+## Team di Sviluppo
+
+**Progetto Agile 25/26**
+
+- Samuele Castellani
+- Gianrico Fornari
+- Matteo Cardarelli
+- Roberto Ringoli
+
+
