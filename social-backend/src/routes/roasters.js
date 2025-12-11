@@ -119,6 +119,10 @@ router.post('/:id/products', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: "Product name is required" });
         }
 
+        if (!productData.price) {
+            return res.status(400).json({ error: "Product price is required" });
+        }
+
         let imageUrl = productData.imageUrl || '';
 
         // Handle File Upload if present

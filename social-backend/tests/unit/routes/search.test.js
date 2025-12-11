@@ -1,5 +1,5 @@
 // backend/tests/unit/routes/search.test.js
-const request = require('supertest'); //libreria per simulare richieste HTTP all'app 
+const request = require('supertest'); //libreria per simulare richieste HTTP all'app
 const app = require('../../../src/app'); //importo l'applicazione da testare
 
 //dati fittizi per simulare il database (usati dalla funzione di ricerca)

@@ -92,9 +92,9 @@ Setup iniziale del progetto con implementazione completa delle funzionalità bas
 **Sprint Goal**: Raffinate interazioni post e test
 
 **User Stories completate**:
-- US07: Visualizzare informazioni aziendali (Effort: 3) -> 3/3
-- US17: Visualizzare sezione trend personali (Effort: 13) -> 13/13
 - US18: Sistema follow/amicizia (Effort: 6) -> 6/6 (completata la parte rimanente 5/6)
+- US07: Visualizzare informazioni aziendali (Effort: 3) -> 3/3
+- US17: Visualizzare sezione personali (Effort: 13) -> 13/13
 - US19: Interagire con post (like, commenti) (Effort: 4) -> 4/4
 - US20: Thread commenti con risposte (Effort: 4) -> 4/4
 - US37: Aggiungere descrizioni dettagliate ai prodotti (Effort: 5) -> 5/5

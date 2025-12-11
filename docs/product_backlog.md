@@ -173,7 +173,7 @@
 ### US17
 - **Epica**: Bacheca (Feed)
 - **User**: Barista, Appassionato, Torrefazione
-- **User Story**: Voglio visualizzare una sezione dedicata ai miei trend.
+- **User Story**: Voglio visualizzare piu sezioni dedicate a me.
 - **Effort**: 13
 - **Priority**: 6
 

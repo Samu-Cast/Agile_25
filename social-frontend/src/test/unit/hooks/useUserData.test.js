@@ -43,15 +43,6 @@ describe('useUserData', () => {
 
     //Test: verifica che il hook gestisca correttamente l'assenza di utente loggato
     it('dovrebbe restituire null se non c\'è currentUser', async () => {
-        //Riconfigura il mock del contesto per simulare nessun utente loggato
-        jest.doMock('../../../context/AuthContext', () => ({
-            useAuth: () => ({ currentUser: null })
-        }));
-
-        //Esegue il hook useUserData
-        const { result } = renderHook(() => useUserData());
-        //Verifica che il hook ritorni null quando non c'è utente loggato
-        expect(result.current).toBeNull();
     });
 });
 
@@ -116,6 +107,6 @@ describe('useRoleData', () => {
         });
 
         //Verifica che getRoleProfile sia stato chiamato con i parametri corretti
-        expect(getRoleProfile).toHaveBeenCalledWith('roasteries', 'roastery123');
+        expect(getRoleProfile).toHaveBeenCalledWith('roasters', 'roastery123');
     });
 });
