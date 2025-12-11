@@ -7,7 +7,7 @@ const admin = require('firebase-admin');
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const roasterDoc = await db.collection('roasteries').doc(id).get();
+        const roasterDoc = await db.collection('roasters').doc(id).get();
 
         if (!roasterDoc.exists) {
             return res.status(404).json({ error: "Roaster not found" });
@@ -24,7 +24,7 @@ router.get('/:id', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const { ownerUid } = req.query;
-        let query = db.collection('roasteries');
+        let query = db.collection('roasters');
 
         if (ownerUid) {
             query = query.where('ownerUid', '==', ownerUid);
@@ -61,17 +61,13 @@ router.post('/', async (req, res) => {
             }
         };
 
-        // If we want to enforce 1:1 mapping, we could use ownerUid as doc ID, 
-        // but let's stick to auto-id or let frontend decide. 
-        // If frontend sends 'id', use it (e.g. if we want id == ownerUid).
-        // However, standard add() creates auto-id. 
-        // Let's check if we want to support setting ID manually (e.g. to match ownerUid).
-
         let ref;
         if (roasteryData.id) {
+            // FIXED: use 'roasters' instead of 'roasteries'
             await db.collection('roasters').doc(roasteryData.id).set(finalData);
             ref = db.collection('roasters').doc(roasteryData.id);
         } else {
+            // FIXED: use 'roasters' instead of 'roasteries'
             ref = await db.collection('roasters').add(finalData);
         }
 
@@ -82,12 +78,102 @@ router.post('/', async (req, res) => {
     }
 });
 
+// GET /api/roasters/:id/products
+router.get('/:id/products', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const snapshot = await db.collection('roasters').doc(id).collection('products').get();
+        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(products);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ error: "Failed to fetch products" });
+    }
+});
+
+// Configure multer
+const multer = require('multer');
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB
+    },
+    fileFilter: (req, file, cb) => {
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (validTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.'));
+        }
+    }
+});
+
+// POST /api/roasters/:id/products
+router.post('/:id/products', upload.single('image'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const productData = req.body; // text fields
+        const file = req.file;
+
+        if (!productData.name) {
+            return res.status(400).json({ error: "Product name is required" });
+        }
+
+        let imageUrl = productData.imageUrl || '';
+
+        // Handle File Upload if present
+        if (file) {
+            const folder = 'products';
+            const timestamp = Date.now();
+            const fileName = `${timestamp}_${file.originalname}`;
+            const filePath = `${folder}/${fileName}`;
+
+            const bucket = admin.storage().bucket();
+            const storageFile = bucket.file(filePath);
+
+            await storageFile.save(file.buffer, {
+                metadata: { contentType: file.mimetype }
+            });
+            await storageFile.makePublic();
+            imageUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        }
+
+        const newProduct = {
+            ...productData,
+            imageUrl: imageUrl,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        const roasterRef = db.collection('roasters').doc(id);
+        const roasterDoc = await roasterRef.get();
+
+        if (!roasterDoc.exists || !roasterDoc.data().stats) {
+            console.log("Stats missing for roaster:", id, "Initializing...");
+            await roasterRef.set({
+                stats: { products: 0, followers: 0, rating: 0, reviews: 0 }
+            }, { merge: true });
+        }
+
+        const productRef = await roasterRef.collection('products').add(newProduct);
+
+        // Update product count in stats
+        await roasterRef.update({
+            'stats.products': admin.firestore.FieldValue.increment(1)
+        });
+
+        res.json({ id: productRef.id, ...newProduct });
+    } catch (error) {
+        console.error("Error adding product:", error.message, error.stack);
+        res.status(500).json({ error: "Failed to add product: " + error.message });
+    }
+});
+
 // PUT /api/roasteries/:id
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
-        await db.collection('roasteries').doc(id).update(updates);
+        await db.collection('roasters').doc(id).update(updates);
         res.json({ message: "Roastery updated successfully" });
     } catch (error) {
         console.error("Error updating roastery:", error);

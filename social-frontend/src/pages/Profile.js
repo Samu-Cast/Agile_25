@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
 import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
-import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile } from '../services/userService';
+import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct } from '../services/userService';
+import { validateImage } from '../services/imageService';
 import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
@@ -35,7 +36,7 @@ function Profile() {
                     setProfileUser(user);
 
                     // Fetch role data if applicable
-                    if (user && (user.role === 'Bar' || user.role === 'Torrefazione')) {
+                    if (user && user.role && (user.role === 'Bar' || user.role.toLowerCase() === 'torrefazione')) {
                         const collectionName = user.role === 'Bar' ? 'bars' : 'roasteries';
                         const roleData = await getRoleProfile(collectionName, uid);
                         setProfileRoleData(roleData);
@@ -53,7 +54,6 @@ function Profile() {
     const user = profileUser;
     const roleData = profileRoleData;
 
-    console.log("Profile Render:", { currentUser, user, roleData, isOwnProfile });
 
     const [activeTab, setActiveTab] = useState('posts');
     const [isEditing, setIsEditing] = useState(false);
@@ -77,6 +77,18 @@ function Profile() {
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
+
+    // Product System State (for Torrefazione)
+    const [roasteryProducts, setRoasteryProducts] = useState([]);
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [newProduct, setNewProduct] = useState({
+        name: '',
+        description: '',
+        price: '',
+        imageUrl: ''
+    });
+    const [newProductImageFile, setNewProductImageFile] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Edit Form State
     const [editForm, setEditForm] = useState({
@@ -202,8 +214,8 @@ function Profile() {
             });
 
             // 2. Update Role Specific Info (Bar or Roastery)
-            if (user.role === 'Bar' || user.role === 'Torrefazione') {
-                const collectionName = user.role === 'Bar' ? 'bars' : (user.role === 'Torrefazione' ? 'roasteries' : null);
+            if (user.role === 'Bar' || (user.role && user.role.toLowerCase() === 'torrefazione')) {
+                const collectionName = user.role === 'Bar' ? 'bars' : ((user.role && user.role.toLowerCase() === 'torrefazione') ? 'roasteries' : null);
                 if (!collectionName) return;
 
                 const roleSpecificData = {
@@ -299,6 +311,51 @@ function Profile() {
                 setEditForm(prev => ({ ...prev, profilePic: reader.result }));
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleProductInputChange = (e) => {
+        const { name, value } = e.target;
+        setNewProduct(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleProductImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!validateImage(file)) return;
+            setNewProductImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewProduct(prev => ({ ...prev, imageUrl: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleCreateProduct = async () => {
+        if (!roleData || !roleData.id) return;
+        setIsSubmitting(true);
+        try {
+            const productData = {
+                ...newProduct,
+                image: newProductImageFile // Pass the raw File object
+            };
+
+            await createProduct(roleData.id, productData);
+
+            setIsAddingProduct(false);
+            setNewProduct({ name: '', description: '', price: '', imageUrl: '' });
+            setNewProductImageFile(null);
+
+            // Refresh products
+            const products = await getRoasteryProducts(roleData.id);
+            setRoasteryProducts(products);
+            alert("Prodotto aggiunto con successo!");
+        } catch (error) {
+            console.error("Error creating product:", error);
+            alert("Errore durante l'aggiunta del prodotto: " + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -431,6 +488,11 @@ function Profile() {
                     const guides = await getUserSavedGuides(user.uid);
                     setSavedGuides(guides);
                 }
+            } else if (activeTab === 'products' && user.role && user.role.toLowerCase() === 'torrefazione') {
+                if (roleData && roleData.id) {
+                    const products = await getRoasteryProducts(roleData.id);
+                    setRoasteryProducts(products);
+                }
             }
             // Guides would be fetched here if we had a backend for them
         };
@@ -483,7 +545,7 @@ function Profile() {
             type = 'comment';
         }
 
-        if (data.length === 0) {
+        if (data.length === 0 && activeTab !== 'products') {
             return <div className="empty-state">Nessun contenuto trovato.</div>;
         }
 
@@ -520,6 +582,36 @@ function Profile() {
                             isSaved={true}
                         />
                     ))}
+                </div>
+            );
+        }
+
+        if (activeTab === 'products') {
+            return (
+                <div className="products-section">
+                    {isOwnProfile && (
+                        <div className="add-product-container">
+                            <button className="add-product-btn" onClick={() => setIsAddingProduct(true)}>
+                                + Aggiungi Prodotto
+                            </button>
+                        </div>
+                    )}
+                    <div className="products-grid">
+                        {roasteryProducts.length > 0 ? roasteryProducts.map(product => (
+                            <div key={product.id} className="product-card">
+                                <div className="product-image">
+                                    <img src={product.imageUrl || 'https://via.placeholder.com/150'} alt={product.name} />
+                                </div>
+                                <div className="product-info">
+                                    <h3>{product.name}</h3>
+                                    <p className="product-desc">{product.description}</p>
+                                    {product.price && <p className="product-price">€ {product.price}</p>}
+                                </div>
+                            </div>
+                        )) : (
+                            <p className="empty-state">Nessun prodotto caricato.</p>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -736,9 +828,8 @@ function Profile() {
                         </>
                     )
                 }
-
                 {
-                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
+                    (user.role === 'Bar' || (user.role && user.role.toLowerCase() === 'torrefazione')) && (
                         <button
                             className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
                             onClick={() => setActiveTab('reviews')}
@@ -748,12 +839,22 @@ function Profile() {
                     )
                 }
                 {
-                    (user.role === 'Bar' || user.role === 'Torrefazione') && (
+                    (user.role === 'Bar' || (user.role && user.role.toLowerCase() === 'torrefazione')) && (
                         <button
                             className={`tab-button ${activeTab === 'guides' ? 'active' : ''}`}
                             onClick={() => setActiveTab('guides')}
                         >
                             Guide
+                        </button>
+                    )
+                }
+                {
+                    user.role && user.role.toLowerCase() === 'torrefazione' && (
+                        <button
+                            className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('products')}
+                        >
+                            Prodotti
                         </button>
                     )
                 }
@@ -909,6 +1010,60 @@ function Profile() {
                 <div className="drawer-footer">
                     <button className="cancel-btn" onClick={handleCloseDrawer}>Annulla</button>
                     <button className="save-btn" onClick={handleSave}>Salva Modifiche</button>
+                </div>
+            </div>
+
+            {/* Add Product Drawer */}
+            <div className={`drawer-overlay ${isAddingProduct ? 'open' : ''}`} onClick={() => setIsAddingProduct(false)}></div>
+            <div className={`edit-drawer ${isAddingProduct ? 'open' : ''}`}>
+                <div className="drawer-header">
+                    <h2>Aggiungi Prodotto</h2>
+                    <button className="drawer-close-btn" onClick={() => setIsAddingProduct(false)}>&times;</button>
+                </div>
+                <div className="drawer-content">
+                    <div className="edit-form-group">
+                        <label>Immagine Prodotto</label>
+                        <input
+                            type="file"
+                            onChange={handleProductImageChange}
+                            accept="image/*"
+                        />
+                        {newProduct.imageUrl && (
+                            <img src={newProduct.imageUrl} alt="Preview" className="product-preview-img" style={{ maxWidth: '100%', marginTop: '10px', borderRadius: '8px' }} />
+                        )}
+                    </div>
+                    <div className="edit-form-group">
+                        <label>Nome Prodotto *</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={newProduct.name}
+                            onChange={handleProductInputChange}
+                            placeholder="Es. Miscela Arabica"
+                        />
+                    </div>
+                    <div className="edit-form-group">
+                        <label>Descrizione</label>
+                        <textarea
+                            name="description"
+                            value={newProduct.description}
+                            onChange={handleProductInputChange}
+                            placeholder="Descrivi il prodotto..."
+                        />
+                    </div>
+                    <div className="edit-form-group">
+                        <label>Prezzo (€)</label>
+                        <input
+                            type="number"
+                            name="price"
+                            value={newProduct.price}
+                            onChange={handleProductInputChange}
+                            placeholder="Es. 15.00"
+                        />
+                    </div>
+                </div>
+                <div className="drawer-footer">
+                    <button className="save-btn" onClick={handleCreateProduct}>Aggiungi</button>
                 </div>
             </div>
         </div >
