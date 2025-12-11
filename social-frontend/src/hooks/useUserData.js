@@ -32,7 +32,7 @@ export const useRoleData = (user) => {
             return;
         }
 
-        const collectionName = user.role === 'Bar' ? 'bars' : (user.role === 'Torrefazione' ? 'roasteries' : null);
+        const collectionName = user.role === 'Bar' ? 'bars' : (user.role === 'Torrefazione' ? 'roasters' : null);
         if (!collectionName) return;
 
         const fetchRoleData = async () => {

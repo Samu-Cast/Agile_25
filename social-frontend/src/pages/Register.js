@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { createUserProfile } from '../services/userService';
+import { createUserProfile, createRoleProfile } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 
 const Register = ({ onLoginSuccess }) => {
@@ -13,6 +13,9 @@ const Register = ({ onLoginSuccess }) => {
     const [role, setRole] = useState('Appassionato'); // Default role
     const [bio, setBio] = useState('');
 
+    const [roasteryName, setRoasteryName] = useState('');
+    const [city, setCity] = useState('');
+
     const [error, setError] = useState(null);
     const [info, setInfo] = useState(null);
 
@@ -22,6 +25,13 @@ const Register = ({ onLoginSuccess }) => {
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
+            // Validate based on role
+            if (role === 'Torrefazione') {
+                if (!roasteryName || !city) throw new Error("Compila tutti i campi obbligatori");
+            } else {
+                if (!firstName || !lastName) throw new Error("Compila tutti i campi obbligatori");
+            }
+
             // Crea utente
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -29,25 +39,53 @@ const Register = ({ onLoginSuccess }) => {
             // Ottieni UID
             const uid = user.uid;
 
+            // Determine display name based on role
+            const displayName = role === 'Torrefazione' ? roasteryName : `${firstName} ${lastName}`;
+
             // Dati profilo
             const profileData = {
                 uid: uid,
-                name: `${firstName} ${lastName}`,
-                nickname: nickname,
+                name: displayName,
+                nickname: nickname, // Assuming nickname is still relevant or optional
                 role: role,
                 bio: bio,
                 email: email,
+                location: role === 'Torrefazione' ? city : '', // Store location for user too?
                 stats: {
                     posts: 0,
                     followers: 0,
                     following: 0
                 },
-                profilePic: `https://ui-avatars.com/api/?name=${firstName}+${lastName}&background=random`,
+                profilePic: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`,
                 createdAt: new Date()
             };
 
             // Salva su Firestore tramite API
             await createUserProfile(uid, profileData);
+
+            // Se il ruolo è Torrefazione, crea anche il profilo aziendale
+            if (role === 'Torrefazione') {
+                const roasteryData = {
+                    name: roasteryName,
+                    ownerUid: uid,
+                    email: email,
+                    description: bio || "Nuova Torrefazione",
+                    city: city,
+                    imageCover: "",
+                    stats: {
+                        products: 0,
+                        followers: 0,
+                        rating: 0,
+                        reviews: 0
+                    }
+                };
+                // createRoleProfile handles the mapping 'roasteries' -> '/api/roasters'
+                try {
+                    await createRoleProfile('roasters', roasteryData);
+                } catch (e) {
+                    console.error("Failed to create roastery profile:", e);
+                }
+            }
 
             // Aggiorna stato locale - Non serve più con il nuovo AuthContext che ascolta le modifiche
             // updateProfile(profileData); 
@@ -79,39 +117,8 @@ const Register = ({ onLoginSuccess }) => {
         <div className="register-container">
             <h2>Crea Account</h2>
             <form onSubmit={handleRegister}>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>Nome:</label>
-                        <input
-                            type="text"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Cognome:</label>
-                        <input
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            required
-                        />
-                    </div>
-                </div>
-
                 <div className="form-group">
-                    <label>Soprannome (Opzionale):</label>
-                    <input
-                        type="text"
-                        value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
-                        placeholder="Es. TheCoffeeGuy"
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Tag:</label>
+                    <label>Tipo di Account:</label>
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
@@ -123,6 +130,62 @@ const Register = ({ onLoginSuccess }) => {
                         <option value="Torrefazione">Torrefazione</option>
                     </select>
                 </div>
+
+                {role === 'Torrefazione' ? (
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Nome Torrefazione:</label>
+                            <input
+                                type="text"
+                                value={roasteryName}
+                                onChange={(e) => setRoasteryName(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Città:</label>
+                            <input
+                                type="text"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                                required
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Nome:</label>
+                            <input
+                                type="text"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Cognome:</label>
+                            <input
+                                type="text"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                required
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="form-group">
+                    <label>Soprannome (Opzionale):</label>
+                    <input
+                        type="text"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder="Es. TheCoffeeGuy"
+                    />
+                </div>
+
+
 
                 <div className="form-group">
                     <label>Bio (Opzionale):</label>

@@ -216,3 +216,47 @@ export const getFollowing = async (uid) => {
         return [];
     }
 };
+
+export const getRoasteryProducts = async (roasteryId) => {
+    try {
+        const response = await fetch(`${API_URL}/roasters/${roasteryId}/products`);
+        if (!response.ok) throw new Error('Fetch products failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        return [];
+    }
+};
+
+export const createProduct = async (roasteryId, productData) => {
+    try {
+        let body;
+        let headers = {};
+
+        // Check if we need to send FormData (file upload)
+        if (productData.image instanceof File) {
+            const formData = new FormData();
+            formData.append('image', productData.image);
+            formData.append('name', productData.name);
+            formData.append('description', productData.description);
+            formData.append('price', productData.price);
+            // Add other fields as needed
+            body = formData;
+            // Let browser set Content-Type with boundary
+        } else {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify(productData);
+        }
+
+        const response = await fetch(`${API_URL}/roasters/${roasteryId}/products`, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+        if (!response.ok) throw new Error('Create product failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error creating product:", error);
+        throw error;
+    }
+};
