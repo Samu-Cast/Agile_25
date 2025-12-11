@@ -89,16 +89,18 @@ Setup iniziale del progetto con implementazione completa delle funzionalità bas
 **Data fine**: 12 Dicembre 2025 
 **Status**: Done
 
-**Sprint Goal**: Unit test, action github CI test, compeletamento sistema social e interazioni post
+**Sprint Goal**: Raffinate interazioni post e test
 
 **User Stories completate**:
+- US07: Visualizzare informazioni aziendali (Effort: 3) -> 3/3
+- US17: Visualizzare sezione trend personali (Effort: 13) -> 13/13
 - US18: Sistema follow/amicizia (Effort: 6) -> 6/6 (completata la parte rimanente 5/6)
 - US19: Interagire con post (like, commenti) (Effort: 4) -> 4/4
 - US20: Thread commenti con risposte (Effort: 4) -> 4/4
+- US37: Aggiungere descrizioni dettagliate ai prodotti (Effort: 5) -> 5/5
 - US50: Cercare utenti per nome/nickname (Effort: 4) -> 4/4
-- US51: Cercare bar/torrefazioni per nome/città (Effort: 4) -> 4/4
 
-**Story Points completati**: 21/21 (100%)
+**Story Points completati**: 39/39 (100%)
 
 **Descrizione**:
 Completamento del sistema social con implementazione delle funzionalità di interazione. Il sistema follow/unfollow è stato completato con gestione transazionale in Firestore. Implementato il sistema di voti (upvote/downvote) sui post e il sistema di commenti con supporto per thread (risposte ai commenti). Aggiunta la funzionalità di ricerca utenti, bar e torrefazioni con filtri per ruolo.
@@ -128,7 +130,8 @@ Completamento del sistema social con implementazione delle funzionalità di inte
 - TBD 
 
 **User Stories pianificate**:
-- TBD
+- 23
+- 51
 
 **Story Points pianificati**: TBD
 
