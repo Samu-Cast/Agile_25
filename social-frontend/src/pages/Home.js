@@ -8,17 +8,26 @@ import { getUsersByUids } from '../services/userService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-const Sidebar = () => {
+const Sidebar = ({ activeFeed, onFeedChange }) => {
     return (
         <aside className="sidebar">
             <div className="sidebar-section">
-                <div className="sidebar-item active">
+                <div
+                    className={`sidebar-item ${activeFeed === 'home' ? 'active' : ''}`}
+                    onClick={() => onFeedChange('home')}
+                >
                     <span className="icon"></span> Home
                 </div>
-                <div className="sidebar-item">
+                <div
+                    className={`sidebar-item ${activeFeed === 'popular' ? 'active' : ''}`}
+                    onClick={() => onFeedChange('popular')}
+                >
                     <span className="icon"></span> Popular
                 </div>
-                <div className="sidebar-item">
+                <div
+                    className={`sidebar-item ${activeFeed === 'all' ? 'active' : ''}`}
+                    onClick={() => onFeedChange('all')}
+                >
                     <span className="icon"></span> All
                 </div>
             </div>
@@ -39,7 +48,7 @@ const Sidebar = () => {
     );
 };
 
-const Feed = ({ isLoggedIn, user }) => {
+const Feed = ({ isLoggedIn, user, feedType }) => {
     const [posts, setPosts] = React.useState([]);
     const [expandedPostId, setExpandedPostId] = React.useState(null);
     // Local state to track user votes: { [postId]: 1 (up) | -1 (down) | 0 (none) }
@@ -50,9 +59,24 @@ const Feed = ({ isLoggedIn, user }) => {
     React.useEffect(() => {
         const fetchPosts = async () => {
             try {
-                const url = user?.uid
-                    ? `${API_URL}/posts?uid=${user.uid}`
-                    : `${API_URL}/posts`;
+                let url = `${API_URL}/posts`;
+                const params = new URLSearchParams();
+
+                if (user?.uid) {
+                    params.append('uid', user.uid);
+
+                    if (feedType === 'home') {
+                        params.append('filter', 'followed');
+                    }
+                }
+
+                if (feedType === 'popular') {
+                    params.append('sort', 'popular');
+                }
+
+                if (Array.from(params).length > 0) {
+                    url += `?${params.toString()}`;
+                }
 
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -115,7 +139,9 @@ const Feed = ({ isLoggedIn, user }) => {
 
         fetchPosts();
         fetchSavedPosts();
-    }, [user?.uid]); // Re-fetch when user changes
+        fetchPosts();
+        fetchSavedPosts();
+    }, [user?.uid, feedType]); // Re-fetch when user or feedType changes
 
     const toggleComments = (postId) => {
         if (expandedPostId === postId) {
@@ -263,12 +289,13 @@ const Feed = ({ isLoggedIn, user }) => {
 
 const Home = ({ onLoginClick, isLoggedIn }) => {
     const { currentUser } = useAuth();
+    const [feedType, setFeedType] = React.useState('all');
 
     return (
         <div className="home-layout">
             <div className="main-container">
-                <Sidebar />
-                <Feed isLoggedIn={isLoggedIn} user={currentUser} />
+                <Sidebar activeFeed={feedType} onFeedChange={setFeedType} />
+                <Feed isLoggedIn={isLoggedIn} user={currentUser} feedType={feedType} />
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
                     {isLoggedIn && (

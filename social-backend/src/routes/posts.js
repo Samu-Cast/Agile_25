@@ -6,14 +6,24 @@ const { db, admin } = require('../config/firebase');
 // GET /api/posts
 router.get('/', async (req, res) => {
     try {
-        const { uid, authorUid } = req.query;
+        const { uid, authorUid, filter, sort } = req.query;
         let query = db.collection('posts');
 
+        // If filtering by specific author (Profile page usage)
         if (authorUid) {
             query = query.where('uid', '==', authorUid);
         }
 
         const postsSnapshot = await query.get();
+
+        // Fetch user's following list if filter is 'followed'
+        let followingIds = new Set();
+        if (filter === 'followed' && uid) {
+            const followingSnap = await db.collection('users').doc(uid).collection('following').get();
+            followingSnap.forEach(doc => followingIds.add(doc.id));
+            // Optional: Include self in feed?
+            // followingIds.add(uid); 
+        }
 
         let posts = postsSnapshot.docs.map(doc => {
             const postData = doc.data();
@@ -34,8 +44,19 @@ router.get('/', async (req, res) => {
             };
         });
 
-        // Sort in memory (descending)
-        posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
+        // Apply filters
+        if (filter === 'followed' && uid) {
+            posts = posts.filter(post => followingIds.has(post.uid));
+        }
+
+        // Apply sorting
+        if (sort === 'popular') {
+            // Sort by votes (descending)
+            posts.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+        } else {
+            // Default: Sort by createdAt (descending) - Newest first
+            posts.sort((a, b) => b.createdAtObj - a.createdAtObj);
+        }
 
         // Remove temp sorting key
         posts = posts.map(({ createdAtObj, ...rest }) => rest);
@@ -380,6 +401,44 @@ router.post('/:postId/rating', async (req, res) => {
     } catch (error) {
         console.error("Error updating rating:", error);
         res.status(500).json({ error: "Failed to update rating" });
+    }
+});
+
+// DELETE /api/posts/:postId
+router.delete('/:postId', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        console.log(`[DELETE] Attempting to delete post ${postId} by user ${uid}`);
+
+        if (!uid) {
+            console.warn(`[DELETE] Failed: Missing required fields (uid) for post ${postId}`);
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            console.warn(`[DELETE] Failed: Post ${postId} not found`);
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.uid !== uid) {
+            console.warn(`[DELETE] Failed: Unauthorized deletion attempt for post ${postId} by user ${uid} (Owner: ${postData.uid})`);
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        await postRef.delete();
+        console.log(`[DELETE] Success: Post ${postId} deleted by user ${uid}`);
+
+        res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+        console.error(`[DELETE] Error deleting post ${req.params.postId}:`, error);
+        res.status(500).json({ error: "Failed to delete post" });
     }
 });
 
