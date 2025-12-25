@@ -76,9 +76,11 @@ function CreatePost() {
         <div className="home-layout">
             <div className="main-container">
                 <div style={{
-                    flex: 1,
-                    maxWidth: '740px',
-                    margin: '0 auto',
+                    gridColumn: '2', /* Center in grid */
+                    height: '100%',
+                    overflowY: 'auto', /* Scrollable if needed */
+                    scrollbarWidth: 'none', /* Hide scrollbar */
+                    width: '100%',
                     padding: '2rem',
                     backgroundColor: 'var(--white)',
                     borderRadius: 'var(--border-radius)',

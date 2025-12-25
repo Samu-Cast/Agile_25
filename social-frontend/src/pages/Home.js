@@ -9,43 +9,75 @@ import { getUsersByUids } from '../services/userService';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const Sidebar = ({ activeFeed, onFeedChange }) => {
-    return (
-        <aside className="sidebar">
-            <div className="sidebar-section">
-                <div
-                    className={`sidebar-item ${activeFeed === 'home' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('home')}
-                >
-                    <span className="icon"></span> Home
-                </div>
-                <div
-                    className={`sidebar-item ${activeFeed === 'popular' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('popular')}
-                >
-                    <span className="icon"></span> Popular
-                </div>
-                <div
-                    className={`sidebar-item ${activeFeed === 'all' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('all')}
-                >
-                    <span className="icon"></span> All
-                </div>
-            </div>
+    const [isCollapsed, setIsCollapsed] = React.useState(false);
 
-            <div className="sidebar-section">
-                <h3 className="sidebar-title">COMMUNITIES</h3>
-                <div className="sidebar-item">
-                    <span className="icon"></span> cappucinos
+    return (
+        <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+            <div className="sidebar-scroll-area">
+                <div className="sidebar-section">
+                    <div
+                        className={`sidebar-item ${activeFeed === 'home' ? 'active' : ''}`}
+                        onClick={() => onFeedChange('home')}
+                    >
+                        <span className="icon">🏠</span>
+                        <span className="sidebar-label">Home</span>
+                    </div>
+                    <div
+                        className={`sidebar-item ${activeFeed === 'popular' ? 'active' : ''}`}
+                        onClick={() => onFeedChange('popular')}
+                    >
+                        <span className="icon">🔥</span>
+                        <span className="sidebar-label">Popular</span>
+                    </div>
+                    <div
+                        className={`sidebar-item ${activeFeed === 'all' ? 'active' : ''}`}
+                        onClick={() => onFeedChange('all')}
+                    >
+                        <span className="icon">♾️</span>
+                        <span className="sidebar-label">All</span>
+                    </div>
                 </div>
-                <div className="sidebar-item">
-                    <span className="icon"></span> latteArt
-                </div>
-                <div className="sidebar-item">
-                    <span className="icon"></span> coffeeChats
+
+                <div className="sidebar-section">
+                    <h3 className={`sidebar-title ${isCollapsed ? 'hidden' : ''}`}>COMMUNITIES</h3>
+                    <div className="sidebar-item">
+                        <span className="icon">☕</span>
+                        <span className="sidebar-label">cappucinos</span>
+                    </div>
+                    <div className="sidebar-item">
+                        <span className="icon">🎨</span>
+                        <span className="sidebar-label">latteArt</span>
+                    </div>
+                    <div className="sidebar-item">
+                        <span className="icon">🗣️</span>
+                        <span className="sidebar-label">coffeeChats</span>
+                    </div>
                 </div>
             </div>
+            <button
+                className="sidebar-toggle"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                aria-label="Toggle Sidebar"
+            >
+                {isCollapsed ? '›' : '‹'}
+            </button>
         </aside>
     );
+};
+
+const timeAgo = (date) => {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m";
+    return Math.floor(seconds) + "s";
 };
 
 const Feed = ({ isLoggedIn, user, feedType }) => {
@@ -92,7 +124,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                 const users = await getUsersByUids(uids);
                 const userMap = {};
                 users.forEach(u => {
-                    userMap[u.uid] = u.nickname || u.name;
+                    userMap[u.uid] = {
+                        name: u.nickname || u.name,
+                        avatar: u.profilePic || u.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+                    };
                 });
 
                 // Map backend data to frontend format
@@ -102,11 +137,14 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         initialVotes[post.id] = post.userVote;
                     }
 
+                    const postUser = userMap[post.uid] || { name: post.uid, avatar: "https://cdn-icons-png.flaticon.com/512/847/847969.png" };
+
                     return {
                         id: post.id,
-                        author: userMap[post.uid] || post.uid,
+                        author: postUser.name,
+                        authorAvatar: postUser.avatar,
                         authorId: post.uid,
-                        time: new Date(post.createdAt).toLocaleDateString(),
+                        time: timeAgo(new Date(post.createdAt)), // Relative time
                         title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
                         content: post.text,
                         image: post.imageUrl,
@@ -236,32 +274,41 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
                 return (
                     <div key={post.id} className="post-card">
-                        <div className="post-sidebar">
-                            <button
-                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
-                                onClick={() => handleVote(post.id)}
-                                style={{ color: userVote === 1 ? '#4169E1' : '' }}
-                            >
-                                ▲
-                            </button>
-                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                            <button
-                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
-                                onClick={() => handleDownvote(post.id)}
-                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
-                            >
-                                ▼
-                            </button>
-                        </div>
+
                         <div className="post-content">
                             <div className="post-header">
-                                <span className="post-author">{post.author}</span>
-                                <span className="post-time">• {post.time}</span>
+                                <img
+                                    src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                    alt={post.author}
+                                    className="post-avatar"
+                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://cdn-icons-png.flaticon.com/512/847/847969.png" }}
+                                />
+                                <div className="post-header-info">
+                                    <span className="post-author">{post.author}</span>
+                                    <span className="post-time">• {post.time}</span>
+                                </div>
                             </div>
-                            <h3 className="post-title">{post.title}</h3>
-                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+                            {/* Removed duplicate title */}
                             <p className="post-text">{post.content}</p>
+                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
                             <div className="post-footer">
+                                <div className="vote-actions">
+                                    <button
+                                        className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
+                                        onClick={() => handleVote(post.id)}
+                                        style={{ color: userVote === 1 ? '#4169E1' : '' }}
+                                    >
+                                        ▲
+                                    </button>
+                                    <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
+                                    <button
+                                        className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
+                                        onClick={() => handleDownvote(post.id)}
+                                        style={{ color: userVote === -1 ? '#4169E1' : '' }}
+                                    >
+                                        ▼
+                                    </button>
+                                </div>
                                 <button className="action-btn" onClick={() => toggleComments(post.id)}>
                                     {post.comments} Comments
                                 </button>
@@ -298,15 +345,7 @@ const Home = ({ onLoginClick, isLoggedIn }) => {
                 <Feed isLoggedIn={isLoggedIn} user={currentUser} feedType={feedType} />
                 <div className="right-sidebar">
                     {/* Create Post button - only visible when logged in */}
-                    {isLoggedIn && (
-                        <div className="info-card">
-                            <h3>Create Post</h3>
-                            <p>Share your thoughts with the community.</p>
-                            <Link to="/create-post" className="btn-primary" style={{ textDecoration: 'none', textAlign: 'center' }}>
-                                + New Post
-                            </Link>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>

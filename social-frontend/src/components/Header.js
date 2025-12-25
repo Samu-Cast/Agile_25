@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { searchUsers } from '../services/userService';
 import '../styles/components/Header.css';
 
-function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentUser }) {
+function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentUser, onCreatePostClick }) {
     // console.log('Header props:', { isLoggedIn, showProfile }); // debugging removed
     const location = useLocation();
     const navigate = useNavigate();
@@ -33,10 +33,17 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
         fetchUserProfile();
     }, [currentUser?.uid]);
 
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+    const profileRef = useRef(null);
+
+    // Click outside handler for both search and profile dropdowns
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (searchRef.current && !searchRef.current.contains(event.target)) {
                 setShowDropdown(false);
+            }
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setShowProfileDropdown(false);
             }
         };
 
@@ -64,6 +71,16 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
         navigate(`/profile/${uid}`);
         setShowDropdown(false);
         setSearchQuery('');
+    };
+
+    const toggleProfileDropdown = () => {
+        setShowProfileDropdown(!showProfileDropdown);
+        setShowDropdown(false); // Close search dropdown if open
+    };
+
+    const handleLogoutWithClose = () => {
+        setShowProfileDropdown(false);
+        onLogoutClick();
     };
 
     return (
@@ -102,23 +119,73 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
                 </div>
             )}
             <div className="navbar-actions">
-                {isLoggedIn ? (
-                    <button className="btn-login" onClick={onLogoutClick}>Log Out</button>
-                ) : (
+                {!isLoggedIn && (
                     <button className="btn-login" onClick={onLoginClick}>Log In</button>
                 )}
-                {showProfile && currentUser && (
-                    <Link to="/profile" className="profile-btn" aria-label="Profile">
-                        {userProfile?.photoURL || userProfile?.profilePic ? (
-                            <img
-                                src={userProfile.photoURL || userProfile.profilePic}
-                                alt="Profile"
-                                className="profile-pic-img"
-                            />
-                        ) : (
-                            <span role="img" aria-label="profile">👤</span>
+
+                {/* Create Post Button */}
+                {isLoggedIn && (
+                    <button className="btn-create-post" onClick={onCreatePostClick}>
+                        <span style={{ fontSize: '20px', marginRight: '5px' }}>+</span>
+                        <span style={{ fontWeight: '600' }}>Create</span>
+                    </button>
+                )}
+
+                {/* Profile Dropdown */}
+                {isLoggedIn && showProfile && currentUser && (
+                    <div className="profile-dropdown-container" ref={profileRef}>
+                        <button
+                            className="profile-btn"
+                            onClick={toggleProfileDropdown}
+                            aria-label="Profile Menu"
+                            style={{ border: 'none', padding: 0 }} /* Reset button styles for wrapper */
+                        >
+                            {userProfile?.photoURL || userProfile?.profilePic ? (
+                                <img
+                                    src={userProfile.photoURL || userProfile.profilePic}
+                                    alt="Profile"
+                                    className="profile-pic-img"
+                                />
+                            ) : (
+                                <span role="img" aria-label="profile">👤</span>
+                            )}
+                        </button>
+
+                        {showProfileDropdown && (
+                            <div className="profile-dropdown">
+                                <Link
+                                    to="/profile"
+                                    className="profile-dropdown-item"
+                                    onClick={() => setShowProfileDropdown(false)}
+                                >
+                                    {userProfile?.photoURL || userProfile?.profilePic ? (
+                                        <img
+                                            src={userProfile.photoURL || userProfile.profilePic}
+                                            alt="Profile"
+                                            className="dropdown-profile-pic"
+                                        />
+                                    ) : (
+                                        <span className="dropdown-icon">👤</span>
+                                    )}
+                                    Profile
+                                </Link>
+                                <Link
+                                    to="/settings"
+                                    className="profile-dropdown-item"
+                                    onClick={() => setShowProfileDropdown(false)}
+                                >
+                                    <span className="dropdown-icon">⚙️</span> Settings
+                                </Link>
+                                <div className="dropdown-divider"></div>
+                                <button
+                                    className="profile-dropdown-item danger"
+                                    onClick={handleLogoutWithClose}
+                                >
+                                    <span className="dropdown-icon">🚪</span> Log Out
+                                </button>
+                            </div>
                         )}
-                    </Link>
+                    </div>
                 )}
             </div>
         </header>

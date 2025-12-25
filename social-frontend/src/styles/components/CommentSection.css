@@ -57,6 +57,8 @@
     border-radius: 0 12px 12px 12px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     flex: 1;
+    text-align: left;
+    /* Ensure container is left aligned */
 }
 
 .comment-author {
@@ -65,6 +67,8 @@
     font-weight: 600;
     color: #3E2723;
     margin-bottom: 0.2rem;
+    text-align: left;
+    /* Explicitly align left */
 }
 
 .comment-text {
@@ -72,14 +76,18 @@
     font-size: 0.9rem;
     color: #5D4037;
     line-height: 1.4;
+    text-align: left;
+    /* Explicitly align left */
 }
 
 .loading-text,
 .no-comments {
-    text-align: center;
+    text-align: left;
+    /* User requested "allinea tutto a sinistra" */
     color: #8D6E63;
     font-size: 0.9rem;
-    padding: 1rem;
+    padding: 1rem 0;
+    /* Adjusted padding to remove left padding if we want it flush? Or keep regular padding? "padding: 1rem" means 1rem all sides. Left aligned text with 1rem padding is fine. */
 }
 
 .comment-form {
