@@ -20,6 +20,9 @@ export const searchUsers = async (queryText, role = null) => {
     }
 };
 
+// In-memory cache for user profiles to reduce read operations
+const userCache = new Map();
+
 /**
  * Get user details for a list of UIDs.
  * @param {Array<string>} uids - List of user IDs.
@@ -27,13 +30,28 @@ export const searchUsers = async (queryText, role = null) => {
  */
 export const getUsersByUids = async (uids) => {
     try {
-        const response = await fetch(`${API_URL}/users/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uids })
-        });
-        if (!response.ok) throw new Error('Batch fetch failed');
-        return await response.json();
+        const uniqueUids = [...new Set(uids)];
+        const missingUids = uniqueUids.filter(uid => !userCache.has(uid));
+
+        if (missingUids.length > 0) {
+            const response = await fetch(`${API_URL}/users/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uids: missingUids })
+            });
+            if (!response.ok) throw new Error('Batch fetch failed');
+            const newUsers = await response.json();
+
+            // Update cache
+            newUsers.forEach(user => {
+                if (user && user.uid) {
+                    userCache.set(user.uid, user);
+                }
+            });
+        }
+
+        // Return users from cache in the order requested (or just all found)
+        return uniqueUids.map(uid => userCache.get(uid)).filter(u => u !== undefined);
     } catch (error) {
         console.error("Error fetching users by UIDs:", error);
         return [];

@@ -6,8 +6,13 @@ const { db, admin } = require('../config/firebase');
 // GET /api/posts
 router.get('/', async (req, res) => {
     try {
-        const { uid, authorUid, filter, sort } = req.query;
+        const { uid, authorUid, filter, sort, communityId } = req.query;
         let query = db.collection('posts');
+
+        // Filter by community
+        if (communityId) {
+            query = query.where('communityId', '==', communityId);
+        }
 
         // If filtering by specific author (Profile page usage)
         if (authorUid) {
@@ -71,7 +76,7 @@ router.get('/', async (req, res) => {
 // POST /api/posts
 router.post('/', async (req, res) => {
     try {
-        const { uid, entityType, entityId, text, imageUrl, createdAt, commentsCount } = req.body;
+        const { uid, entityType, entityId, text, imageUrl, createdAt, commentsCount, communityId } = req.body;
 
         if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -81,6 +86,7 @@ router.post('/', async (req, res) => {
             uid,
             entityType: entityType || "user",
             entityId: entityId || uid,
+            communityId: communityId || null, // Save communityId for filtering
             text,
             imageUrl: imageUrl || null,
             createdAt: createdAt ? new Date(createdAt) : new Date(),
