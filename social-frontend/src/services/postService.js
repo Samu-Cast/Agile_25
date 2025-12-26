@@ -29,6 +29,36 @@ export const createPost = async (postData) => {
 };
 
 /**
+ * Recupera i post per il feed con filtri e paginazione
+ * @param {Object} params - Filtri (uid, filter, sort, limit, lastCreatedAt, communityId)
+ * @returns {Promise<Array>} - Array di post
+ */
+export const getFeedPosts = async (params = {}) => {
+    try {
+        const urlParams = new URLSearchParams();
+        if (params.uid) urlParams.append('uid', params.uid);
+        if (params.filter) urlParams.append('filter', params.filter);
+        if (params.sort) urlParams.append('sort', params.sort);
+        if (params.limit) urlParams.append('limit', params.limit);
+        if (params.lastCreatedAt) urlParams.append('lastCreatedAt', params.lastCreatedAt);
+        if (params.communityId) urlParams.append('communityId', params.communityId);
+
+        const queryString = urlParams.toString();
+        const url = `${API_URL}/posts${queryString ? `?${queryString}` : ''}`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Fetch feed posts failed');
+        // We return raw data here because frontend maps it. 
+        // Ideally service should do mapping but Home.js has complex mapping logic with users/communities.
+        // For now, let's return raw JSON.
+        return await response.json();
+    } catch (error) {
+        console.error('Errore nel recupero dei post del feed:', error);
+        throw error;
+    }
+};
+
+/**
  * Recupera tutti i post tramite API
  * @returns {Promise<Array>} - Array di post
  */
@@ -209,4 +239,19 @@ export const getUserSavedGuides = async (userId) => {
     return [];
 };
 
-export default { createPost, getPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost };
+export const deletePost = async (postId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userId })
+        });
+        if (!response.ok) throw new Error('Delete post failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        throw error;
+    }
+};
+
+export default { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost };

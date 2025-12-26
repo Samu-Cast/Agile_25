@@ -63,3 +63,20 @@ export const getCommunity = async (id) => {
     }
     return null;
 };
+
+export const getAllCommunities = async () => {
+    try {
+        const response = await fetch(`${API_URL}/communities`);
+        if (response.ok) {
+            const data = await response.json();
+            data.forEach(c => communityCache.set(c.id, c));
+            return data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching all communities:", error);
+        return [];
+    }
+};
+
+export default { getCommunitiesByIds, getCommunity, getAllCommunities };

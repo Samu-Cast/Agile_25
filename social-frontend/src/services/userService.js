@@ -110,6 +110,17 @@ export const getUserSavedPostsDetails = async (uid) => {
     }
 };
 
+export const getUserSavedPostIds = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/savedPosts`);
+        if (!response.ok) throw new Error('Fetch saved posts IDs failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching saved posts IDs:", error);
+        return [];
+    }
+};
+
 export const getUser = async (uid) => {
     try {
         const response = await fetch(`${API_URL}/users/${uid}`);

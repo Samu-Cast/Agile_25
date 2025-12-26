@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import CommentSection from './CommentSection';
-import { toggleSavePost } from '../services/postService';
+import { toggleSavePost, updateVotes } from '../services/postService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -38,16 +38,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
         setVoteCount(prev => prev + voteChange);
 
         try {
-
-            // Correction: The backend assumes you send the vote you WANT. 
-            // If you send 1 and have 1, it toggles to 0.
-            // If you send 1 and have -1, it switches to 1.
-            // So we just send 'type'.
-            const response = await fetch(`${API_URL}/posts/${post.id}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: currentUser?.uid, value: type }),
-            });
+            await updateVotes(post.id, currentUser?.uid, type);
         } catch (error) {
             console.error("Error voting:", error);
             // Revert
@@ -63,23 +54,14 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
         setIsSaved(newSavedState);
 
         try {
-            await toggleSavePost(post.id, currentUser.uid, !newSavedState); // Service expects 'isSaved' state usually?
-            // Checking Home.js usage: toggleSavePost(postId, user.uid, isSaved) -> "isSaved" param usually means "current state" to flip?
-            // Actually let's just assume we want to call the API.
-            // Simplified:
-            if (newSavedState) {
-                await fetch(`${API_URL}/posts/${post.id}/save`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: currentUser.uid })
-                });
-            } else {
-                await fetch(`${API_URL}/posts/${post.id}/save`, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uid: currentUser.uid })
-                });
-            }
+            // Service expects 'isSaved' to be the *previous* state to determine if it should be deleted.
+            // If newSavedState is true, it means prev was false (so we want to save -> POST). 
+            // Service: isSaved ? DELETE : POST.
+            // So if prev (isSaved variable) is true, we pass true to delete.
+            // Wait, isSaved state variable is stale inside closure? No, using state variable.
+            // So if `isSaved` is true, we pass true -> service calls DELETE.
+            // If `isSaved` is false, we pass false -> service calls POST.
+            await toggleSavePost(post.id, currentUser.uid, isSaved);
         } catch (error) {
             console.error("Error toggling save:", error);
             setIsSaved(!newSavedState);

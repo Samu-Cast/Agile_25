@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import CommentSection from '../components/CommentSection';
-import { toggleSavePost } from '../services/postService';
+import { toggleSavePost, getFeedPosts, updateVotes } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/Home.css';
 import '../styles/components/Sidebar.css';
@@ -10,8 +10,8 @@ import CommunityFeed from '../components/CommunityFeed';
 import CommunityExplorer from '../components/CommunityExplorer';
 import CommunityInfoCard from '../components/CommunityInfoCard';
 import PostCard from '../components/PostCard';
-import { getUsersByUids } from '../services/userService';
-import { getCommunitiesByIds } from '../services/communityService';
+import { getUsersByUids, getUserSavedPostIds } from '../services/userService';
+import { getAllCommunities } from '../services/communityService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -42,56 +42,35 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
     React.useEffect(() => {
         const fetchPosts = async () => {
-            console.log("Fetching posts...");
             try {
-                let url = `${API_URL}/posts`;
-                const params = new URLSearchParams();
-
+                const params = {};
                 if (user?.uid) {
-                    params.append('uid', user.uid);
-
+                    params.uid = user.uid;
                     if (feedType === 'home') {
-                        params.append('filter', 'followed');
+                        params.filter = 'followed';
                     }
                 }
-
                 if (feedType === 'popular') {
-                    params.append('sort', 'popular');
+                    params.sort = 'popular';
                 }
 
+                // Community filter not fully supported by backend yet, but we can pass it
                 if (feedType.startsWith('community-')) {
-                    // const communityId = feedType.replace('community-', '');
-                    // In a real app we'd filter by communityId.
-                    // For now, since backend doesn't support community filter yet, we just show all or implement client filtering
-                    // params.append('communityId', communityId);
-                    // Assuming backend will accept this or we just handle UI for now.
-                    // Let's assume we want to fetch all and filter in frontend for MVP or pass param if backend ready.
-                    // Since I only updated backend to create communities but not filter posts, I will leave as is, 
-                    // but ideally we'd filter. I'll add the param in case I update backend logic.
+                    // params.communityId = feedType.replace('community-', '');
                 }
 
-                if (Array.from(params).length > 0) {
-                    url += `?${params.toString()}`;
-                }
-
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
+                const data = await getFeedPosts(params);
 
                 // Initialize votes state
                 const initialVotes = {};
 
                 // Extract unique UIDs and Community IDs
                 const uids = [...new Set(data.map(post => post.uid))];
-                const communityIds = [...new Set(data.map(post => post.communityId).filter(Boolean))];
 
-                const [users, commResponse] = await Promise.all([
+                const [users, communities] = await Promise.all([
                     getUsersByUids(uids),
-                    fetch(`${API_URL}/communities`)
+                    getAllCommunities()
                 ]);
-                const communities = commResponse.ok ? await commResponse.json() : [];
 
                 const userMap = {};
                 users.forEach(u => {
@@ -108,7 +87,6 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
                 // Map backend data to frontend format
                 const formattedPosts = data.map(post => {
-                    // Set initial vote state for this post
                     if (post.userVote) {
                         initialVotes[post.id] = post.userVote;
                     }
@@ -129,7 +107,8 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         userVote: post.userVote || 0,
                         communityName: postCommunity?.name,
                         communityAvatar: postCommunity?.avatar,
-                        communityId: post.communityId
+                        communityId: post.communityId,
+                        createdAt: post.createdAt
                     };
                 });
 
@@ -143,13 +122,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
         const fetchSavedPosts = async () => {
             if (!user?.uid) return;
             try {
-                const response = await fetch(`${API_URL}/users/${user.uid}/savedPosts`);
-                if (response.ok) {
-                    const savedPostIds = await response.json();
-                    const savedMap = {};
-                    savedPostIds.forEach(id => { savedMap[id] = true; });
-                    setSavedPosts(savedMap);
-                }
+                const savedPostIds = await getUserSavedPostIds(user.uid);
+                const savedMap = {};
+                savedPostIds.forEach(id => { savedMap[id] = true; });
+                setSavedPosts(savedMap);
             } catch (error) {
                 console.error("Error fetching saved posts:", error);
             }
@@ -187,11 +163,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
         }));
 
         try {
-            await fetch(`${API_URL}/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: user?.uid, value: 1 }),
-            });
+            await updateVotes(postId, user?.uid, 1);
         } catch (error) {
             console.error("Error liking post:", error);
             // Revert logic could be added here
@@ -218,11 +190,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
         }));
 
         try {
-            await fetch(`${API_URL}/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: user?.uid, value: -1 }),
-            });
+            await updateVotes(postId, user?.uid, -1);
         } catch (error) {
             console.error("Error unliking post:", error);
         }

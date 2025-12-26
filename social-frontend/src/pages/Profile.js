@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
 import PostCard from '../components/PostCard';
@@ -391,11 +391,7 @@ function Profile() {
 
         try {
             const valueToSend = newVote === 0 ? currentVote : newVote;
-            await fetch(`http://localhost:3001/api/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: currentUser.uid, value: valueToSend }),
-            });
+            await updateVotes(postId, currentUser.uid, valueToSend); // Use service
         } catch (error) {
             console.error("Error voting in profile:", error);
             // Revert
@@ -446,15 +442,7 @@ function Profile() {
         setMyPosts(prev => prev.filter(p => p.id !== postId));
 
         try {
-            const response = await fetch(`http://localhost:3001/api/posts/${postId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: currentUser.uid })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete post');
-            }
+            await deletePost(postId, currentUser.uid); // Use service
         } catch (error) {
             console.error("Error deleting post:", error);
             alert("Errore durante l'eliminazione del post.");
@@ -473,11 +461,9 @@ function Profile() {
             if (activeTab === 'posts') {
                 // Fetch posts for the profile user
                 console.log("Fetching posts for user:", user.uid);
-                const response = await fetch(`http://localhost:3001/api/posts?authorUid=${user.uid}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch posts');
-                }
-                const posts = await response.json();
+                // The service returns formatted posts, but we might want raw data or check format.
+                // getUserPosts returns { ...p, content, time } formatted.
+                const posts = await getUserPosts(user.uid);
                 setMyPosts(posts);
             } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
                 // Only show upvoted if it's own profile? Or public? Let's assume public for now or restrict

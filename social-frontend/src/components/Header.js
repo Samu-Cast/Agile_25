@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { searchUsers } from '../services/userService';
+import { searchUsers, getUser } from '../services/userService';
 import '../styles/components/Header.css';
 
 function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentUser, onCreatePostClick }) {
@@ -20,9 +20,8 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
         const fetchUserProfile = async () => {
             if (currentUser?.uid) {
                 try {
-                    const response = await fetch(`http://localhost:3001/api/users/${currentUser.uid}`);
-                    if (response.ok) {
-                        const data = await response.json();
+                    const data = await getUser(currentUser.uid);
+                    if (data) {
                         setUserProfile(data);
                     }
                 } catch (error) {
