@@ -42,6 +42,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
     React.useEffect(() => {
         const fetchPosts = async () => {
+            console.log("Fetching posts...");
             try {
                 let url = `${API_URL}/posts`;
                 const params = new URLSearchParams();
@@ -154,8 +155,6 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
             }
         };
 
-        fetchPosts();
-        fetchSavedPosts();
         fetchPosts();
         fetchSavedPosts();
     }, [user?.uid, feedType]); // Re-fetch when user or feedType changes
