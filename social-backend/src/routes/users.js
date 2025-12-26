@@ -107,62 +107,21 @@ router.get('/:uid/savedPosts', async (req, res) => {
     }
 });
 
-// GET /api/users/search
-router.get('/search', async (req, res) => {
+// GET /api/users/:uid/communities
+router.get('/:uid/communities', async (req, res) => {
     try {
-        const { q, role } = req.query;
-        if (!q || q.length < 2) return res.json([]);
+        const { uid } = req.params;
+        const communitiesSnapshot = await db.collection('users').doc(uid).collection('communities').get();
 
-        const usersRef = db.collection('users');
-        const results = [];
-        const seenUids = new Set();
+        const communities = communitiesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
-        const executeQuery = async (field, value) => {
-            const queryRef = usersRef
-                .where(field, '>=', value)
-                .where(field, '<=', value + '\uf8ff');
-
-            const snap = await queryRef.get();
-            snap.forEach(doc => {
-                if (!seenUids.has(doc.id)) {
-                    const userData = doc.data();
-                    if (!role || userData.role === role) {
-                        results.push({ uid: doc.id, ...userData });
-                        seenUids.add(doc.id);
-                    }
-                }
-            });
-        };
-
-        // Search strategies (similar to frontend implementation)
-        await executeQuery('nickname', q);
-
-        const capitalized = q.charAt(0).toUpperCase() + q.slice(1).toLowerCase();
-        if (capitalized !== q) await executeQuery('nickname', capitalized);
-
-        const lower = q.toLowerCase();
-        if (lower !== q && lower !== capitalized) await executeQuery('nickname', lower);
-
-        await executeQuery('name', q);
-        if (capitalized !== q) await executeQuery('name', capitalized);
-        if (lower !== q && lower !== capitalized) await executeQuery('name', lower);
-
-        // Email exact match
-        const emailSnap = await usersRef.where('email', '==', q).get();
-        emailSnap.forEach(doc => {
-            if (!seenUids.has(doc.id)) {
-                const userData = doc.data();
-                if (!role || userData.role === role) {
-                    results.push({ uid: doc.id, ...userData });
-                    seenUids.add(doc.id);
-                }
-            }
-        });
-
-        res.json(results);
+        res.json(communities);
     } catch (error) {
-        console.error("Error searching users:", error);
-        res.status(500).json({ error: "Failed to search users" });
+        console.error("Error fetching user communities:", error);
+        res.status(500).json({ error: "Failed to fetch user communities" });
     }
 });
 

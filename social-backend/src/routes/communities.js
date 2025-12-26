@@ -102,31 +102,66 @@ router.post('/:id/join', async (req, res) => {
         if (!uid) return res.status(400).json({ error: 'User ID required' });
 
         const communityRef = db.collection('communities').doc(req.params.id);
-        const docSnap = await communityRef.get();
+        const userCommunityRef = db.collection('users').doc(uid).collection('communities').doc(req.params.id);
 
-        if (!docSnap.exists) {
-            return res.status(404).json({ error: 'Community not found' });
-        }
+        await db.runTransaction(async (t) => {
+            const docSnap = await t.get(communityRef);
 
-        const data = docSnap.data();
-        const isMember = data.members && data.members.includes(uid);
+            if (!docSnap.exists) {
+                throw new Error('Community not found');
+            }
 
-        if (isMember) {
-            // Leave
-            await communityRef.update({
-                members: admin.firestore.FieldValue.arrayRemove(uid)
-            });
-            res.json({ success: true, joined: false });
-        } else {
-            // Join
-            await communityRef.update({
-                members: admin.firestore.FieldValue.arrayUnion(uid)
-            });
-            res.json({ success: true, joined: true });
-        }
+            const data = docSnap.data();
+            const isMember = data.members && data.members.includes(uid);
+
+            if (isMember) {
+                // Check if user is creator
+                if (data.creatorId === uid) {
+                    throw new Error("Creator cannot leave their own community");
+                }
+
+                // Leave
+                t.update(communityRef, {
+                    members: admin.firestore.FieldValue.arrayRemove(uid)
+                });
+                t.delete(userCommunityRef);
+            } else {
+                // Join
+                t.update(communityRef, {
+                    members: admin.firestore.FieldValue.arrayUnion(uid)
+                });
+                // Add denormalized community data for quick access
+                t.set(userCommunityRef, {
+                    id: docSnap.id,
+                    name: data.name,
+                    avatar: data.avatar || null,
+                    joinedAt: new Date().toISOString()
+                });
+            }
+        });
+
+        // We can't easily return the new state from inside transaction blindly without re-fetching, 
+        // but we know what we did.
+        // For simplicity/speed, we'll return the success and let the frontend update UI state.
+
+        // However, to be perfectly accurate for the response "joined" state, we need to know what we effectively did.
+        // We can re-fetch or just check the logic we just ran?
+        // Let's just re-fetch the 'isMember' check is actually slightly racy if we do it outside, 
+        // but since we are inside a transaction, we can't communicate out easily except via throwing.
+        // So we will just do a quick check again or assume success based on the code path.
+
+        // Actually, we can check `isMember` before the transaction? No, race condition.
+        // Best approach: Return the intended state.
+
+        const freshSnap = await communityRef.get();
+        const freshData = freshSnap.data();
+        const nowJoined = freshData.members && freshData.members.includes(uid);
+
+        res.json({ success: true, joined: nowJoined });
+
     } catch (error) {
         console.error('Error toggling membership:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(error.message === 'Community not found' ? 404 : 500).json({ error: error.message || 'Internal Server Error' });
     }
 });
 

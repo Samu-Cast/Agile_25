@@ -19,8 +19,8 @@ function CreatePostModal({ onClose, onSuccess }) {
         const fetchCommunities = async () => {
             if (!currentUser) return;
             try {
-                // Fetch communities (in real app, filter by joined)
-                const response = await fetch(`${API_URL}/communities`);
+                // Fetch joined communities only
+                const response = await fetch(`${API_URL}/users/${currentUser.uid}/communities`);
                 if (response.ok) {
                     const data = await response.json();
                     setCommunities(data);

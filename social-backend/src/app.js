@@ -17,6 +17,7 @@ const roastersRouter = require('./routes/roasters');
 const searchRouter = require('./routes/search');
 const uploadRouter = require('./routes/upload');
 const communitiesRouter = require('./routes/communities'); // Import
+const chatsRouter = require('./routes/chats'); // Import
 
 app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
@@ -25,6 +26,7 @@ app.use('/api/roasters', roastersRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/upload', uploadRouter);
-app.use('/api/communities', communitiesRouter); // Register
+app.use('/api/communities', communitiesRouter);
+app.use('/api/chats', chatsRouter);
 
 module.exports = app;

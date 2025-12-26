@@ -82,18 +82,19 @@ const CommunityExplorer = ({ currentUser, onNavigate, onCommunityUpdate }) => {
 
                                 <button
                                     onClick={() => handleJoinLeave(community.id, isMember)}
+                                    disabled={community.creatorId === currentUser?.uid}
                                     style={{
                                         width: '100%',
                                         padding: '8px 0',
                                         borderRadius: '20px',
                                         border: isMember ? '1px solid #ccc' : 'none',
-                                        backgroundColor: isMember ? 'white' : 'var(--accent-color)',
-                                        color: isMember ? '#666' : 'white',
+                                        backgroundColor: community.creatorId === currentUser?.uid ? '#e0e0e0' : (isMember ? 'white' : 'var(--accent-color)'),
+                                        color: community.creatorId === currentUser?.uid ? '#888' : (isMember ? '#666' : 'white'),
                                         fontWeight: 'bold',
-                                        cursor: 'pointer'
+                                        cursor: community.creatorId === currentUser?.uid ? 'default' : 'pointer'
                                     }}
                                 >
-                                    {isMember ? 'Joined' : 'Join'}
+                                    {community.creatorId === currentUser?.uid ? 'Owner' : (isMember ? 'Joined' : 'Join')}
                                 </button>
 
                                 <button

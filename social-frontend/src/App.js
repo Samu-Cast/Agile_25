@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext'; // Import
 import './styles/App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
@@ -10,6 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
+import { ChatPopup } from './components/Chat/ChatPopup'; // Import
 
 function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -64,6 +66,8 @@ function AppContent() {
           onSuccess={() => window.location.reload()}
         />
       )}
+      {/* Chat Popup available globally if logged in */}
+      {isLoggedIn && <ChatPopup />}
     </div>
   );
 }
@@ -72,7 +76,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <ChatProvider>
+          <AppContent />
+        </ChatProvider>
       </AuthProvider>
     </Router>
   );
