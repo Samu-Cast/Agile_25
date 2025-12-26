@@ -6,7 +6,9 @@ import { useUserData, useRoleData } from '../hooks/useUserData';
 import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
+import { getCollections, createCollection, deleteCollection, updateCollection } from '../services/collectionService';
 import PostCard from '../components/PostCard';
+import CollectionManager from '../components/CollectionManager';
 import '../styles/pages/Profile.css';
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
@@ -81,6 +83,9 @@ function Profile() {
 
     // Product System State (for Torrefazione)
     const [roasteryProducts, setRoasteryProducts] = useState([]);
+    const [roasteryCollections, setRoasteryCollections] = useState([]);
+    const [showCollectionModal, setShowCollectionModal] = useState(false);
+    const [editingCollection, setEditingCollection] = useState(null);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [newProduct, setNewProduct] = useState({
         name: '',
@@ -519,6 +524,16 @@ function Profile() {
                     const products = await getRoasteryProducts(roleData.id);
                     setRoasteryProducts(products);
                 }
+            } else if (activeTab === 'collections' && user.role && user.role.toLowerCase() === 'torrefazione') {
+                if (roleData && roleData.id) {
+                    const collections = await getCollections(roleData.id);
+                    setRoasteryCollections(collections);
+                    // Also fetch products for the manager if owner
+                    if (isOwnProfile) {
+                        const products = await getRoasteryProducts(roleData.id);
+                        setRoasteryProducts(products);
+                    }
+                }
             }
             // Guides would be fetched here if we had a backend for them
         };
@@ -530,6 +545,54 @@ function Profile() {
     const guides = [
         { id: 1, title: "V60 Brewing Guide", image: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=400", type: "Guide" },
     ];
+
+    const handleSaveCollection = async (collectionData) => {
+        try {
+            if (editingCollection) {
+                await updateCollection(currentUserRoleData.id, editingCollection.id, collectionData);
+                Swal.fire('Success', 'Collezione aggiornata!', 'success');
+            } else {
+                await createCollection(currentUserRoleData.id, collectionData);
+                Swal.fire('Success', 'Collezione creata!', 'success');
+            }
+            setShowCollectionModal(false);
+            setEditingCollection(null);
+            // Refresh collections
+            const cols = await getCollections(currentUserRoleData.id);
+            setRoasteryCollections(cols);
+        } catch (error) {
+            Swal.fire('Error', 'Operazione fallita', 'error');
+        }
+    };
+
+    const handleDeleteCollection = async (collectionId) => {
+        try {
+            const result = await Swal.fire({
+                title: 'Sei sicuro?',
+                text: "Non potrai tornare indietro!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sì, elimina!'
+            });
+
+            if (result.isConfirmed) {
+                await deleteCollection(currentUserRoleData.id, collectionId, currentUser.uid);
+                Swal.fire('Deleted!', 'La collezione è stata eliminata.', 'success');
+                // Refresh
+                const cols = await getCollections(currentUserRoleData.id);
+                setRoasteryCollections(cols);
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Eliminazione fallita', 'error');
+        }
+    };
+
+    const openCollectionModal = (collection = null) => {
+        setEditingCollection(collection);
+        setShowCollectionModal(true);
+    };
 
     const renderContent = () => {
         let data = [];
@@ -571,7 +634,7 @@ function Profile() {
             type = 'comment';
         }
 
-        if (data.length === 0 && activeTab !== 'products') {
+        if (data.length === 0 && activeTab !== 'products' && activeTab !== 'collections') {
             return <div className="empty-state">Nessun contenuto trovato.</div>;
         }
 
@@ -638,6 +701,90 @@ function Profile() {
                             <p className="empty-state">Nessun prodotto caricato.</p>
                         )}
                     </div>
+                </div>
+            );
+        }
+
+        if (activeTab === 'collections') {
+            return (
+                <div className="products-section">
+                    {/* Add Collection Button for Owner */}
+                    {isOwnProfile && (
+                        <div className="add-product-container">
+                            <button className="add-product-btn" onClick={() => openCollectionModal(null)}>
+                                + Crea Nuova Collezione
+                            </button>
+                        </div>
+                    )}
+                    {roasteryCollections.length === 0 ? (
+                        <p className="empty-state">Nessuna collezione.</p>
+                    ) : (
+                        <div className="products-grid">
+                            {roasteryCollections.map(col => {
+                                // Get up to 2 product images
+                                const collectionImages = col.products ? col.products.slice(0, 2).map(prodId => {
+                                    const prod = roasteryProducts.find(p => p.id === prodId);
+                                    return prod ? prod.imageUrl : null;
+                                }).filter(Boolean) : [];
+
+                                return (
+                                    <div
+                                        key={col.id}
+                                        className="product-card"
+                                        onClick={() => isOwnProfile ? openCollectionModal(col) : null}
+                                        style={{ cursor: isOwnProfile ? 'pointer' : 'default', position: 'relative' }}
+                                    >
+                                        <div className="product-image" style={{ position: 'relative', backgroundColor: '#e0e0e0', overflow: 'hidden' }}>
+                                            {collectionImages.length > 0 ? (
+                                                <>
+                                                    {collectionImages.map((img, index) => (
+                                                        <img
+                                                            key={index}
+                                                            src={img}
+                                                            alt=""
+                                                            style={{
+                                                                position: 'absolute',
+                                                                width: '80%',
+                                                                height: '80%',
+                                                                objectFit: 'cover',
+                                                                borderRadius: '4px',
+                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                                                top: index === 0 ? (collectionImages.length > 1 ? '10%' : '10%') : '25%',
+                                                                left: index === 0 ? (collectionImages.length > 1 ? '10%' : '10%') : '25%',
+                                                                zIndex: index === 0 ? 2 : 1,
+                                                                transform: index === 1 ? 'rotate(5deg)' : 'none'
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                                                    ☕
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="product-info">
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <h3>{col.name}</h3>
+                                                {isOwnProfile && (
+                                                    <div className="collection-actions" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d33' }}
+                                                        >
+                                                            🗑
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="product-desc">{col.description}</p>
+                                            <p className="product-price" style={{ fontSize: '0.9rem', color: '#8D6E63' }}>{col.products?.length || 0} prodotti</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -885,12 +1032,20 @@ function Profile() {
                 }
                 {
                     user.role && user.role.toLowerCase() === 'torrefazione' && (
-                        <button
-                            className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('products')}
-                        >
-                            Prodotti
-                        </button>
+                        <>
+                            <button
+                                className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('products')}
+                            >
+                                Prodotti
+                            </button>
+                            <button
+                                className={`tab-button ${activeTab === 'collections' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('collections')}
+                            >
+                                Raccolte
+                            </button>
+                        </>
                     )
                 }
             </div >
@@ -1101,6 +1256,21 @@ function Profile() {
                     <button className="save-btn" onClick={handleCreateProduct}>Aggiungi</button>
                 </div>
             </div>
+
+            {/* Collection Manager Modal */}
+            {showCollectionModal && (
+                <CollectionManager
+                    roasterId={currentUserRoleData.id}
+                    currentUser={currentUser}
+                    products={roasteryProducts}
+                    initialData={editingCollection}
+                    onClose={() => {
+                        setShowCollectionModal(false);
+                        setEditingCollection(null);
+                    }}
+                    onSave={handleSaveCollection}
+                />
+            )}
         </div >
     );
 }
