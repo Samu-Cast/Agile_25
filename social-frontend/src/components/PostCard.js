@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import CommentSection from './CommentSection';
+import CoffeeCupRating from './CoffeeCupRating';
+import MediaGallery from './MediaGallery';
 import { toggleSavePost, updateVotes } from '../services/postService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -7,16 +9,12 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
     const [userVote, setUserVote] = useState(post.userVote || 0);
     const [voteCount, setVoteCount] = useState(post.votes || 0);
-    const [isSaved, setIsSaved] = useState(post.isSaved || false); // Assuming backend might send this, or handled locally
+    const [isSaved, setIsSaved] = useState(post.isSaved || false);
     const [isExpanded, setIsExpanded] = useState(false);
 
-    // Initial check for saved status if not passed (though ideally should be passed)
-    // For now we'll handle optimistic updates locally for the session if passed, 
-    // or fetch if needed. To keep it simple, we'll assume passed or default false.
-    // Ideally parent fetches "savedPosts" map and passes `isSaved`.
-    // We can accept an `initialIsSaved` prop.
+    const isReview = post.type === 'review';
 
-    const handleVote = async (type) => { // type: 1 (up) or -1 (down)
+    const handleVote = async (type) => {
         if (!isLoggedIn) return;
 
         const currentVote = userVote;
@@ -24,16 +22,13 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
         let voteChange = 0;
 
         if (currentVote === type) {
-            // Toggle off
             newVote = 0;
             voteChange = -type;
         } else {
-            // Switch or new
             newVote = type;
             voteChange = type - currentVote;
         }
 
-        // Optimistic update
         setUserVote(newVote);
         setVoteCount(prev => prev + voteChange);
 
@@ -41,7 +36,6 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
             await updateVotes(post.id, currentUser?.uid, type);
         } catch (error) {
             console.error("Error voting:", error);
-            // Revert
             setUserVote(currentVote);
             setVoteCount(prev => prev - voteChange);
         }
@@ -54,13 +48,6 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
         setIsSaved(newSavedState);
 
         try {
-            // Service expects 'isSaved' to be the *previous* state to determine if it should be deleted.
-            // If newSavedState is true, it means prev was false (so we want to save -> POST). 
-            // Service: isSaved ? DELETE : POST.
-            // So if prev (isSaved variable) is true, we pass true to delete.
-            // Wait, isSaved state variable is stale inside closure? No, using state variable.
-            // So if `isSaved` is true, we pass true -> service calls DELETE.
-            // If `isSaved` is false, we pass false -> service calls POST.
             await toggleSavePost(post.id, currentUser.uid, isSaved);
         } catch (error) {
             console.error("Error toggling save:", error);
@@ -69,7 +56,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
     };
 
     return (
-        <div className="post-card">
+        <div className={`post-card ${isReview ? 'review-card' : ''}`}>
             <div className="post-content">
                 <div className="post-header">
                     <img
@@ -90,10 +77,46 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                             <span className="post-time">{post.time}</span>
                         </div>
                     </div>
+
+                    {/* Review Badge */}
+                    {isReview && (
+                        <div className="review-badge">
+                            ⭐ Recensione
+                        </div>
+                    )}
                 </div>
 
+                {/* Review-specific content */}
+                {isReview && post.reviewData && (
+                    <div className="review-info-card">
+                        <div className="review-item-header">
+                            <div>
+                                <h3 className="review-item-name">{post.reviewData.itemName}</h3>
+                                {post.reviewData.brand && (
+                                    <p className="review-item-brand">{post.reviewData.brand}</p>
+                                )}
+                            </div>
+                            <CoffeeCupRating
+                                rating={post.reviewData.rating}
+                                size="medium"
+                            />
+                        </div>
+                        {post.reviewData.itemType && (
+                            <span className="review-item-type">
+                                {getItemTypeLabel(post.reviewData.itemType)}
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 <p className="post-text">{post.content}</p>
-                {post.image && <img src={post.image} alt="Post content" className="post-image" />}
+
+                {/* Media Gallery for multiple images/videos */}
+                {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                    <MediaGallery mediaUrls={post.mediaUrls} altText={post.content} />
+                ) : (
+                    post.image && <img src={post.image} alt="Post content" className="post-image" />
+                )}
 
                 <div className="post-footer">
                     <div className="vote-actions">
@@ -130,11 +153,26 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                 </div>
 
                 {isExpanded && (
-                    <CommentSection postId={post.id} currentUser={currentUser} />
+                    <CommentSection postId={post.id} postType={post.type} currentUser={currentUser} />
                 )}
             </div>
         </div>
     );
 };
+
+// Helper function to get item type label
+function getItemTypeLabel(itemType) {
+    const labels = {
+        coffee: 'Caffè in grani',
+        blend: 'Miscela',
+        espresso_machine: 'Macchina espresso',
+        grinder: 'Macinacaffè',
+        brewing_tool: 'Strumento di estrazione',
+        accessory: 'Accessorio',
+        cafe: 'Caffetteria/Bar',
+        other: 'Altro'
+    };
+    return labels[itemType] || itemType;
+}
 
 export default PostCard;

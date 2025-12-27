@@ -90,12 +90,15 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
                     return {
                         id: post.id,
+                        type: post.type || 'post', // Include post type
                         author: postUser.name,
                         authorAvatar: postUser.avatar,
                         authorId: post.uid,
                         time: post.createdAt ? timeAgo(new Date(post.createdAt)) : "just now",
                         content: post.text,
                         image: post.imageUrl,
+                        mediaUrls: post.mediaUrls || [], // Include media URLs array
+                        reviewData: post.reviewData || null, // Include review data
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,

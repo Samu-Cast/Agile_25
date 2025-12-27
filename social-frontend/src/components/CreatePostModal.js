@@ -1,25 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { uploadImage, validateImage } from '../services/imageService';
+import { uploadMultipleMedia, validateMedia } from '../services/imageService';
+import CoffeeCupRating from './CoffeeCupRating';
 import '../styles/components/CreatePostModal.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+const ITEM_TYPES = [
+    { value: 'coffee', label: 'Caffè in grani' },
+    { value: 'blend', label: 'Miscela' },
+    { value: 'espresso_machine', label: 'Macchina espresso' },
+    { value: 'grinder', label: 'Macinacaffè' },
+    { value: 'brewing_tool', label: 'Strumento di estrazione' },
+    { value: 'accessory', label: 'Accessorio' },
+    { value: 'cafe', label: 'Caffetteria/Bar' },
+    { value: 'other', label: 'Altro' }
+];
+
 function CreatePostModal({ onClose, onSuccess }) {
+    const [postType, setPostType] = useState('post'); // 'post' or 'review'
     const [text, setText] = useState('');
-    const [image, setImage] = useState(null);
+    const [mediaFiles, setMediaFiles] = useState([]);
+    const [mediaPreviews, setMediaPreviews] = useState([]);
     const [loading, setLoading] = useState(false);
     const [communities, setCommunities] = useState([]);
-    const [selectedCommunity, setSelectedCommunity] = useState(''); // '' means personal profile
+    const [selectedCommunity, setSelectedCommunity] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Review-specific fields
+    const [reviewData, setReviewData] = useState({
+        itemName: '',
+        itemType: 'coffee',
+        brand: '',
+        rating: 0
+    });
+
     const { currentUser } = useAuth();
 
     useEffect(() => {
         const fetchCommunities = async () => {
             if (!currentUser) return;
             try {
-                // Fetch joined communities only
                 const response = await fetch(`${API_URL}/users/${currentUser.uid}/communities`);
                 if (response.ok) {
                     const data = await response.json();
@@ -32,10 +54,54 @@ function CreatePostModal({ onClose, onSuccess }) {
         fetchCommunities();
     }, [currentUser]);
 
-    const handleImageChange = (e) => {
-        if (e.target.files[0]) {
-            setImage(e.target.files[0]);
+    const handleMediaChange = (e) => {
+        const files = Array.from(e.target.files);
+
+        console.log('[CreatePostModal] handleMediaChange called, files:', files.length);
+
+        // Max 5 images + 1 video
+        const totalMedia = mediaFiles.length + files.length;
+        if (totalMedia > 6) {
+            alert('Massimo 6 file (5 immagini + 1 video)');
+            e.target.value = ''; // Reset input
+            return;
         }
+
+        // Validate each file
+        const validFiles = files.filter(file => {
+            console.log('[CreatePostModal] Validating file:', file.name, file.type, file.size);
+            return validateMedia(file);
+        });
+
+        console.log('[CreatePostModal] Valid files:', validFiles.length);
+
+        if (validFiles.length === 0) {
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        // Create previews
+        const newPreviews = validFiles.map(file => ({
+            file,
+            url: URL.createObjectURL(file),
+            type: file.type.startsWith('image/') ? 'image' : 'video'
+        }));
+
+        setMediaFiles([...mediaFiles, ...validFiles]);
+        setMediaPreviews([...mediaPreviews, ...newPreviews]);
+
+        e.target.value = ''; // Reset input to allow selecting same file again
+    };
+
+    const removeMedia = (index) => {
+        const newFiles = mediaFiles.filter((_, i) => i !== index);
+        const newPreviews = mediaPreviews.filter((_, i) => i !== index);
+
+        // Revoke URL to free memory
+        URL.revokeObjectURL(mediaPreviews[index].url);
+
+        setMediaFiles(newFiles);
+        setMediaPreviews(newPreviews);
     };
 
     const handleSubmit = async (e) => {
@@ -46,30 +112,40 @@ function CreatePostModal({ onClose, onSuccess }) {
             return;
         }
 
+        // Validate review fields
+        if (postType === 'review') {
+            if (!reviewData.itemName || !reviewData.rating) {
+                alert('Per favore inserisci il nome dell\'articolo e una valutazione');
+                return;
+            }
+        }
+
         setLoading(true);
 
         try {
-            let imageUrl = null;
+            let mediaUrls = [];
 
-            if (image) {
-                if (!validateImage(image)) {
-                    setLoading(false);
-                    return;
-                }
-                imageUrl = await uploadImage(image, 'posts');
+            if (mediaFiles.length > 0) {
+                mediaUrls = await uploadMultipleMedia(mediaFiles, 'posts');
             }
 
             const postData = {
                 uid: currentUser.uid,
-                uid: currentUser.uid,
                 entityType: selectedCommunity ? "community" : "user",
                 entityId: selectedCommunity ? selectedCommunity : currentUser.uid,
-                communityId: selectedCommunity || null, // Optional field for easier filtering
+                communityId: selectedCommunity || null,
+                type: postType,
                 text: text,
-                imageUrl: imageUrl,
+                mediaUrls: mediaUrls,
+                imageUrl: mediaUrls.length > 0 ? mediaUrls[0] : null, // Legacy support
                 createdAt: new Date().toISOString(),
                 commentsCount: 0
             };
+
+            // Add review data if it's a review
+            if (postType === 'review') {
+                postData.reviewData = reviewData;
+            }
 
             const response = await fetch(`${API_URL}/posts`, {
                 method: 'POST',
@@ -86,8 +162,11 @@ function CreatePostModal({ onClose, onSuccess }) {
 
             // Reset form and close modal
             setText('');
-            setImage(null);
-            if (onSuccess) onSuccess(); // Trigger reload of feed if needed
+            setMediaFiles([]);
+            setMediaPreviews([]);
+            setReviewData({ itemName: '', itemType: 'coffee', brand: '', rating: 0 });
+            setPostType('post');
+            if (onSuccess) onSuccess();
             onClose();
 
         } catch (error) {
@@ -100,26 +179,100 @@ function CreatePostModal({ onClose, onSuccess }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-content create-post-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Create Post</h2>
+                    <h2>Crea Contenuto</h2>
                     <button className="close-btn" onClick={onClose}>×</button>
                 </div>
 
+                {/* Post Type Tabs */}
+                <div className="post-type-tabs">
+                    <button
+                        type="button"
+                        className={`tab-btn ${postType === 'post' ? 'active' : ''}`}
+                        onClick={() => setPostType('post')}
+                    >
+                        📝 Post
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-btn ${postType === 'review' ? 'active' : ''}`}
+                        onClick={() => setPostType('review')}
+                    >
+                        ⭐ Recensione
+                    </button>
+                </div>
+
                 <form onSubmit={handleSubmit}>
+                    {/* Review-specific fields */}
+                    {postType === 'review' && (
+                        <div className="review-fields">
+                            <div className="form-group">
+                                <label>Nome articolo *</label>
+                                <input
+                                    type="text"
+                                    className="post-input"
+                                    placeholder="es. Ethiopian Yirgacheffe"
+                                    value={reviewData.itemName}
+                                    onChange={(e) => setReviewData({ ...reviewData, itemName: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Tipo di articolo</label>
+                                <select
+                                    className="post-input"
+                                    value={reviewData.itemType}
+                                    onChange={(e) => setReviewData({ ...reviewData, itemType: e.target.value })}
+                                >
+                                    {ITEM_TYPES.map(type => (
+                                        <option key={type.value} value={type.value}>
+                                            {type.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Marca/Torrefazione (opzionale)</label>
+                                <input
+                                    type="text"
+                                    className="post-input"
+                                    placeholder="es. Lavazza, Illy..."
+                                    value={reviewData.brand}
+                                    onChange={(e) => setReviewData({ ...reviewData, brand: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Valutazione *</label>
+                                <div style={{ padding: '12px 0' }}>
+                                    <CoffeeCupRating
+                                        rating={reviewData.rating}
+                                        interactive={true}
+                                        onChange={(rating) => setReviewData({ ...reviewData, rating })}
+                                        size="large"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Text content */}
                     <div className="form-group">
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
-                            placeholder="What's on your mind?"
+                            placeholder={postType === 'review' ? "Racconta la tua esperienza..." : "What's on your mind?"}
                             required
                             rows="4"
                             className="post-input"
                         />
                     </div>
 
+                    {/* Community selector */}
                     <div className="form-group" style={{ marginBottom: '10px', position: 'relative' }}>
-                        {/* Custom Searchable Dropdown Trigger */}
                         <div
                             className="post-input"
                             style={{ padding: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -133,7 +286,6 @@ function CreatePostModal({ onClose, onSuccess }) {
                             <span style={{ fontSize: '12px', opacity: 0.7 }}>{isDropdownOpen ? '▲' : '▼'}</span>
                         </div>
 
-                        {/* Dropdown Menu */}
                         {isDropdownOpen && (
                             <div style={{
                                 position: 'absolute',
@@ -150,7 +302,6 @@ function CreatePostModal({ onClose, onSuccess }) {
                                 display: 'flex',
                                 flexDirection: 'column'
                             }}>
-                                {/* Search Input */}
                                 <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
                                     <input
                                         type="text"
@@ -170,9 +321,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                                     />
                                 </div>
 
-                                {/* Options List */}
                                 <div style={{ overflowY: 'auto', flex: 1, backgroundColor: 'white' }}>
-                                    {/* My Profile Option */}
                                     <div
                                         onClick={() => { setSelectedCommunity(''); setIsDropdownOpen(false); }}
                                         style={{
@@ -188,7 +337,6 @@ function CreatePostModal({ onClose, onSuccess }) {
                                         <strong>👤 My Profile</strong> (Public)
                                     </div>
 
-                                    {/* Filtered Communities */}
                                     {communities
                                         .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                         .map(c => (
@@ -227,18 +375,42 @@ function CreatePostModal({ onClose, onSuccess }) {
                         )}
                     </div>
 
+                    {/* Media upload */}
                     <div className="form-group">
-                        <label htmlFor="modal-image" className="image-upload-label">
-                            {image ? `Image selected: ${image.name}` : "Add Image (Optional)"}
+                        <label htmlFor="modal-media" className="image-upload-label">
+                            {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : "📸 Aggiungi Foto/Video (Opzionale)"}
                         </label>
                         <input
-                            id="modal-image"
+                            id="modal-media"
                             type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
+                            accept="image/*,video/*"
+                            multiple
+                            onChange={handleMediaChange}
                             style={{ display: 'none' }}
                         />
                     </div>
+
+                    {/* Media previews */}
+                    {mediaPreviews.length > 0 && (
+                        <div className="media-previews">
+                            {mediaPreviews.map((preview, index) => (
+                                <div key={index} className="media-preview-item">
+                                    {preview.type === 'image' ? (
+                                        <img src={preview.url} alt={`Preview ${index + 1}`} />
+                                    ) : (
+                                        <video src={preview.url} />
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="remove-media-btn"
+                                        onClick={() => removeMedia(index)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="modal-footer">
                         <button
@@ -246,7 +418,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             disabled={loading}
                             className="submit-btn"
                         >
-                            {loading ? 'Posting...' : 'Post'}
+                            {loading ? 'Posting...' : postType === 'review' ? 'Pubblica Recensione' : 'Post'}
                         </button>
                     </div>
                 </form>

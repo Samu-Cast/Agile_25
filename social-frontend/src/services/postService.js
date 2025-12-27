@@ -152,7 +152,8 @@ export const addComment = async (postId, commentData) => {
             body: JSON.stringify({
                 text: commentData.text,
                 uid: commentData.authorUid,
-                parentComment: commentData.parentComment || null
+                parentComment: commentData.parentComment || null,
+                mediaUrls: commentData.mediaUrls || []
             })
         });
         if (!response.ok) throw new Error('Add comment failed');

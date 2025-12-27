@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { addComment, getComments } from '../services/postService';
+import { uploadMultipleMedia, validateMedia } from '../services/imageService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/components/CommentSection.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-const CommentSection = ({ postId }) => {
+const CommentSection = ({ postId, postType }) => {
     const { currentUser } = useAuth();
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Media upload state (only for reviews)
+    const [mediaFiles, setMediaFiles] = useState([]);
+    const [mediaPreviews, setMediaPreviews] = useState([]);
+
+    const isReview = postType === 'review';
 
     useEffect(() => {
         loadComments();
@@ -45,19 +52,76 @@ const CommentSection = ({ postId }) => {
         }
     };
 
+    const handleMediaChange = (e) => {
+        const files = Array.from(e.target.files);
+
+        // Max 3 media per comment
+        const totalMedia = mediaFiles.length + files.length;
+        if (totalMedia > 3) {
+            alert('Massimo 3 file per commento');
+            e.target.value = '';
+            return;
+        }
+
+        // Validate each file
+        const validFiles = files.filter(file => {
+            const isValid = validateMedia(file);
+            return isValid;
+        });
+
+        if (validFiles.length === 0) {
+            e.target.value = '';
+            return;
+        }
+
+        // Create previews
+        const newPreviews = validFiles.map(file => ({
+            file,
+            url: URL.createObjectURL(file),
+            type: file.type.startsWith('image/') ? 'image' : 'video'
+        }));
+
+        setMediaFiles([...mediaFiles, ...validFiles]);
+        setMediaPreviews([...mediaPreviews, ...newPreviews]);
+
+        e.target.value = '';
+    };
+
+    const removeMedia = (index) => {
+        const newFiles = [...mediaFiles];
+        const newPreviews = [...mediaPreviews];
+
+        URL.revokeObjectURL(newPreviews[index].url);
+
+        newFiles.splice(index, 1);
+        newPreviews.splice(index, 1);
+
+        setMediaFiles(newFiles);
+        setMediaPreviews(newPreviews);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !currentUser) return;
 
         try {
+            // Upload media if any
+            let uploadedMediaUrls = [];
+            if (mediaFiles.length > 0) {
+                uploadedMediaUrls = await uploadMultipleMedia(mediaFiles, 'comments');
+            }
+
             const commentData = {
                 text: newComment,
                 authorUid: currentUser.uid || currentUser.email,
-                parentComment: null
+                parentComment: null,
+                mediaUrls: uploadedMediaUrls
             };
 
             await addComment(postId, commentData);
             setNewComment('');
+            setMediaFiles([]);
+            setMediaPreviews([]);
             loadComments();
         } catch (error) {
             console.error("Error adding comment:", error);
@@ -82,6 +146,20 @@ const CommentSection = ({ postId }) => {
                             <div className="comment-content">
                                 <span className="comment-author">{comment.authorName}</span>
                                 <p className="comment-text">{comment.text}</p>
+
+                                {/* Display media if present */}
+                                {comment.mediaUrls && comment.mediaUrls.length > 0 && (
+                                    <div className="comment-media-grid">
+                                        {comment.mediaUrls.map((url, index) => {
+                                            const isVideo = url.match(/\.(mp4|mov|webm)$/i);
+                                            return isVideo ? (
+                                                <video key={index} src={url} controls className="comment-media-item" />
+                                            ) : (
+                                                <img key={index} src={url} alt="Comment media" className="comment-media-item" />
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
@@ -91,18 +169,58 @@ const CommentSection = ({ postId }) => {
             </div>
 
             {currentUser && (
-                <form className="comment-form" onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        placeholder="Scrivi un commento..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        className="comment-input"
-                    />
-                    <button type="submit" className="comment-submit-btn" disabled={!newComment.trim()}>
-                        ➤
-                    </button>
-                </form>
+                <>
+                    {/* Media Previews */}
+                    {isReview && mediaPreviews.length > 0 && (
+                        <div className="comment-media-previews">
+                            {mediaPreviews.map((preview, index) => (
+                                <div key={index} className="comment-media-preview-item">
+                                    {preview.type === 'image' ? (
+                                        <img src={preview.url} alt="Preview" />
+                                    ) : (
+                                        <video src={preview.url} />
+                                    )}
+                                    <button type="button" onClick={() => removeMedia(index)}>×</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <form className="comment-form" onSubmit={handleSubmit}>
+                        <input
+                            type="text"
+                            placeholder="Scrivi un commento..."
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            className="comment-input"
+                        />
+
+                        {/* Media Upload - ONLY for reviews */}
+                        {isReview && (
+                            <>
+                                <label htmlFor={`comment-media-${postId}`} className="media-upload-btn" title="Aggiungi foto/video">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="2" y="6" width="20" height="14" rx="2" stroke="#6F4E37" strokeWidth="2" />
+                                        <circle cx="12" cy="13" r="3" stroke="#6F4E37" strokeWidth="2" />
+                                        <path d="M8 6L9 4H15L16 6" stroke="#6F4E37" strokeWidth="2" strokeLinecap="round" />
+                                    </svg>
+                                </label>
+                                <input
+                                    id={`comment-media-${postId}`}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    onChange={handleMediaChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </>
+                        )}
+
+                        <button type="submit" className="comment-submit-btn" disabled={!newComment.trim()}>
+                            ➤
+                        </button>
+                    </form>
+                </>
             )}
         </div>
     );

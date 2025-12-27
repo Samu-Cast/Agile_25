@@ -81,6 +81,39 @@ function Profile() {
     const [followersCount, setFollowersCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
 
+    // Load user's posts and reviews
+    useEffect(() => {
+        const loadUserPosts = async () => {
+            if (!user) return;
+            try {
+                const userPosts = await getUserPosts(user.uid, currentUser?.uid);
+
+                // Map data to match PostCard expected format (like Home.js)
+                const formattedPosts = userPosts.map(p => ({
+                    ...p,
+                    author: user.nickname || user.name,
+                    authorAvatar: user.profilePic || user.photoURL,
+                    authorId: user.uid,
+                    content: p.text || p.content,
+                    image: p.imageUrl || null,
+                    mediaUrls: p.mediaUrls || [],
+                    time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now'
+                }));
+
+                // Separate posts from reviews
+                const posts = formattedPosts.filter(p => !p.type || p.type === 'post');
+                const reviews = formattedPosts.filter(p => p.type === 'review');
+
+                setMyPosts(posts);
+                setMyReviews(reviews);
+            } catch (error) {
+                console.error('Error loading user posts:', error);
+            }
+        };
+
+        loadUserPosts();
+    }, [user, currentUser?.uid]);
+
     // Product System State (for Torrefazione)
     const [roasteryProducts, setRoasteryProducts] = useState([]);
     const [roasteryCollections, setRoasteryCollections] = useState([]);
@@ -463,14 +496,9 @@ function Profile() {
         if (!user) return;
 
         const fetchData = async () => {
-            if (activeTab === 'posts') {
-                // Fetch posts for the profile user
-                console.log("Fetching posts for user:", user.uid);
-                // The service returns formatted posts, but we might want raw data or check format.
-                // getUserPosts returns { ...p, content, time } formatted.
-                const posts = await getUserPosts(user.uid);
-                setMyPosts(posts);
-            } else if (activeTab === 'upvoted' && user.role === 'Appassionato') {
+            // Note: posts and reviews are now loaded by the first useEffect (lines 85-103)
+            // which properly filters them by type
+            if (activeTab === 'upvoted' && user.role === 'Appassionato') {
                 // Only show upvoted if it's own profile? Or public? Let's assume public for now or restrict
                 if (isOwnProfile) {
                     const posts = await getUserVotedPosts(user.uid, 1);
@@ -481,9 +509,6 @@ function Profile() {
                     const posts = await getUserVotedPosts(user.uid, -1);
                     setDownvotedPosts(posts);
                 }
-            } else if (activeTab === 'reviews') {
-                // Fetch reviews
-                setMyReviews([]);
             } else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);
                 setMyComments(comments);
@@ -600,12 +625,21 @@ function Profile() {
 
         // Format posts data for display
         if (activeTab === 'posts') {
-            data = myPosts.map(p => ({
-                ...p,
-                image: p.imageUrl || null,
-                title: p.text || 'Post senza testo',
-                type: 'Post'
-            }));
+            // Render posts with PostCard (excluding reviews)
+            return (
+                <div className="profile-feed">
+                    {myPosts.length > 0 ? myPosts.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUser={currentUser}
+                            isLoggedIn={!!currentUser}
+                        />
+                    )) : (
+                        <div className="empty-state">Nessun post trovato.</div>
+                    )}
+                </div>
+            );
         }
         if (activeTab === 'guides') {
             // Mock guides for now, or fetch if implemented
@@ -630,8 +664,21 @@ function Profile() {
         }
 
         if (activeTab === 'reviews') {
-            data = myReviews;
-            type = 'comment';
+            // Render reviews with PostCard like in Home
+            return (
+                <div className="profile-feed">
+                    {myReviews.length > 0 ? myReviews.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUser={currentUser}
+                            isLoggedIn={!!currentUser}
+                        />
+                    )) : (
+                        <div className="empty-state">Nessuna recensione trovata.</div>
+                    )}
+                </div>
+            );
         }
 
         if (data.length === 0 && activeTab !== 'products' && activeTab !== 'collections') {
