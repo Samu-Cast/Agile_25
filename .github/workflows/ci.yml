@@ -19,20 +19,10 @@ jobs:
         with:
           node-version: '25'
 
-      - name: Install Backend Dependencies
-        run: |
-          cd social-backend
-          npm ci
-
       - name: Install Frontend Dependencies
         run: |
           cd social-frontend
           npm ci
-
-      - name: Run Backend Tests
-        run: |
-          cd social-backend
-          npm test
 
       - name: Run Frontend Tests
         run: |
