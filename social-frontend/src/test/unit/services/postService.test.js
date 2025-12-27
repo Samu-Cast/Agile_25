@@ -142,7 +142,8 @@ describe('postService - addComment', () => {
                 body: JSON.stringify({
                     text: 'Nice post!',
                     uid: 'user456',
-                    parentComment: null
+                    parentComment: null,
+                    mediaUrls: []
                 })
             })
         );
