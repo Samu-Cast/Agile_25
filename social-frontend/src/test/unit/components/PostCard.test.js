@@ -16,6 +16,12 @@ jest.mock('../../../services/userService', () => ({
     ]))
 }));
 
+//Mock dei servizi per evitare chiamate reali al backend
+jest.mock('../../../services/postService', () => ({
+    updateVotes: jest.fn(() => Promise.resolve()),
+    toggleSavePost: jest.fn(() => Promise.resolve())
+}));
+
 //Crea una versione finta di fetch per simulare le chiamate al server
 global.fetch = jest.fn();
 
@@ -27,18 +33,13 @@ describe('PostCard Component', () => {
         authorName: 'Author',
         author: 'Author',
         time: '2 hours ago',
-        title: 'Test Post',
         content: 'This is a test post',
         image: null,
         votes: 10, //10 voti positivi
         comments: 5, //5 commenti
-        userVote: 0 //L'utente non ha ancora votato
+        userVote: 0, //L'utente non ha ancora votato
+        isSaved: false //Post non salvato
     };
-
-    //Funzioni finte per tracciare le azioni dell'utente
-    const mockOnVote = jest.fn(); //Funzione chiamata quando si vota
-    const mockOnComment = jest.fn(); //Funzione chiamata quando si commenta
-    const mockOnToggleSave = jest.fn(); //Funzione chiamata quando si salva/rimuove
 
     //Prima di ogni test, pulisce i dati del test precedente
     beforeEach(() => {
@@ -52,16 +53,11 @@ describe('PostCard Component', () => {
         render(
             <PostCard
                 post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                onComment={mockOnComment}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
 
-        //Verifica che il titolo del post sia presente
-        expect(screen.getByText('Test Post')).toBeInTheDocument();
         //Verifica che il contenuto del post sia presente
         expect(screen.getByText('This is a test post')).toBeInTheDocument();
         //Verifica che il nome dell'autore sia presente
@@ -72,16 +68,14 @@ describe('PostCard Component', () => {
         expect(screen.getByText(/5 Comments/i)).toBeInTheDocument();
     });
 
-    //Test: verifica che cliccando upvote venga chiamata la funzione corretta
-    it('dovrebbe chiamare onVote quando si clicca upvote', () => {
+    //Test: verifica che cliccando upvote il conteggio aumenti
+    it('dovrebbe aumentare il voto quando si clicca upvote', () => {
         //Mostra il componente PostCard
         render(
             <PostCard
                 post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
 
@@ -90,20 +84,18 @@ describe('PostCard Component', () => {
         //Simula un click sul bottone upvote
         fireEvent.click(upvoteBtn);
 
-        //Verifica che la funzione onVote sia stata chiamata con i parametri corretti
-        expect(mockOnVote).toHaveBeenCalledWith('post123', 'up');
+        //Verifica che il conteggio voti sia aumentato a 11 (ottimistic update)
+        expect(screen.getByText('11')).toBeInTheDocument();
     });
 
-    //Test: verifica che cliccando downvote venga chiamata la funzione corretta
-    it('dovrebbe chiamare onVote quando si clicca downvote', () => {
+    //Test: verifica che cliccando downvote il conteggio diminuisca
+    it('dovrebbe diminuire il voto quando si clicca downvote', () => {
         //Mostra il componente PostCard
         render(
             <PostCard
                 post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
 
@@ -112,71 +104,53 @@ describe('PostCard Component', () => {
         //Simula un click sul bottone downvote
         fireEvent.click(downvoteBtn);
 
-        //Verifica che la funzione onVote sia stata chiamata con i parametri corretti
-        expect(mockOnVote).toHaveBeenCalledWith('post123', 'down');
+        //Verifica che il conteggio voti sia diminuito a 9 (ottimistic update)
+        expect(screen.getByText('9')).toBeInTheDocument();
     });
 
     //Test: verifica che lo stato salvato/non salvato venga mostrato correttamente
     it('dovrebbe mostrare stato salvato correttamente', () => {
         //Mostra il componente PostCard con post non salvato
-        const { rerender } = render(
+        render(
             <PostCard
                 post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
 
         //Verifica che il testo "Salva" sia presente (post non salvato)
-        expect(screen.getByText(/Salva/i)).toBeInTheDocument();
+        const saveBtn = screen.getByText(/Salva/i);
+        expect(saveBtn).toBeInTheDocument();
 
-        //Ri-mostra il componente con post salvato
-        rerender(
-            <PostCard
-                post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={true}
-                onToggleSave={mockOnToggleSave}
-            />
-        );
+        //Clicca sul bottone "Salva" per salvare il post
+        fireEvent.click(saveBtn);
 
-        //Verifica che il testo "Salvato" sia presente (post salvato)
+        //Verifica che il testo sia cambiato a "Salvato" (ottimistic update)
         expect(screen.getByText(/Salvato/i)).toBeInTheDocument();
     });
 
     //Test: verifica che i commenti possano essere espansi e collassati
-    it('dovrebbe espandere/collassare commenti', async () => {
-        //Configura fetch per ritornare una lista vuota di commenti
-        global.fetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => []
-        });
-
+    it('dovrebbe espandere/collassare commenti', () => {
         //Mostra il componente PostCard
         render(
             <PostCard
                 post={mockPost}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
+
+        //Verifica che la sezione commenti NON sia visibile inizialmente
+        expect(screen.queryByPlaceholderText('Scrivi un commento...')).not.toBeInTheDocument();
 
         //Trova il bottone per mostrare i commenti
         const commentsBtn = screen.getByText(/5 Comments/i);
         //Simula un click sul bottone commenti
         fireEvent.click(commentsBtn);
 
-        //Aspetta che fetch venga chiamato per caricare i commenti
-        await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                'http://localhost:3001/api/posts/post123/comments'
-            );
-        });
+        //Verifica che la sezione commenti sia ora visibile
+        expect(screen.getByPlaceholderText('Scrivi un commento...')).toBeInTheDocument();
     });
 
     //Test: verifica che l'immagine del post venga mostrata se presente
@@ -187,10 +161,8 @@ describe('PostCard Component', () => {
         render(
             <PostCard
                 post={postWithImage}
-                user={{ uid: 'user123' }}
-                onVote={mockOnVote}
-                isSaved={false}
-                onToggleSave={mockOnToggleSave}
+                currentUser={{ uid: 'user123' }}
+                isLoggedIn={true}
             />
         );
 
