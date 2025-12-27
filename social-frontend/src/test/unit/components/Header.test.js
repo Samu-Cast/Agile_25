@@ -29,6 +29,11 @@ jest.mock('../../../context/ChatContext', () => ({
     ChatProvider: ({ children }) => children
 }));
 
+//Mock del servizio utente per evitare chiamate reali
+jest.mock('../../../services/userService', () => ({
+    getUser: jest.fn(() => Promise.resolve({ uid: 'test-user', nickname: 'Test User', photoURL: null })),
+    searchUsers: jest.fn(() => Promise.resolve([]))
+}));
 
 //Gruppo di test per il componente Header
 describe('Header Component', () => {

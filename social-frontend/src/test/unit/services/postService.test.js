@@ -59,6 +59,7 @@ describe('postService - createPost', () => {
         //Verifica che la funzione lanci un errore
         await expect(createPost(postData)).rejects.toThrow();
     });
+
 });
 
 //Gruppo di test per la funzione toggleSavePost

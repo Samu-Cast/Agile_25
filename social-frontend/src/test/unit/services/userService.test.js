@@ -44,6 +44,7 @@ describe('userService - getUser', () => {
         //Verifica che la funzione ritorni null quando l'utente non esiste
         expect(result).toBeNull();
     });
+
 });
 
 //Gruppo di test per la funzione searchUsers

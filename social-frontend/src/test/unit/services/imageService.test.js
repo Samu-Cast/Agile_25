@@ -127,6 +127,7 @@ describe('imageService - uploadImage', () => {
         await expect(uploadImage(file, 'posts')).rejects.toThrow('Upload failed');
     });
 
+
     //Test: verifica che i dati inviati al server siano corretti
     it('dovrebbe inviare FormData con file e folder corretti', async () => {
         //Configura fetch per ritornare una risposta positiva

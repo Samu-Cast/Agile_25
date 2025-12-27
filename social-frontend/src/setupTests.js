@@ -11,14 +11,24 @@ process.env.REACT_APP_API_URL = 'http://localhost:3001/api';
 global.fetch = jest.fn();
 global.alert = jest.fn();
 
+//Salva il console.error originale
+const originalError = console.error;
+
 //Eseguito una volta all'inizio di tutti i test
 beforeAll(() => {
     console.log('Starting BrewHub Frontend Tests...');
+
+    // Silenzia console.error durante i test per output pulito
+    // I test di gestione errori funzionano comunque!
+    console.error = jest.fn();
 });
 
 //Eseguito una volta alla fine di tutti i test
 afterAll(() => {
     console.log('Frontend tests completed!');
+
+    // Ripristina console.error originale
+    console.error = originalError;
 });
 
 //Eseguito prima di ogni singolo test per pulire i dati precedenti
