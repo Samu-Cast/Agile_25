@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import CommentSection from '../components/CommentSection';
-import { toggleSavePost, getFeedPosts, updateVotes } from '../services/postService';
+import { getFeedPosts } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/Home.css';
 import '../styles/components/Sidebar.css';
@@ -34,9 +33,7 @@ const timeAgo = (date) => {
 
 const Feed = ({ isLoggedIn, user, feedType }) => {
     const [posts, setPosts] = React.useState([]);
-    const [expandedPostId, setExpandedPostId] = React.useState(null);
-    // Local state to track user votes: { [postId]: 1 (up) | -1 (down) | 0 (none) }
-    const [userVotes, setUserVotes] = React.useState({});
+
     // Local state to track saved posts: { [postId]: true/false }
     const [savedPosts, setSavedPosts] = React.useState({});
 
@@ -61,8 +58,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
                 const data = await getFeedPosts(params);
 
-                // Initialize votes state
-                const initialVotes = {};
+
 
                 // Extract unique UIDs and Community IDs
                 const uids = [...new Set(data.map(post => post.uid))];
@@ -87,9 +83,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
                 // Map backend data to frontend format
                 const formattedPosts = data.map(post => {
-                    if (post.userVote) {
-                        initialVotes[post.id] = post.userVote;
-                    }
+
 
                     const postUser = userMap[post.uid] || { name: "User", avatar: "https://cdn-icons-png.flaticon.com/512/847/847969.png" };
                     const postCommunity = communityMap[post.communityId];
@@ -113,7 +107,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                 });
 
                 setPosts(formattedPosts);
-                setUserVotes(initialVotes);
+
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }
@@ -135,83 +129,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
         fetchSavedPosts();
     }, [user?.uid, feedType]); // Re-fetch when user or feedType changes
 
-    const toggleComments = (postId) => {
-        if (expandedPostId === postId) {
-            setExpandedPostId(null);
-        } else {
-            setExpandedPostId(postId);
-        }
-    };
 
-    const handleVote = async (postId, type) => {
-        if (!isLoggedIn) return;
-
-        const currentVote = userVotes[postId] || 0;
-        const newVote = currentVote === 1 ? 0 : 1; // Toggle if already upvoted
-
-        // Optimistic update
-        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                let voteChange = 0;
-                if (currentVote === 1) voteChange = -1; // Remove upvote
-                else if (currentVote === -1) voteChange = 2; // Change down to up
-                else voteChange = 1; // Add upvote
-                return { ...p, votes: p.votes + voteChange };
-            }
-            return p;
-        }));
-
-        try {
-            await updateVotes(postId, user?.uid, 1);
-        } catch (error) {
-            console.error("Error liking post:", error);
-            // Revert logic could be added here
-        }
-    };
-
-    const handleDownvote = async (postId) => {
-        if (!isLoggedIn) return;
-
-        const currentVote = userVotes[postId] || 0;
-        const newVote = currentVote === -1 ? 0 : -1; // Toggle if already downvoted
-
-        // Optimistic update
-        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                let voteChange = 0;
-                if (currentVote === -1) voteChange = 1; // Remove downvote
-                else if (currentVote === 1) voteChange = -2; // Change up to down
-                else voteChange = -1; // Add downvote
-                return { ...p, votes: p.votes + voteChange };
-            }
-            return p;
-        }));
-
-        try {
-            await updateVotes(postId, user?.uid, -1);
-        } catch (error) {
-            console.error("Error unliking post:", error);
-        }
-    };
-
-    const handleToggleSave = async (postId) => {
-        if (!isLoggedIn || !user?.uid) return;
-
-        const isSaved = savedPosts[postId] || false;
-
-        // Optimistic update
-        setSavedPosts(prev => ({ ...prev, [postId]: !isSaved }));
-
-        try {
-            await toggleSavePost(postId, user.uid, isSaved);
-        } catch (error) {
-            console.error("Error toggling save:", error);
-            // Revert on error
-            setSavedPosts(prev => ({ ...prev, [postId]: isSaved }));
-        }
-    };
 
     return (
         <main className="feed">
