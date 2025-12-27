@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { searchUsers, getUser } from '../services/userService';
+import { searchUsers, getUser, searchGlobal } from '../services/userService';
 import { useChat } from '../context/ChatContext'; // Import
 import '../styles/components/Header.css';
 
@@ -59,8 +59,10 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
         setSearchQuery(query);
 
         if (query.length > 1) {
-            const results = await searchUsers(query);
-            setSearchResults(results);
+            const results = await searchGlobal(query);
+            // Filter only profiles (users, bars, roasters), exclude posts
+            const profileResults = results.filter(r => ['user', 'bar', 'roaster'].includes(r.type));
+            setSearchResults(profileResults);
             setShowDropdown(true);
         } else {
             setSearchResults([]);
@@ -104,14 +106,21 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
                         <div className="search-dropdown">
                             {searchResults.map(user => (
                                 <div
-                                    key={user.uid}
+                                    key={user.id || user.uid}
                                     className="search-result-item"
-                                    onClick={() => handleUserClick(user.uid)}
+                                    onClick={() => handleUserClick(user.id || user.uid)}
                                 >
                                     <img src={user.profilePic || "https://cdn-icons-png.flaticon.com/512/847/847969.png"} alt={user.nickname} />
                                     <div className="search-result-info">
                                         <span className="search-result-name">{user.nickname || user.name}</span>
-                                        <span className="search-result-role">{user.role || 'Appassionato'}</span>
+                                        <span className="search-result-role">
+                                            {user.role || (user.type === 'bar' ? 'Bar' : user.type === 'roaster' ? 'Torrefazione' : 'Appassionato')}
+                                        </span>
+                                        {(user.location || user.city) && (
+                                            <span className="search-result-location">
+                                                📍 {user.location || user.city}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}

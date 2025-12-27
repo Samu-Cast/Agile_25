@@ -20,6 +20,23 @@ export const searchUsers = async (queryText, role = null) => {
     }
 };
 
+/**
+ * Global search across users, bars, roasters, posts.
+ * @param {string} queryText 
+ * @returns {Promise<Array>}
+ */
+export const searchGlobal = async (queryText) => {
+    try {
+        const params = new URLSearchParams({ q: queryText });
+        const response = await fetch(`${API_URL}/search?${params.toString()}`);
+        if (!response.ok) throw new Error('Global search failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error searching global:", error);
+        return [];
+    }
+};
+
 // In-memory cache for user profiles to reduce read operations
 const userCache = new Map();
 
