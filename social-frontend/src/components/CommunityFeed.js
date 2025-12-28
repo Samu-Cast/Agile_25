@@ -103,12 +103,15 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
 
                     return {
                         id: post.id,
+                        type: post.type || 'post', // Include post type (review, post, etc.)
                         author: postUser.name,
                         authorAvatar: postUser.avatar,
                         authorId: post.uid,
                         time: post.createdAt ? timeAgo(new Date(post.createdAt)) : "just now",
                         content: post.text,
                         image: post.imageUrl,
+                        mediaUrls: post.mediaUrls || [], // Include media URLs array for carousel
+                        reviewData: post.reviewData || null, // Include review data for review posts
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,

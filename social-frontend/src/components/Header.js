@@ -54,20 +54,29 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
         };
     }, []);
 
-    const handleSearchChange = async (e) => {
-        const query = e.target.value;
-        setSearchQuery(query);
+    // Debounced search - only query after user stops typing for 300ms
+    useEffect(() => {
+        if (searchQuery.length > 1) {
+            const timer = setTimeout(async () => {
+                try {
+                    const results = await searchGlobal(searchQuery);
+                    const profileResults = results.filter(r => ['user', 'bar', 'roaster'].includes(r.type));
+                    setSearchResults(profileResults);
+                    setShowDropdown(true);
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300); // Wait 300ms after user stops typing
 
-        if (query.length > 1) {
-            const results = await searchGlobal(query);
-            // Filter only profiles (users, bars, roasters), exclude posts
-            const profileResults = results.filter(r => ['user', 'bar', 'roaster'].includes(r.type));
-            setSearchResults(profileResults);
-            setShowDropdown(true);
+            return () => clearTimeout(timer);
         } else {
             setSearchResults([]);
             setShowDropdown(false);
         }
+    }, [searchQuery]);
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
     };
 
     const handleUserClick = (uid) => {
