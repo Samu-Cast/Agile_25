@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import '../styles/components/MediaGallery.css';
 
 /**
  * MediaGallery Component
- * Displays a grid of images and videos with lightbox functionality
+ * Displays a horizontal carousel of images and videos with navigation
  * 
  * @param {Array<string>} mediaUrls - Array of image/video URLs
  * @param {string} altText - Alt text for images
  */
 function MediaGallery({ mediaUrls = [], altText = "Media content" }) {
-    const [lightboxIndex, setLightboxIndex] = useState(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const carouselRef = useRef(null);
 
     if (!mediaUrls || mediaUrls.length === 0) return null;
 
@@ -17,41 +18,52 @@ function MediaGallery({ mediaUrls = [], altText = "Media content" }) {
         return url && (url.includes('.mp4') || url.includes('.mov') || url.includes('.webm') || url.includes('video'));
     };
 
-    const openLightbox = (index) => {
-        setLightboxIndex(index);
-    };
-
-    const closeLightbox = () => {
-        setLightboxIndex(null);
-    };
-
     const goToNext = (e) => {
-        e.stopPropagation();
-        setLightboxIndex((prev) => (prev + 1) % mediaUrls.length);
+        if (e) e.stopPropagation();
+        const nextIndex = (currentIndex + 1) % mediaUrls.length;
+        setCurrentIndex(nextIndex);
+        scrollToIndex(nextIndex);
     };
 
     const goToPrev = (e) => {
-        e.stopPropagation();
-        setLightboxIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
+        if (e) e.stopPropagation();
+        const prevIndex = (currentIndex - 1 + mediaUrls.length) % mediaUrls.length;
+        setCurrentIndex(prevIndex);
+        scrollToIndex(prevIndex);
     };
 
-    const getGridClass = () => {
-        const count = mediaUrls.length;
-        if (count === 1) return 'grid-single';
-        if (count === 2) return 'grid-two';
-        if (count === 3) return 'grid-three';
-        if (count === 4) return 'grid-four';
-        return 'grid-many';
+    const scrollToIndex = (index) => {
+        if (carouselRef.current) {
+            const itemWidth = carouselRef.current.offsetWidth;
+            carouselRef.current.scrollTo({
+                left: itemWidth * index,
+                behavior: 'smooth'
+            });
+        }
+    };
+
+    const handleScroll = () => {
+        if (carouselRef.current) {
+            const scrollLeft = carouselRef.current.scrollLeft;
+            const itemWidth = carouselRef.current.offsetWidth;
+            const newIndex = Math.round(scrollLeft / itemWidth);
+            if (newIndex !== currentIndex) {
+                setCurrentIndex(newIndex);
+            }
+        }
     };
 
     return (
-        <>
-            <div className={`media-gallery ${getGridClass()}`}>
+        <div className="media-gallery-container">
+            <div
+                className="media-carousel"
+                ref={carouselRef}
+                onScroll={handleScroll}
+            >
                 {mediaUrls.map((url, index) => (
                     <div
                         key={index}
-                        className="media-item"
-                        onClick={() => openLightbox(index)}
+                        className="carousel-item"
                     >
                         {isVideo(url) ? (
                             <video
@@ -78,49 +90,41 @@ function MediaGallery({ mediaUrls = [], altText = "Media content" }) {
                 ))}
             </div>
 
-            {/* Lightbox */}
-            {lightboxIndex !== null && (
-                <div className="lightbox" onClick={closeLightbox}>
-                    <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-                        {isVideo(mediaUrls[lightboxIndex]) ? (
-                            <video
-                                src={mediaUrls[lightboxIndex]}
-                                controls
-                                autoPlay
-                                className="lightbox-media"
-                            >
-                                Your browser does not support the video tag.
-                            </video>
-                        ) : (
-                            <img
-                                src={mediaUrls[lightboxIndex]}
-                                alt={`${altText} ${lightboxIndex + 1}`}
-                                className="lightbox-media"
+            {/* Navigation Arrows - only show if more than 1 media */}
+            {mediaUrls.length > 1 && (
+                <>
+                    <button
+                        className="carousel-nav prev"
+                        onClick={goToPrev}
+                        aria-label="Previous"
+                    >
+                        ‹
+                    </button>
+                    <button
+                        className="carousel-nav next"
+                        onClick={goToNext}
+                        aria-label="Next"
+                    >
+                        ›
+                    </button>
+
+                    {/* Indicators */}
+                    <div className="carousel-indicators">
+                        {mediaUrls.map((_, index) => (
+                            <button
+                                key={index}
+                                className={`indicator ${index === currentIndex ? 'active' : ''}`}
+                                onClick={() => {
+                                    setCurrentIndex(index);
+                                    scrollToIndex(index);
+                                }}
+                                aria-label={`Go to slide ${index + 1}`}
                             />
-                        )}
-
-                        {mediaUrls.length > 1 && (
-                            <>
-                                <button className="lightbox-nav prev" onClick={goToPrev}>
-                                    ‹
-                                </button>
-                                <button className="lightbox-nav next" onClick={goToNext}>
-                                    ›
-                                </button>
-                            </>
-                        )}
-
-                        <button className="lightbox-close" onClick={closeLightbox}>
-                            ×
-                        </button>
-
-                        <div className="lightbox-counter">
-                            {lightboxIndex + 1} / {mediaUrls.length}
-                        </div>
+                        ))}
                     </div>
-                </div>
+                </>
             )}
-        </>
+        </div>
     );
 }
 

@@ -7,14 +7,24 @@ const { admin } = require('../config/firebase');
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB
+        fileSize: 50 * 1024 * 1024 // 50MB to support videos
     },
     fileFilter: (req, file, cb) => {
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
+        const validTypes = [...validImageTypes, ...validVideoTypes];
+
         if (validTypes.includes(file.mimetype)) {
-            cb(null, true);
+            // Additional size check based on file type
+            if (file.mimetype.startsWith('image/') && req.headers['content-length'] > 5 * 1024 * 1024) {
+                cb(new Error('Image file too large. Maximum 5MB for images.'));
+            } else if (file.mimetype.startsWith('video/') && req.headers['content-length'] > 50 * 1024 * 1024) {
+                cb(new Error('Video file too large. Maximum 50MB for videos.'));
+            } else {
+                cb(null, true);
+            }
         } else {
-            cb(new Error('Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.'));
+            cb(new Error('Invalid file type. Only images (JPG, PNG, GIF, WebP) and videos (MP4, MOV, WebM) are allowed.'));
         }
     }
 });
