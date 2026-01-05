@@ -1,163 +1,132 @@
-//Test per verificare che il componente PostCard (card del post) funzioni correttamente
-//Importa le funzioni per testare i componenti React
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-//Importa il componente PostCard da testare
-import PostCard from '../../../components/PostCard';
 
-//Crea una versione finta del contesto di autenticazione
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import PostCard from '../../../components/PostCard';
+import { act } from 'react';
+
+// Mock AuthContext
 jest.mock('../../../context/AuthContext', () => ({
     useAuth: () => ({ currentUser: { uid: 'user123', displayName: 'Test User' } })
 }));
 
-//Crea una versione finta del servizio utente
-jest.mock('../../../services/userService', () => ({
-    getUsersByUids: jest.fn(() => Promise.resolve([
-        { uid: 'user456', nickname: 'Author', profilePic: null }
-    ])),
-    getUser: jest.fn(() => Promise.resolve({ uid: 'user123', nickname: 'Test User' }))
-}));
-
-//Mock dei servizi per evitare chiamate reali al backend
+// Mock Post Service
 jest.mock('../../../services/postService', () => ({
     updateVotes: jest.fn(() => Promise.resolve()),
     toggleSavePost: jest.fn(() => Promise.resolve()),
-    getComments: jest.fn(() => Promise.resolve([])),
-    addComment: jest.fn(() => Promise.resolve({ id: 'comment1', text: 'Test comment' }))
 }));
 
-//Crea una versione finta di fetch per simulare le chiamate al server
-global.fetch = jest.fn();
+// Mock Child Components
+jest.mock('../../../components/CoffeeCupRating', () => (props) => (
+    <div data-testid="coffee-rating">Rating: {props.rating}</div>
+));
+jest.mock('../../../components/MediaGallery', () => (props) => (
+    <div data-testid="media-gallery">{props.mediaUrls.length} items</div>
+));
+jest.mock('../../../components/CommentSection', () => () => (
+    <div data-testid="comment-section">Comments</div>
+));
 
-//Gruppo di test per il componente PostCard
 describe('PostCard Component', () => {
-    //Dati finti di un post da usare nei test
     const mockPost = {
-        id: 'post123',
-        authorName: 'Author',
-        author: 'Author',
-        time: '2 hours ago',
-        content: 'This is a test post',
-        image: null,
-        votes: 10, //10 voti positivi
-        comments: 5, //5 commenti
-        userVote: 0, //L'utente non ha ancora votato
-        isSaved: false //Post non salvato
+        id: 'post1',
+        author: 'User One',
+        authorAvatar: 'avatar.jpg',
+        time: '1h ago',
+        content: 'Hello World',
+        votes: 10,
+        comments: 5,
+        userVote: 0,
+        isSaved: false,
+        type: 'post'
     };
 
-    //Prima di ogni test, pulisce i dati del test precedente
-    beforeEach(() => {
-        jest.clearAllMocks();
-        global.fetch.mockClear();
-        // Mock default per fetch (usato da CommentSection per caricare utenti)
-        global.fetch.mockResolvedValue({
-            ok: true,
-            json: async () => ({ uid: 'user123', displayName: 'Test User', photoURL: null })
-        });
+    const mockReviewPost = {
+        ...mockPost,
+        type: 'review',
+        reviewData: {
+            itemName: 'Best Coffee',
+            brand: 'Lavazza',
+            rating: 4,
+            itemType: 'coffee'
+        }
+    };
+
+    const mockPostWithMedia = {
+        ...mockPost,
+        mediaUrls: ['url1.jpg', 'url2.mp4']
+    };
+
+    const currentUser = { uid: 'user123' };
+
+    it('renders basic post info', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
+
+        expect(screen.getByText('User One')).toBeInTheDocument();
+        expect(screen.getByText('Hello World')).toBeInTheDocument();
+        expect(screen.getByText('10')).toBeInTheDocument(); // Votes
+        expect(screen.getByText(/5 Comments/)).toBeInTheDocument();
     });
 
-    //Test: verifica che il post venga mostrato correttamente
-    it('dovrebbe renderizzare post correttamente', () => {
-        //Mostra il componente PostCard con i dati del post
-        render(
-            <PostCard
-                post={mockPost}
-                currentUser={{ uid: 'user123' }}
-                isLoggedIn={true}
-            />
-        );
+    it('renders review details for review type', () => {
+        render(<PostCard post={mockReviewPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        //Verifica che il contenuto del post sia presente
-        expect(screen.getByText('This is a test post')).toBeInTheDocument();
-        //Verifica che il nome dell'autore sia presente
-        expect(screen.getByText('Author')).toBeInTheDocument();
-        //Verifica che il numero di voti sia presente
-        expect(screen.getByText('10')).toBeInTheDocument();
-        //Verifica che il numero di commenti sia presente
-        expect(screen.getByText(/5 Comments/i)).toBeInTheDocument();
+        expect(screen.getByText('⭐ Recensione')).toBeInTheDocument();
+        expect(screen.getByText('Best Coffee')).toBeInTheDocument();
+        expect(screen.getByText('Lavazza')).toBeInTheDocument();
+        expect(screen.getByText('Rating: 4')).toBeInTheDocument();
     });
 
-    //Test: verifica che cliccando upvote il conteggio aumenti
-    it('dovrebbe aumentare il voto quando si clicca upvote', () => {
-        //Mostra il componente PostCard
-        render(
-            <PostCard
-                post={mockPost}
-                currentUser={{ uid: 'user123' }}
-                isLoggedIn={true}
-            />
-        );
+    it('renders media gallery when multiple media items exist', () => {
+        render(<PostCard post={mockPostWithMedia} currentUser={currentUser} isLoggedIn={true} />);
 
-        //Trova il bottone upvote
-        const upvoteBtn = screen.getByText('▲');
-        //Simula un click sul bottone upvote
-        fireEvent.click(upvoteBtn);
+        expect(screen.getByTestId('media-gallery')).toHaveTextContent('2 items');
+    });
 
-        //Verifica che il conteggio voti sia aumentato a 11 (ottimistic update)
+    it('renders single image if only one image provided (legacy support)', () => {
+        const legacyPost = { ...mockPost, image: 'img.jpg' };
+        render(<PostCard post={legacyPost} currentUser={currentUser} isLoggedIn={true} />);
+
+        const img = screen.getByAltText('Post content');
+        expect(img).toHaveAttribute('src', 'img.jpg');
+    });
+
+    it('handles upvote', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
+
+        fireEvent.click(screen.getByText('▲'));
         expect(screen.getByText('11')).toBeInTheDocument();
     });
 
-    //Test: verifica che cliccando downvote il conteggio diminuisca
-    it('dovrebbe diminuire il voto quando si clicca downvote', () => {
-        //Mostra il componente PostCard
-        render(
-            <PostCard
-                post={mockPost}
-                currentUser={{ uid: 'user123' }}
-                isLoggedIn={true}
-            />
-        );
+    it('handles downvote', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        //Trova il bottone downvote
-        const downvoteBtn = screen.getByText('▼');
-        //Simula un click sul bottone downvote
-        fireEvent.click(downvoteBtn);
-
-        //Verifica che il conteggio voti sia diminuito a 9 (ottimistic update)
+        fireEvent.click(screen.getByText('▼'));
         expect(screen.getByText('9')).toBeInTheDocument();
     });
 
-    //Test: verifica che lo stato salvato/non salvato venga gestito correttamente
-    it('dovrebbe gestire il salvataggio del post', () => {
-        //Mostra il componente PostCard con post non salvato
-        render(
-            <PostCard
-                post={mockPost}
-                currentUser={{ uid: 'user123' }}
-                isLoggedIn={true}
-            />
-        );
+    it('toggles save status', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        //Verifica che il testo "Salva" sia presente (post non salvato)
-        const saveBtn = screen.getByText(/Salva/i);
-        expect(saveBtn).toBeInTheDocument();
-
-        //Clicca sul bottone "Salva" per salvare il post
+        const saveBtn = screen.getByText(/Salva/);
         fireEvent.click(saveBtn);
 
-        //Verifica che il testo sia cambiato a "Salvato" (ottimistic update)
-        expect(screen.getByText(/Salvato/i)).toBeInTheDocument();
+        expect(screen.getByText(/Salvato/)).toBeInTheDocument();
     });
 
+    it('toggles comment section', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
+        expect(screen.queryByTestId('comment-section')).not.toBeInTheDocument();
 
-    //Test: verifica che l'immagine del post venga mostrata se presente
-    it('dovrebbe mostrare immagine se presente', () => {
-        //Crea un post con immagine
-        const postWithImage = { ...mockPost, image: 'https://example.com/img.jpg' };
-        //Mostra il componente PostCard con il post che ha immagine
-        render(
-            <PostCard
-                post={postWithImage}
-                currentUser={{ uid: 'user123' }}
-                isLoggedIn={true}
-            />
-        );
+        fireEvent.click(screen.getByText(/Comments/));
 
-        //Trova l'immagine usando il testo alternativo
-        const img = screen.getByAltText('Post content');
-        //Verifica che l'immagine sia presente
-        expect(img).toBeInTheDocument();
-        //Verifica che l'immagine abbia l'URL corretto
-        expect(img).toHaveAttribute('src', 'https://example.com/img.jpg');
+        expect(screen.getByTestId('comment-section')).toBeInTheDocument();
+    });
+
+    it('displays community info if active', () => {
+        const communityPost = { ...mockPost, communityName: 'Coffee Lovers' };
+        render(<PostCard post={communityPost} currentUser={currentUser} isLoggedIn={true} showCommunityInfo={true} />);
+
+        expect(screen.getByText('Coffee Lovers')).toBeInTheDocument();
     });
 });

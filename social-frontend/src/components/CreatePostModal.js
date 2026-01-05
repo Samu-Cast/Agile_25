@@ -208,8 +208,9 @@ function CreatePostModal({ onClose, onSuccess }) {
                     {postType === 'review' && (
                         <div className="review-fields">
                             <div className="form-group">
-                                <label>Nome articolo *</label>
+                                <label htmlFor="review-itemName">Nome articolo *</label>
                                 <input
+                                    id="review-itemName"
                                     type="text"
                                     className="post-input"
                                     placeholder="es. Ethiopian Yirgacheffe"
@@ -220,8 +221,9 @@ function CreatePostModal({ onClose, onSuccess }) {
                             </div>
 
                             <div className="form-group">
-                                <label>Tipo di articolo</label>
+                                <label htmlFor="review-itemType">Tipo di articolo</label>
                                 <select
+                                    id="review-itemType"
                                     className="post-input"
                                     value={reviewData.itemType}
                                     onChange={(e) => setReviewData({ ...reviewData, itemType: e.target.value })}
@@ -235,8 +237,9 @@ function CreatePostModal({ onClose, onSuccess }) {
                             </div>
 
                             <div className="form-group">
-                                <label>Marca/Torrefazione (opzionale)</label>
+                                <label htmlFor="review-brand">Marca/Torrefazione (opzionale)</label>
                                 <input
+                                    id="review-brand"
                                     type="text"
                                     className="post-input"
                                     placeholder="es. Lavazza, Illy..."

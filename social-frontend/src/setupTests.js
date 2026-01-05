@@ -8,8 +8,10 @@ import '@testing-library/jest-dom';
 process.env.REACT_APP_API_URL = 'http://localhost:3001/api';
 
 //Crea versioni finte di fetch e alert per i test
-global.fetch = jest.fn();
-global.alert = jest.fn();
+global.fetch = jest.fn(() => Promise.resolve({
+    ok: true,
+    json: async () => []
+}));
 
 //Salva il console.error originale
 const originalError = console.error;
