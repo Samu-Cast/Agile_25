@@ -55,7 +55,7 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('⭐ Recensione'));
 
         expect(screen.getByLabelText('Nome articolo *')).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("Racconta la tua esperienza...")).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)")).toBeInTheDocument();
     });
 
     it('submits a simple post', async () => {
@@ -90,7 +90,7 @@ describe('CreatePostModal', () => {
         fireEvent.change(screen.getByLabelText('Nome articolo *'), {
             target: { value: 'Good Coffee' }
         });
-        fireEvent.change(screen.getByPlaceholderText("Racconta la tua esperienza..."), {
+        fireEvent.change(screen.getByPlaceholderText("Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)"), {
             target: { value: 'Best coffee ever' }
         });
 
