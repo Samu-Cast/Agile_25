@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
 import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost } from '../services/postService';
-import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct } from '../services/userService';
+import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct, deleteProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection } from '../services/collectionService';
 import PostCard from '../components/PostCard';
@@ -553,18 +553,16 @@ function Profile() {
                 if (roleData && roleData.id) {
                     const collections = await getCollections(roleData.id);
                     setRoasteryCollections(collections);
-                    // Also fetch products for the manager if owner
-                    if (isOwnProfile) {
-                        const products = await getRoasteryProducts(roleData.id);
-                        setRoasteryProducts(products);
-                    }
+                    // Also fetch products for the manager (owner) OR for details popup (visitor)
+                    const products = await getRoasteryProducts(roleData.id);
+                    setRoasteryProducts(products);
                 }
             }
             // Guides would be fetched here if we had a backend for them
         };
 
         fetchData();
-    }, [activeTab, user, isOwnProfile]);
+    }, [activeTab, user, isOwnProfile, roleData]);
 
     // Mock Content Data (Removed static mocks for dynamic tabs)
     const guides = [
@@ -573,19 +571,35 @@ function Profile() {
 
     const handleSaveCollection = async (collectionData) => {
         try {
+            // Keep track of promoted collections (local state) to restore after refresh
+            const promotedIds = new Set(roasteryCollections.filter(c => c.isPromoted).map(c => c.id));
+
             if (editingCollection) {
-                await updateCollection(currentUserRoleData.id, editingCollection.id, collectionData);
+                await updateCollection(roleData.id, editingCollection.id, collectionData);
                 Swal.fire('Success', 'Collezione aggiornata!', 'success');
             } else {
-                await createCollection(currentUserRoleData.id, collectionData);
+                await createCollection(roleData.id, collectionData);
                 Swal.fire('Success', 'Collezione creata!', 'success');
             }
             setShowCollectionModal(false);
             setEditingCollection(null);
-            // Refresh collections
-            const cols = await getCollections(currentUserRoleData.id);
-            setRoasteryCollections(cols);
+
+            // Refresh collections from backend
+            const cols = await getCollections(roleData.id);
+
+            // Restore local promotion state and sort
+            const mergedCols = cols.map(c => ({
+                ...c,
+                isPromoted: promotedIds.has(c.id)
+            })).sort((a, b) => {
+                if (a.isPromoted && !b.isPromoted) return -1;
+                if (!a.isPromoted && b.isPromoted) return 1;
+                return 0;
+            });
+
+            setRoasteryCollections(mergedCols);
         } catch (error) {
+            console.error(error);
             Swal.fire('Error', 'Operazione fallita', 'error');
         }
     };
@@ -603,11 +617,27 @@ function Profile() {
             });
 
             if (result.isConfirmed) {
-                await deleteCollection(currentUserRoleData.id, collectionId, currentUser.uid);
+                // Keep track of promoted collections
+                const promotedIds = new Set(roasteryCollections.filter(c => c.isPromoted).map(c => c.id));
+                promotedIds.delete(collectionId); // Remove deleted one
+
+                await deleteCollection(roleData.id, collectionId, currentUser.uid);
                 Swal.fire('Deleted!', 'La collezione è stata eliminata.', 'success');
+
                 // Refresh
-                const cols = await getCollections(currentUserRoleData.id);
-                setRoasteryCollections(cols);
+                const cols = await getCollections(roleData.id);
+
+                // Restore local promotion state and sort
+                const mergedCols = cols.map(c => ({
+                    ...c,
+                    isPromoted: promotedIds.has(c.id)
+                })).sort((a, b) => {
+                    if (a.isPromoted && !b.isPromoted) return -1;
+                    if (!a.isPromoted && b.isPromoted) return 1;
+                    return 0;
+                });
+
+                setRoasteryCollections(mergedCols);
             }
         } catch (error) {
             Swal.fire('Error', 'Eliminazione fallita', 'error');
@@ -617,6 +647,91 @@ function Profile() {
     const openCollectionModal = (collection = null) => {
         setEditingCollection(collection);
         setShowCollectionModal(true);
+    };
+
+    // Toggle collection promotion - local state only, promoted ones sorted first
+    const handleTogglePromote = (collection) => {
+        setRoasteryCollections(prev => {
+            // Toggle the isPromoted status
+            const updated = prev.map(col =>
+                col.id === collection.id
+                    ? { ...col, isPromoted: !col.isPromoted }
+                    : col
+            );
+            // Sort: promoted first
+            return updated.sort((a, b) => {
+                if (a.isPromoted && !b.isPromoted) return -1;
+                if (!a.isPromoted && b.isPromoted) return 1;
+                return 0;
+            });
+        });
+    };
+
+    // Show collection details popup for non-owners
+    const showCollectionDetails = (collection) => {
+        // Get full product details
+        const products = collection.products?.map(prodId =>
+            roasteryProducts.find(p => p.id === prodId)
+        ).filter(Boolean) || [];
+
+        // Calculate total cost
+        const totalCost = products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+
+        // Build products list HTML
+        const productsHtml = products.length > 0
+            ? products.map(p => `
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span>${p.name}</span>
+                    <strong>€${p.price || '0'}</strong>
+                </div>
+            `).join('')
+            : '<p style="color: #888;">Nessun prodotto in questa collezione</p>';
+
+        Swal.fire({
+            title: collection.name,
+            html: `
+                <div style="text-align: center;">
+                    <p style="color: #666; margin-bottom: 16px;">${collection.description || 'Nessuna descrizione'}</p>
+                    <h4 style="margin-bottom: 8px;">Prodotti (${products.length})</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${productsHtml}
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #6F4E37; display: flex; justify-content: space-between;">
+                        <strong>Totale</strong>
+                        <strong style="color: #6F4E37; font-size: 18px;">€${totalCost.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `,
+            showCloseButton: true,
+            showConfirmButton: false,
+            width: 400
+        });
+    };
+
+    const handleDeleteProduct = async (productId, e) => {
+        e.stopPropagation();
+
+        const result = await Swal.fire({
+            title: 'Elimina prodotto',
+            text: "Sei sicuro di voler rimuovere questo prodotto?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Elimina',
+            cancelButtonText: 'Annulla'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await deleteProduct(currentUserRoleData.id, productId);
+                setRoasteryProducts(prev => prev.filter(p => p.id !== productId));
+                Swal.fire('Eliminato!', 'Il prodotto è stato rimosso.', 'success');
+            } catch (error) {
+                console.error("Error deleting product:", error);
+                Swal.fire('Errore', 'Impossibile eliminare il prodotto.', 'error');
+            }
+        }
     };
 
     const renderContent = () => {
@@ -734,14 +849,47 @@ function Profile() {
                     )}
                     <div className="products-grid">
                         {roasteryProducts.length > 0 ? roasteryProducts.map(product => (
-                            <div key={product.id} className="product-card">
+                            <div key={product.id} className="product-card" style={{ position: 'relative' }}>
                                 <div className="product-image">
-                                    <img src={product.imageUrl || 'https://via.placeholder.com/150'} alt={product.name} />
+                                    {product.imageUrl ? (
+                                        <img src={product.imageUrl} alt={product.name} />
+                                    ) : (
+                                        <div style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '3rem',
+                                            color: '#6F4E37',
+                                            backgroundColor: '#e0e0e0'
+                                        }}>
+                                            ☕
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="product-info">
                                     <h3>{product.name}</h3>
                                     <p className="product-desc">{product.description}</p>
-                                    {product.price && <p className="product-price">€ {product.price}</p>}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                                        {product.price ? <p className="product-price">€ {product.price}</p> : <span></span>}
+                                        {isOwnProfile && (
+                                            <button
+                                                onClick={(e) => handleDeleteProduct(product.id, e)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: '#d33',
+                                                    fontSize: '18px',
+                                                    padding: '4px'
+                                                }}
+                                                title="Elimina prodotto"
+                                            >
+                                                🗑
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )) : (
@@ -778,8 +926,8 @@ function Profile() {
                                     <div
                                         key={col.id}
                                         className="product-card"
-                                        onClick={() => isOwnProfile ? openCollectionModal(col) : null}
-                                        style={{ cursor: isOwnProfile ? 'pointer' : 'default', position: 'relative' }}
+                                        onClick={() => isOwnProfile ? openCollectionModal(col) : showCollectionDetails(col)}
+                                        style={{ cursor: 'pointer', position: 'relative' }}
                                     >
                                         <div className="product-image" style={{ position: 'relative', backgroundColor: '#e0e0e0', overflow: 'hidden' }}>
                                             {collectionImages.length > 0 ? (
@@ -805,16 +953,53 @@ function Profile() {
                                                     ))}
                                                 </>
                                             ) : (
-                                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                                                <div style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: '3rem',
+                                                    color: '#6F4E37',
+                                                    backgroundColor: '#e0e0e0'
+                                                }}>
                                                     ☕
                                                 </div>
                                             )}
                                         </div>
                                         <div className="product-info">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h3>{col.name}</h3>
+                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <h3>{col.name}</h3>
+                                                    {col.isPromoted && (
+                                                        <span style={{
+                                                            background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                                                            color: '#5D4037',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '10px',
+                                                            fontSize: '10px',
+                                                            fontWeight: '700',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            In Evidenza
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {isOwnProfile && (
-                                                    <div className="collection-actions" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="collection-actions" onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0 }}>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleTogglePromote(col); }}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                color: col.isPromoted ? '#FFD700' : '#888',
+                                                                fontSize: '18px'
+                                                            }}
+                                                            title={col.isPromoted ? 'Rimuovi promozione' : 'Promuovi collezione'}
+                                                        >
+                                                            {col.isPromoted ? '⭐' : '☆'}
+                                                        </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d33' }}
@@ -824,8 +1009,8 @@ function Profile() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <p className="product-desc">{col.description}</p>
-                                            <p className="product-price" style={{ fontSize: '0.9rem', color: '#8D6E63' }}>{col.products?.length || 0} prodotti</p>
+                                            <p className="product-desc" style={{ textAlign: 'center' }}>{col.description}</p>
+                                            <p className="product-price" style={{ fontSize: '0.9rem', color: '#8D6E63', textAlign: 'center' }}>{col.products?.length || 0} prodotti</p>
                                         </div>
                                     </div>
                                 );
@@ -1090,7 +1275,7 @@ function Profile() {
                                 className={`tab-button ${activeTab === 'collections' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('collections')}
                             >
-                                Raccolte
+                                Collezioni
                             </button>
                         </>
                     )
@@ -1320,6 +1505,7 @@ function Profile() {
             )}
         </div >
     );
+
 }
 
 export default Profile;

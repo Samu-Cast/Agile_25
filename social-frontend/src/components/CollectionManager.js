@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/components/CollectionManager.css'; // Will create this css next
+import '../styles/components/CollectionManager.css';
 
 const CollectionManager = ({ roasterId, currentUser, products, onClose, onSave, initialData = null }) => {
     const [name, setName] = useState(initialData?.name || '');

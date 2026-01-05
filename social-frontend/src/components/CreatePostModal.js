@@ -36,6 +36,11 @@ function CreatePostModal({ onClose, onSuccess }) {
         rating: 0
     });
 
+    // Comparison fields
+    const [isComparison, setIsComparison] = useState(false);
+    const [comparisonTitle1, setComparisonTitle1] = useState('');
+    const [comparisonTitle2, setComparisonTitle2] = useState('');
+
     const { currentUser } = useAuth();
 
     useEffect(() => {
@@ -118,6 +123,10 @@ function CreatePostModal({ onClose, onSuccess }) {
                 alert('Per favore inserisci il nome dell\'articolo e una valutazione');
                 return;
             }
+            if (isComparison && (!comparisonTitle1 || !comparisonTitle2)) {
+                alert('Per favore inserisci i nomi di entrambe le miscele per il confronto');
+                return;
+            }
         }
 
         setLoading(true);
@@ -144,7 +153,14 @@ function CreatePostModal({ onClose, onSuccess }) {
 
             // Add review data if it's a review
             if (postType === 'review') {
-                postData.reviewData = reviewData;
+                postData.reviewData = {
+                    ...reviewData,
+                    comparison: isComparison ? {
+                        isActive: true,
+                        item1: comparisonTitle1,
+                        item2: comparisonTitle2
+                    } : null
+                };
             }
 
             const response = await fetch(`${API_URL}/posts`, {
@@ -207,6 +223,42 @@ function CreatePostModal({ onClose, onSuccess }) {
                     {/* Review-specific fields */}
                     {postType === 'review' && (
                         <div className="review-fields">
+                            {/* Comparison Toggle */}
+                            <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #eee' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: '600', color: '#5D4037', marginBottom: isComparison ? '12px' : '0' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={isComparison}
+                                        onChange={(e) => setIsComparison(e.target.checked)}
+                                        style={{ marginRight: '10px', width: '16px', height: '16px', accentColor: '#6F4E37' }}
+                                    />
+                                    Confronto tra due miscele?
+                                </label>
+
+                                {isComparison && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <input
+                                            type="text"
+                                            className="post-input"
+                                            placeholder="Miscela 1"
+                                            value={comparisonTitle1}
+                                            onChange={(e) => setComparisonTitle1(e.target.value)}
+                                            style={{ flex: 1 }}
+                                            required
+                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#888' }}>VS</div>
+                                        <input
+                                            type="text"
+                                            className="post-input"
+                                            placeholder="Miscela 2"
+                                            value={comparisonTitle2}
+                                            onChange={(e) => setComparisonTitle2(e.target.value)}
+                                            style={{ flex: 1 }}
+                                            required
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             <div className="form-group">
                                 <label htmlFor="review-itemName">Nome articolo *</label>
                                 <input
@@ -249,7 +301,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             </div>
 
                             <div className="form-group">
-                                <label>Valutazione *</label>
+                                <label>Valutazione o risultato eventuale confronto*</label>
                                 <div style={{ padding: '12px 0' }}>
                                     <CoffeeCupRating
                                         rating={reviewData.rating}
@@ -267,7 +319,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
-                            placeholder={postType === 'review' ? "Racconta la tua esperienza..." : "What's on your mind?"}
+                            placeholder={postType === 'review' ? "Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)" : "What's on your mind?"}
                             required
                             rows="4"
                             className="post-input"

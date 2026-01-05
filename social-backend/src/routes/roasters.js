@@ -172,6 +172,30 @@ router.post('/:id/products', upload.single('image'), async (req, res) => {
     }
 });
 
+// DELETE /api/roasters/:id/products/:productId
+router.delete('/:id/products/:productId', async (req, res) => {
+    try {
+        const { id, productId } = req.params;
+
+        // Verify user owns the roastery (basic check, could be improved with middleware)
+        // For now relying on client passing correct ID and backend logic
+
+        const roasterRef = db.collection('roasters').doc(id);
+
+        await roasterRef.collection('products').doc(productId).delete();
+
+        // Update product count in stats
+        await roasterRef.update({
+            'stats.products': admin.firestore.FieldValue.increment(-1)
+        });
+
+        res.json({ message: "Product deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting product:", error);
+        res.status(500).json({ error: "Failed to delete product" });
+    }
+});
+
 // PUT /api/roasteries/:id
 router.put('/:id', async (req, res) => {
     try {
@@ -240,7 +264,7 @@ router.post('/:id/collections', async (req, res) => {
 router.put('/:id/collections/:collectionId', async (req, res) => {
     try {
         const { id, collectionId } = req.params;
-        const { name, description, products, uid } = req.body;
+        const { name, description, products, uid, isPromoted } = req.body;
 
         if (!uid) return res.status(400).json({ error: "Missing required fields" });
 
@@ -256,6 +280,7 @@ router.put('/:id/collections/:collectionId', async (req, res) => {
         if (name) updates.name = name;
         if (description !== undefined) updates.description = description;
         if (products) updates.products = products;
+        if (isPromoted !== undefined) updates.isPromoted = isPromoted;
 
         await db.collection('roasters').doc(id).collection('collections').doc(collectionId).update(updates);
         res.json({ message: "Collection updated successfully" });

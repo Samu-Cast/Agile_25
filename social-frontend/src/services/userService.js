@@ -306,3 +306,16 @@ export const createProduct = async (roasteryId, productData) => {
         throw error;
     }
 };
+
+export const deleteProduct = async (roasterId, productId) => {
+    try {
+        const response = await fetch(`${API_URL}/roasters/${roasterId}/products/${productId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete product');
+        return await response.json();
+    } catch (error) {
+        console.error("Error deleting product:", error);
+        throw error;
+    }
+};
