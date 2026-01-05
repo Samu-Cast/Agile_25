@@ -52,5 +52,8 @@
       "!src/setupTests.js",
       "!src/test/**/*"
     ]
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5"
   }
 }
