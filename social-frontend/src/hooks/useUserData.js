@@ -27,12 +27,13 @@ export const useRoleData = (user) => {
     const [roleData, setRoleData] = useState(null);
 
     useEffect(() => {
-        if (!user || !user.role || user.role === 'Appassionato') {
+        if (!user || !user.role || user.role.toLowerCase() === 'appassionato') {
             setRoleData(null);
             return;
         }
 
-        const collectionName = user.role === 'Bar' ? 'bars' : (user.role === 'Torrefazione' ? 'roasters' : null);
+        const roleLower = user.role.toLowerCase();
+        const collectionName = roleLower === 'bar' ? 'bars' : (roleLower === 'torrefazione' ? 'roasters' : null);
         if (!collectionName) return;
 
         const fetchRoleData = async () => {

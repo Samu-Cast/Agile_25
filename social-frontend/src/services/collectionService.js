@@ -38,7 +38,7 @@ export const createCollection = async (roasterId, collectionData) => {
  * Update a collection
  * @param {string} roasterId 
  * @param {string} collectionId 
- * @param {Object} updates { name, description, products, uid }
+ * @param {Object} updates { name, description, products, uid, isPromoted }
  */
 export const updateCollection = async (roasterId, collectionId, updates) => {
     try {
