@@ -1,6 +1,19 @@
 //Test per verificare che le operazioni sugli utenti funzionino correttamente
 //Importa le funzioni da testare dal file userService
-import { getUser, searchUsers, updateUserProfile, getUsersByUids } from '../../../services/userService';
+import {
+    getUser,
+    searchUsers,
+    updateUserProfile,
+    getUsersByUids,
+    followUser,
+    unfollowUser,
+    checkFollowStatus,
+    getFollowers,
+    getFollowing,
+    getRoasteryProducts,
+    createProduct,
+    deleteProduct
+} from '../../../services/userService';
 
 //Crea una versione finta di fetch per simulare le chiamate al server
 global.fetch = jest.fn();
@@ -189,5 +202,110 @@ describe('userService - getUsersByUids', () => {
         const result = await getUsersByUids([]);
         //Verifica che la funzione ritorni una lista vuota
         expect(result).toEqual([]);
+    });
+});
+
+describe('userService - Follow System', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('followUser sends POST request', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ success: true })
+        });
+        await followUser('target', 'current');
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/users/target/follow'),
+            expect.objectContaining({ method: 'POST' })
+        );
+    });
+
+    test('unfollowUser sends POST request', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ success: true })
+        });
+        await unfollowUser('target', 'current');
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/users/target/unfollow'),
+            expect.objectContaining({ method: 'POST' })
+        );
+    });
+
+    test('checkFollowStatus returns status', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ isFollowing: true })
+        });
+        const result = await checkFollowStatus('current', 'target');
+        expect(result).toEqual({ isFollowing: true });
+    });
+
+    test('getFollowers returns list', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ([{ uid: 'u1' }])
+        });
+        const result = await getFollowers('uid');
+        expect(result).toHaveLength(1);
+    });
+
+    test('getFollowing returns list', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ([{ uid: 'u2' }])
+        });
+        const result = await getFollowing('uid');
+        expect(result).toHaveLength(1);
+    });
+});
+
+describe('userService - Products', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('getRoasteryProducts returns list', async () => {
+        const mockProducts = [{ id: 'p1', name: 'Coffee' }];
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockProducts
+        });
+
+        const result = await getRoasteryProducts('roaster1');
+        expect(result).toEqual(mockProducts);
+    });
+
+    test('createProduct sends POST with JSON', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ id: 'newProd' })
+        });
+
+        await createProduct('roaster1', { name: 'Coffee', price: 10 });
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/roasters/roaster1/products'),
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+    });
+
+    test('deleteProduct sends DELETE request', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ success: true })
+        });
+
+        await deleteProduct('roaster1', 'prod1');
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/roasters/roaster1/products/prod1'),
+            expect.objectContaining({ method: 'DELETE' })
+        );
     });
 });

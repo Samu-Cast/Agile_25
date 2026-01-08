@@ -18,6 +18,8 @@ Tests are organized by type within `src/test/unit`:
 *   `components/`: Unit tests for React components.
 *   `services/`: Unit tests for API service modules.
 *   `hooks/`: Unit tests for custom React hooks.
+*   `context/`: Unit tests for Context Providers.
+*   `pages/`: Integration tests for Pages.
 *   `setup.js`: Global test setup configuration.
 
 ### 1. Component Testing (`src/test/unit/components/`)
@@ -75,9 +77,19 @@ test('createPost calls correct endpoint', async () => {
 });
 ```
 
-### 3. Hook Testing
+### 3. Context Testing (`src/test/unit/context/`)
+**Goal**: Verify global state management logic (Auth, Chat).
+**Strategy**:
+*   **Mocking**: Mock underlying services (Firebase, API).
+*   **Verification**: Check state updates and side effects (e.g., localStorage, API calls).
+
+### 4. Page Testing (`src/test/unit/pages/`)
+**Goal**: Verify page-level integration and user flows.
+**Example**: `Login.test.js` verifies form submission and error handling.
+
+### 5. Hook Testing
 **Goal**: Verify complex state logic encapsulated in custom hooks.
-**Tools**: `@testing-library/react-hooks` (or appropriate library).
+**Tools**: `@testing-library/react` (renderHook).
 
 ### Running Tests
 *   **Run all tests**: `npm test`

@@ -13,7 +13,7 @@ import Header from './components/Header';
 import AuthModal from './components/AuthModal';
 import { ChatPopup } from './components/Chat/ChatPopup'; // Import
 
-function AppContent() {
+export function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false); // Modal state
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
