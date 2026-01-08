@@ -11,6 +11,47 @@ import PostCard from '../components/PostCard';
 import CollectionManager from '../components/CollectionManager';
 import '../styles/pages/Profile.css';
 
+// Carousel Component
+const CollectionCarousel = ({ images }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const handleNext = (e) => {
+        e.stopPropagation();
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+    };
+
+    const handlePrev = (e) => {
+        e.stopPropagation();
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    };
+
+    if (!images || images.length === 0) return null;
+
+    return (
+        <div className="carousel-container">
+            <img
+                src={images[currentIndex]}
+                alt="Product"
+                className="carousel-image"
+            />
+            {images.length > 1 && (
+                <>
+                    <button className="carousel-btn prev" onClick={handlePrev}>‹</button>
+                    <button className="carousel-btn next" onClick={handleNext}>›</button>
+                    <div className="carousel-dots">
+                        {images.map((_, idx) => (
+                            <span
+                                key={idx}
+                                className={`carousel-dot ${idx === currentIndex ? 'active' : ''}`}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -66,6 +107,7 @@ function Profile() {
     const [upvotedPosts, setUpvotedPosts] = useState([]);
     const [downvotedPosts, setDownvotedPosts] = useState([]);
     const [myReviews, setMyReviews] = useState([]);
+    const [myComparisons, setMyComparisons] = useState([]);
     const [myComments, setMyComments] = useState([]);
     const [savedPosts, setSavedPosts] = useState([]);
     const [savedGuides, setSavedGuides] = useState([]);
@@ -100,12 +142,14 @@ function Profile() {
                     time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now'
                 }));
 
-                // Separate posts from reviews
+                // Separate posts from reviews and comparisons
                 const posts = formattedPosts.filter(p => !p.type || p.type === 'post');
                 const reviews = formattedPosts.filter(p => p.type === 'review');
+                const comparisons = formattedPosts.filter(p => p.type === 'comparison');
 
                 setMyPosts(posts);
                 setMyReviews(reviews);
+                setMyComparisons(comparisons);
             } catch (error) {
                 console.error('Error loading user posts:', error);
             }
@@ -477,7 +521,12 @@ function Profile() {
 
         // Optimistic update
         const originalPosts = [...myPosts];
+        const originalReviews = [...myReviews];
+        const originalComparisons = [...myComparisons];
+
         setMyPosts(prev => prev.filter(p => p.id !== postId));
+        setMyReviews(prev => prev.filter(p => p.id !== postId));
+        setMyComparisons(prev => prev.filter(p => p.id !== postId));
 
         try {
             await deletePost(postId, currentUser.uid); // Use service
@@ -485,6 +534,8 @@ function Profile() {
             console.error("Error deleting post:", error);
             alert("Errore durante l'eliminazione del post.");
             setMyPosts(originalPosts);
+            setMyReviews(originalReviews);
+            setMyComparisons(originalComparisons);
         }
     };
 
@@ -749,6 +800,7 @@ function Profile() {
                             post={post}
                             currentUser={currentUser}
                             isLoggedIn={!!currentUser}
+                            onDelete={isOwnProfile ? handleDeletePost : undefined}
                         />
                     )) : (
                         <div className="empty-state">Nessun post trovato.</div>
@@ -788,9 +840,28 @@ function Profile() {
                             post={post}
                             currentUser={currentUser}
                             isLoggedIn={!!currentUser}
+                            onDelete={isOwnProfile ? handleDeletePost : undefined}
                         />
                     )) : (
                         <div className="empty-state">Nessuna recensione trovata.</div>
+                    )}
+                </div>
+            );
+        }
+
+        if (activeTab === 'comparisons') {
+            return (
+                <div className="profile-feed">
+                    {myComparisons.length > 0 ? myComparisons.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUser={currentUser}
+                            isLoggedIn={!!currentUser}
+                            onDelete={isOwnProfile ? handleDeletePost : undefined}
+                        />
+                    )) : (
+                        <div className="empty-state">Nessun confronto trovato.</div>
                     )}
                 </div>
             );
@@ -931,27 +1002,7 @@ function Profile() {
                                     >
                                         <div className="product-image" style={{ position: 'relative', backgroundColor: '#e0e0e0', overflow: 'hidden' }}>
                                             {collectionImages.length > 0 ? (
-                                                <>
-                                                    {collectionImages.map((img, index) => (
-                                                        <img
-                                                            key={index}
-                                                            src={img}
-                                                            alt=""
-                                                            style={{
-                                                                position: 'absolute',
-                                                                width: '80%',
-                                                                height: '80%',
-                                                                objectFit: 'cover',
-                                                                borderRadius: '4px',
-                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                                                                top: index === 0 ? (collectionImages.length > 1 ? '10%' : '10%') : '25%',
-                                                                left: index === 0 ? (collectionImages.length > 1 ? '10%' : '10%') : '25%',
-                                                                zIndex: index === 0 ? 2 : 1,
-                                                                transform: index === 1 ? 'rotate(5deg)' : 'none'
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </>
+                                                <CollectionCarousel images={collectionImages} />
                                             ) : (
                                                 <div style={{
                                                     width: '100%',
@@ -968,41 +1019,38 @@ function Profile() {
                                             )}
                                         </div>
                                         <div className="product-info">
-                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div className="collection-card-header">
+                                                <div className="collection-title-row">
                                                     <h3>{col.name}</h3>
-                                                    {col.isPromoted && (
-                                                        <span style={{
-                                                            background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                                                            color: '#5D4037',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '10px',
-                                                            fontSize: '10px',
-                                                            fontWeight: '700',
-                                                            textTransform: 'uppercase'
-                                                        }}>
-                                                            In Evidenza
-                                                        </span>
-                                                    )}
                                                 </div>
                                                 {isOwnProfile && (
-                                                    <div className="collection-actions" onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0 }}>
+                                                    <div className="collection-actions">
+                                                        {col.isPromoted && (
+                                                            <span style={{
+                                                                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                                                                color: '#5D4037',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '10px',
+                                                                fontSize: '10px',
+                                                                fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                In Evidenza
+                                                            </span>
+                                                        )}
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleTogglePromote(col); }}
-                                                            style={{
-                                                                background: 'none',
-                                                                border: 'none',
-                                                                cursor: 'pointer',
-                                                                color: col.isPromoted ? '#FFD700' : '#888',
-                                                                fontSize: '18px'
-                                                            }}
+                                                            className="action-btn-icon"
                                                             title={col.isPromoted ? 'Rimuovi promozione' : 'Promuovi collezione'}
+                                                            style={{ color: col.isPromoted ? '#FFD700' : '#d3d3d3' }}
                                                         >
                                                             {col.isPromoted ? '⭐' : '☆'}
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }}
-                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d33' }}
+                                                            className="action-btn-icon"
+                                                            title="Elimina"
+                                                            style={{ color: '#d33' }}
                                                         >
                                                             🗑
                                                         </button>
@@ -1216,6 +1264,12 @@ function Profile() {
                                 onClick={() => setActiveTab('comments')}
                             >
                                 Commenti
+                            </button>
+                            <button
+                                className={`tab-button ${activeTab === 'comparisons' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('comparisons')}
+                            >
+                                Confronti
                             </button>
                             {isOwnProfile && (
                                 <>

@@ -51,6 +51,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                     params.sort = 'popular';
                 }
 
+                if (feedType === 'comparisons') {
+                    params.type = 'comparison';
+                }
+
                 // Community filter not fully supported by backend yet, but we can pass it
                 if (feedType.startsWith('community-')) {
                     // params.communityId = feedType.replace('community-', '');
@@ -99,6 +103,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         image: post.imageUrl,
                         mediaUrls: post.mediaUrls || [], // Include media URLs array
                         reviewData: post.reviewData || null, // Include review data
+                        comparisonData: post.comparisonData || null, // Include comparison data
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,

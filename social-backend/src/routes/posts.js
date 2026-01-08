@@ -103,12 +103,20 @@ router.post('/', async (req, res) => {
             }
         }
 
+        // Validate comparison-specific fields
+        let comparisonData = req.body.comparisonData;
+        if (type === 'comparison') {
+            if (!comparisonData || !comparisonData.item1 || !comparisonData.item2 || !comparisonData.item1.name || !comparisonData.item2.name) {
+                return res.status(400).json({ error: "Missing required comparison fields (two items with names)" });
+            }
+        }
+
         const newPost = {
             uid,
             entityType: entityType || "user",
             entityId: entityId || uid,
             communityId: communityId || null,
-            type: type || "post", // "post" or "review"
+            type: type || "post", // "post", "review", "comparison"
             text,
             imageUrl: imageUrl || null, // Legacy support
             mediaUrls: mediaUrls || (imageUrl ? [imageUrl] : []), // Array of media URLs
@@ -125,6 +133,22 @@ router.post('/', async (req, res) => {
                 itemType: reviewData.itemType || "other",
                 brand: reviewData.brand || null,
                 rating: reviewData.rating
+            };
+        }
+
+        // Add comparison-specific data if it's a comparison
+        if (type === 'comparison' && comparisonData) {
+            newPost.comparisonData = {
+                item1: {
+                    name: comparisonData.item1.name,
+                    brand: comparisonData.item1.brand || '',
+                    image: comparisonData.item1.image || null
+                },
+                item2: {
+                    name: comparisonData.item2.name,
+                    brand: comparisonData.item2.brand || '',
+                    image: comparisonData.item2.image || null
+                }
             };
         }
 
