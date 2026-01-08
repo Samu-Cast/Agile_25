@@ -139,7 +139,7 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
             )}
             <div className="navbar-actions">
                 {!isLoggedIn && (
-                    <button className="btn-login" onClick={onLoginClick}>Log In</button>
+                    <button className="-login"btn onClick={onLoginClick}>Log In</button>
                 )}
 
                 {/* Chat Button */}
