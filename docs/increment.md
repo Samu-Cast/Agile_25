@@ -124,22 +124,42 @@ Completamento del sistema social con implementazione delle funzionalità di inte
 ### Sprint 3
 **Data inizio**: 13 Dicembre 2025  
 **Data fine**: 8 Gennaio 2026 
-**Status**: TBD
+**Status**: Done
 
-**Sprint Goal**:
-- TBD 
+**Sprint Goal**: Migliorare la user experience con: recensioni, collezioni e interazioni avanzate
 
-**User Stories pianificate**:
-- 23
-- 51
+**User Stories completate**:
+- US04: Storico recensioni e contributi (Effort: 4) -> 4/4
+- US21: Messaggi diretti tra utenti (Effort: 6) -> 6/6
+- US22: Tagging nei post (Effort: 4) -> 4/4
+- US23: Recensioni con punteggio (Effort: 6) -> 6/6
+- US24: Dati tecnici preparazione (Effort: 3) -> 3/3
+- US25: Risposta recensioni (Effort: 3) -> 3/3
+- US26: Seguire recensioni (Effort: 3) -> 3/3
+- US27: Creare collezioni (Effort: 9) -> 9/9
+- US29: Confronto miscele (Effort: 8) -> 8/8
+- US30: Collezioni aziendali (Effort: 6) -> 6/6
+- US51: Ricerca per nome e città (Effort: 4) -> 4/4
 
-**Story Points pianificati**: TBD
+**User Stories non completate**:
+- US28: Cercare o filtrare collezioni (Effort: 5) -> 0/5
+
+**Story Points completati**: 56/61 (91.80%)
 
 **Descrizione**:
-TBD
+Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), possibilità di rispondere e seguire recensioni. Sistema collezioni per organizzare prodotti preferiti con supporto per collezioni aziendali. Aggiunta funzionalità di tagging utenti nei post, messaggi diretti tra utenti, e visualizzazione storico recensioni/contributi. Ricerca profili estesa a tutte e tre le categorie (Appassionato, Barista, Torrefazione) per nome e città. Non implementata la ricerca/filtro collezioni (US28) per mancanza di tempo.
 
 **Funzionalità implementate**:
-- TBD
+- **Recensioni**: Sistema punteggio tazzine (1-5), pubblicazione recensioni, risposte alle recensioni, seguire recensioni
+- **Collezioni**: Creazione collezioni personali, collezioni aziendali, visualizzazione collezioni altri utenti
+- **Interazioni**: Tagging utenti nei post, messaggi diretti
+- **Dati tecnici**: Inserimento parametri preparazione caffè (temperatura, umidità, pressione)
+- **Confronto**: Comparazione miscele con salvataggio preferiti
+- **Ricerca avanzata**: Ricerca profili per nome/città (Appassionato, Barista, Torrefazione)
+- **Storico**: Visualizzazione storico recensioni e contributi utente
 
 **Note incrementate**:
-- TBD
+- Sistema recensioni completo con punteggio e interazioni
+- Collezioni implementate per tutti i tipi di utente
+- Messaggistica diretta tra utenti funzionante
+- Ricerca estesa a tutte le categorie di profilo
