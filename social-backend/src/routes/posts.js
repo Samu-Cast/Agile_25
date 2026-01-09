@@ -82,7 +82,7 @@ router.post('/', async (req, res) => {
     try {
         const {
             uid, entityType, entityId, text, imageUrl, createdAt, commentsCount, communityId,
-            type, reviewData, mediaUrls
+            type, reviewData, mediaUrls, taggedUsers
         } = req.body;
 
         if (!text || !uid) {
@@ -103,6 +103,11 @@ router.post('/', async (req, res) => {
             }
         }
 
+        // Validate taggedUsers if provided
+        if (taggedUsers && !Array.isArray(taggedUsers)) {
+            return res.status(400).json({ error: "taggedUsers must be an array" });
+        }
+
         const newPost = {
             uid,
             entityType: entityType || "user",
@@ -112,6 +117,7 @@ router.post('/', async (req, res) => {
             text,
             imageUrl: imageUrl || null, // Legacy support
             mediaUrls: mediaUrls || (imageUrl ? [imageUrl] : []), // Array of media URLs
+            taggedUsers: taggedUsers || [], // Array of tagged user UIDs
             createdAt: createdAt ? new Date(createdAt) : new Date(),
             votes: 0,
             votedBy: {},
@@ -124,7 +130,8 @@ router.post('/', async (req, res) => {
                 itemName: reviewData.itemName,
                 itemType: reviewData.itemType || "other",
                 brand: reviewData.brand || null,
-                rating: reviewData.rating
+                rating: reviewData.rating,
+                comparison: reviewData.comparison || null // Include comparison data
             };
         }
 

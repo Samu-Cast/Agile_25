@@ -122,6 +122,6 @@ To decouple UI from API details, all network requests are encapsulated in servic
 ## 6. Key Data Models (NoSQL)
 
 *   **Users**: `uid`, name, role (Appassionato, Bar, ...), specific role data.
-*   **Posts**: text, authorRef, media, likes, comments (subcollection or top-level).
+*   **Posts**: text, authorRef, media, likes, comments (subcollection or top-level), `taggedUsers` (array of UIDs).
 *   **Communities**: name, description, creator, members (array of UIDs).
 *   **Chats**: participants (array), lastMessage.

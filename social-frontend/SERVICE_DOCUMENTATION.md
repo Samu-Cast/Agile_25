@@ -97,7 +97,7 @@ Core service for Posts, Feed, and Interactions.
 ### `createPost(postData)`
 Creates a new post.
 - **POST** `/posts`
-- **Params**: `postData` maps frontend fields to backend expected `text`, `imageUrl`, `entityType`.
+- **Params**: `postData` maps frontend fields to backend expected `text`, `imageUrl`, `entityType`, `taggedUsers` (array of user UIDs).
 
 ### `getFeedPosts(params)`
 Fetches the main feed with optional filters.

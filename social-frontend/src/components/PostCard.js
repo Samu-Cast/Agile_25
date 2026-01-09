@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CommentSection from './CommentSection';
 import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
@@ -11,6 +12,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
     const [voteCount, setVoteCount] = useState(post.votes || 0);
     const [isSaved, setIsSaved] = useState(post.isSaved || false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const navigate = useNavigate();
 
     const isReview = post.type === 'review';
 
@@ -110,6 +112,62 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                 )}
 
                 <p className="post-text">{post.content}</p>
+
+                {/* Tagged Users */}
+                {post.taggedUsers && post.taggedUsers.length > 0 && post.taggedUsersData && (
+                    <div style={{
+                        marginTop: '12px',
+                        padding: '8px 0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                        fontSize: '13px',
+                        color: '#666'
+                    }}>
+                        <span style={{ fontWeight: '500' }}>Con:</span>
+                        {post.taggedUsersData.map((user, index) => (
+                            <span
+                                key={user.uid || index}
+                                onClick={() => navigate(`/profile/${user.uid}`)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 10px',
+                                    backgroundColor: '#f0f8ff',
+                                    border: '1px solid #d0e8f5',
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    color: '#0066cc'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#e0f0ff';
+                                    e.currentTarget.style.borderColor = '#b0d8f5';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f8ff';
+                                    e.currentTarget.style.borderColor = '#d0e8f5';
+                                }}
+                            >
+                                <img
+                                    src={user.profilePic || user.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                    alt={user.nickname || user.name}
+                                    style={{
+                                        width: '18px',
+                                        height: '18px',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover'
+                                    }}
+                                />
+                                {user.nickname || user.name}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {/* Media Gallery for multiple images/videos */}
                 {post.mediaUrls && post.mediaUrls.length > 0 ? (

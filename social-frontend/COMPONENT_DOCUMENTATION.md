@@ -67,6 +67,7 @@ This document provides a detailed overview of the frontend components in the `so
 *   **Interactions**: Upvote/Downvote logic, Save/Unsave post.
 *   **Comments**: Toggleable `CommentSection`.
 *   **Social**: Share functionality (copies link).
+*   **Tagged Users**: Displays tagged users as clickable badges that navigate to their profiles.
 
 ### `CommentSection.js`
 **Path**: `src/components/CommentSection.js`
@@ -195,6 +196,7 @@ This document provides a detailed overview of the frontend components in the `so
 *   **Review Features**: Item type, brand, rating, and "Comparison" mode (User vs User).
 *   **Media**: Drag-and-drop or file select for multiple images/video.
 *   **Target**: Publish to Profile or a specific Community.
+*   **User Tagging**: Search and tag other users in the post with a dedicated search interface.
 
 ### `CreateCommunityModal.js`
 **Description**: Simple form to create a new community (Name, Description).

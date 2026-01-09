@@ -16,7 +16,8 @@ export const createPost = async (postData) => {
                 text: postData.content,  // Backend expects text
                 imageUrl: postData.imageUrl,
                 entityType: 'user', // Default
-                entityId: postData.authorUid
+                entityId: postData.authorUid,
+                taggedUsers: postData.taggedUsers || [] // Array of tagged user UIDs
             })
         });
         if (!response.ok) throw new Error('Create post failed');

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { uploadMultipleMedia, validateMedia } from '../services/imageService';
+import { searchGlobal } from '../services/userService';
 import CoffeeCupRating from './CoffeeCupRating';
 import '../styles/components/CreatePostModal.css';
 
@@ -27,6 +28,12 @@ function CreatePostModal({ onClose, onSuccess }) {
     const [selectedCommunity, setSelectedCommunity] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // User tagging states
+    const [taggedUsers, setTaggedUsers] = useState([]);
+    const [showUserSearch, setShowUserSearch] = useState(false);
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [userSearchResults, setUserSearchResults] = useState([]);
 
     // Review-specific fields
     const [reviewData, setReviewData] = useState({
@@ -58,6 +65,28 @@ function CreatePostModal({ onClose, onSuccess }) {
         };
         fetchCommunities();
     }, [currentUser]);
+
+    // User search with debouncing
+    useEffect(() => {
+        if (userSearchQuery.length > 1) {
+            const timer = setTimeout(async () => {
+                try {
+                    const results = await searchGlobal(userSearchQuery);
+                    const userResults = results.filter(r =>
+                        ['user', 'bar', 'roaster'].includes(r.type) &&
+                        r.uid !== currentUser?.uid && // Exclude self
+                        !taggedUsers.find(u => u.uid === r.uid) // Exclude already tagged
+                    );
+                    setUserSearchResults(userResults);
+                } catch (error) {
+                    console.error('User search error:', error);
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        } else {
+            setUserSearchResults([]);
+        }
+    }, [userSearchQuery, currentUser, taggedUsers]);
 
     const handleMediaChange = (e) => {
         const files = Array.from(e.target.files);
@@ -109,6 +138,19 @@ function CreatePostModal({ onClose, onSuccess }) {
         setMediaPreviews(newPreviews);
     };
 
+    const addTaggedUser = (user) => {
+        if (!taggedUsers.find(u => u.uid === user.uid)) {
+            setTaggedUsers([...taggedUsers, user]);
+        }
+        setUserSearchQuery('');
+        setUserSearchResults([]);
+        setShowUserSearch(false);
+    };
+
+    const removeTaggedUser = (uid) => {
+        setTaggedUsers(taggedUsers.filter(u => u.uid !== uid));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -147,6 +189,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                 text: text,
                 mediaUrls: mediaUrls,
                 imageUrl: mediaUrls.length > 0 ? mediaUrls[0] : null, // Legacy support
+                taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
                 createdAt: new Date().toISOString(),
                 commentsCount: 0
             };
@@ -182,6 +225,7 @@ function CreatePostModal({ onClose, onSuccess }) {
             setMediaPreviews([]);
             setReviewData({ itemName: '', itemType: 'coffee', brand: '', rating: 0 });
             setPostType('post');
+            setTaggedUsers([]);
             if (onSuccess) onSuccess();
             onClose();
 
@@ -444,6 +488,177 @@ function CreatePostModal({ onClose, onSuccess }) {
                             style={{ display: 'none' }}
                         />
                     </div>
+
+                    {/* User Tagging */}
+                    <div className="form-group tag-users-section" style={{ marginBottom: '15px', position: 'relative' }}>
+                        <button
+                            type="button"
+                            className="tag-users-btn"
+                            onClick={() => setShowUserSearch(!showUserSearch)}
+                            style={{
+                                padding: '10px 16px',
+                                backgroundColor: '#f5f5f5',
+                                border: '1px solid #ddd',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#6F4E37',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8e8e8'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                        >
+                            👥 Tagga Utenti {taggedUsers.length > 0 && `(${taggedUsers.length})`}
+                        </button>
+
+                        {/* Tagged Users Display */}
+                        {taggedUsers.length > 0 && (
+                            <div className="tagged-users-list" style={{
+                                marginTop: '10px',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '8px'
+                            }}>
+                                {taggedUsers.map(user => (
+                                    <div
+                                        key={user.uid || user.id}
+                                        className="tagged-user-chip"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            padding: '6px 10px',
+                                            backgroundColor: '#e8f4f8',
+                                            border: '1px solid #b8d4e0',
+                                            borderRadius: '20px',
+                                            fontSize: '13px',
+                                            color: '#2c3e50'
+                                        }}
+                                    >
+                                        <img
+                                            src={user.profilePic || user.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                            alt={user.nickname || user.name}
+                                            style={{
+                                                width: '20px',
+                                                height: '20px',
+                                                borderRadius: '50%',
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                        <span>{user.nickname || user.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTaggedUser(user.uid || user.id)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '16px',
+                                                color: '#888',
+                                                padding: '0 2px',
+                                                lineHeight: 1
+                                            }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* User Search Dropdown */}
+                        {showUserSearch && (
+                            <div className="user-search-dropdown" style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                right: 0,
+                                backgroundColor: 'white',
+                                border: '1px solid #ddd',
+                                borderRadius: '8px',
+                                marginTop: '4px',
+                                zIndex: 1001,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                maxHeight: '300px',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}>
+                                <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Cerca utente da taggare..."
+                                        value={userSearchQuery}
+                                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            border: '1px solid #ddd',
+                                            outline: 'none',
+                                            fontSize: '14px'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ overflowY: 'auto', flex: 1 }}>
+                                    {userSearchResults.length > 0 ? (
+                                        userSearchResults.map(user => (
+                                            <div
+                                                key={user.uid || user.id}
+                                                onClick={() => addTaggedUser(user)}
+                                                className="user-search-result"
+                                                style={{
+                                                    padding: '10px 12px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '10px',
+                                                    borderBottom: '1px solid #f0f0f0'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                            >
+                                                <img
+                                                    src={user.profilePic || user.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                                    alt={user.nickname || user.name}
+                                                    style={{
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        borderRadius: '50%',
+                                                        objectFit: 'cover'
+                                                    }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                                                        {user.nickname || user.name}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#888' }}>
+                                                        {user.role || (user.type === 'bar' ? 'Bar' : user.type === 'roaster' ? 'Torrefazione' : 'Appassionato')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : userSearchQuery.length > 1 ? (
+                                        <div style={{ padding: '12px', color: '#888', textAlign: 'center', fontSize: '14px' }}>
+                                            Nessun utente trovato
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '12px', color: '#888', textAlign: 'center', fontSize: '14px' }}>
+                                            Inizia a digitare per cercare utenti
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
 
                     {/* Media previews */}
                     {mediaPreviews.length > 0 && (

@@ -63,16 +63,31 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                 // Extract unique UIDs and Community IDs
                 const uids = [...new Set(data.map(post => post.uid))];
 
+                // Also extract tagged user UIDs
+                const taggedUids = new Set();
+                data.forEach(post => {
+                    if (post.taggedUsers && Array.isArray(post.taggedUsers)) {
+                        post.taggedUsers.forEach(uid => taggedUids.add(uid));
+                    }
+                });
+
+                // Combine all UIDs to fetch
+                const allUids = [...new Set([...uids, ...Array.from(taggedUids)])];
+
                 const [users, communities] = await Promise.all([
-                    getUsersByUids(uids),
+                    getUsersByUids(allUids),
                     getAllCommunities()
                 ]);
 
                 const userMap = {};
                 users.forEach(u => {
                     userMap[u.uid] = {
+                        uid: u.uid,
                         name: u.nickname || u.name,
-                        avatar: u.profilePic || u.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+                        nickname: u.nickname,
+                        avatar: u.profilePic || u.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+                        profilePic: u.profilePic,
+                        photoURL: u.photoURL
                     };
                 });
 
@@ -88,6 +103,11 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                     const postUser = userMap[post.uid] || { name: "User", avatar: "https://cdn-icons-png.flaticon.com/512/847/847969.png" };
                     const postCommunity = communityMap[post.communityId];
 
+                    // Map tagged users
+                    const taggedUsersData = post.taggedUsers && post.taggedUsers.length > 0
+                        ? post.taggedUsers.map(uid => userMap[uid]).filter(Boolean)
+                        : [];
+
                     return {
                         id: post.id,
                         type: post.type || 'post', // Include post type
@@ -99,6 +119,8 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         image: post.imageUrl,
                         mediaUrls: post.mediaUrls || [], // Include media URLs array
                         reviewData: post.reviewData || null, // Include review data
+                        taggedUsers: post.taggedUsers || [], // UIDs array
+                        taggedUsersData: taggedUsersData, // Full user objects for display
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,
