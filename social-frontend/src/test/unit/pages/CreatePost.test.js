@@ -8,10 +8,14 @@ import * as postService from '../../../services/postService';
 
 //Mock del context AuthContext
 const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
-    useNavigate: () => mockNavigate
-}));
+jest.mock('react-router-dom', () => {
+    const originalModule = jest.requireActual('react-router-dom');
+    return {
+        __esModule: true,
+        ...originalModule,
+        useNavigate: () => mockNavigate,
+    };
+});
 
 jest.mock('../../../context/AuthContext', () => ({
     useAuth: jest.fn()

@@ -53,7 +53,8 @@ describe('postService - createPost', () => {
                     text: 'Test post',
                     imageUrl: null,
                     entityType: 'user',
-                    entityId: 'user123'
+                    entityId: 'user123',
+                    taggedUsers: []
                 })
             })
         );

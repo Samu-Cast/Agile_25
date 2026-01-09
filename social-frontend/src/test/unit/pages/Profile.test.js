@@ -242,7 +242,7 @@ describe('Profile Page', () => {
             const followBtn = await screen.findByRole('button', { name: /Follow/i });
 
             // Initial count is 10
-            expect(screen.getByText('10')).toBeInTheDocument();
+            expect(await screen.findByText('10')).toBeInTheDocument();
 
             fireEvent.click(followBtn);
 
@@ -624,7 +624,7 @@ describe('Profile Page', () => {
             render(<Profile />);
 
             const followBtn = await screen.findByRole('button', { name: /Follow/i });
-            const initialCount = screen.getByText('10'); // Initial followers
+            const initialCount = await screen.findByText('10'); // Initial followers for this test too
 
             fireEvent.click(followBtn);
 
