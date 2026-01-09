@@ -79,4 +79,10 @@ export const getAllCommunities = async () => {
     }
 };
 
-export default { getCommunitiesByIds, getCommunity, getAllCommunities };
+const communityService = {
+    getCommunitiesByIds,
+    getCommunity,
+    getAllCommunities
+};
+
+export default communityService;

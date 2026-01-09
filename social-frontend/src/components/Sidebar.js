@@ -53,6 +53,7 @@ const Sidebar = ({ activeFeed, onFeedChange, refreshTrigger }) => {
                             <span className="icon">♾️</span>
                             <span className="sidebar-label">All</span>
                         </div>
+
                     </div>
 
                     <div className="sidebar-section">

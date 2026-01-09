@@ -43,6 +43,7 @@ export const getFeedPosts = async (params = {}) => {
         if (params.limit) urlParams.append('limit', params.limit);
         if (params.lastCreatedAt) urlParams.append('lastCreatedAt', params.lastCreatedAt);
         if (params.communityId) urlParams.append('communityId', params.communityId);
+        if (params.type) urlParams.append('type', params.type);
 
         const queryString = urlParams.toString();
         const url = `${API_URL}/posts${queryString ? `?${queryString}` : ''}`;

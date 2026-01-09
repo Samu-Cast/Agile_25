@@ -5,9 +5,9 @@ import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
 import { toggleSavePost, updateVotes } from '../services/postService';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
+
+const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }) => {
     const [userVote, setUserVote] = useState(post.userVote || 0);
     const [voteCount, setVoteCount] = useState(post.votes || 0);
     const [isSaved, setIsSaved] = useState(post.isSaved || false);
@@ -86,6 +86,22 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                             ⭐ Recensione
                         </div>
                     )}
+                    {/* Comparison Badge */}
+                    {post.type === 'comparison' && (
+                        <div className="comparison-badge" style={{
+                            backgroundColor: '#6F4E37',
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                        }}>
+                            ⚖️ Confronto
+                        </div>
+                    )}
                 </div>
 
                 {/* Review-specific content */}
@@ -108,6 +124,62 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                                 {getItemTypeLabel(post.reviewData.itemType)}
                             </span>
                         )}
+                    </div>
+                )}
+
+                {/* Comparison-specific content */}
+                {post.type === 'comparison' && post.comparisonData && (
+                    <div className="comparison-card-content" style={{ margin: '15px 0', border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', padding: '15px', backgroundColor: '#fafafa', position: 'relative' }}>
+
+                            {/* VS Badge */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                backgroundColor: 'white',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: '900',
+                                color: '#ccc',
+                                fontStyle: 'italic',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                zIndex: 2
+                            }}>
+                                VS
+                            </div>
+
+                            {/* Item 1 */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingRight: '10px' }}>
+                                <div style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px', backgroundColor: '#fff', border: '1px solid #eee' }}>
+                                    {post.comparisonData.item1.image ? (
+                                        <img src={post.comparisonData.item1.image} alt={post.comparisonData.item1.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                    )}
+                                </div>
+                                <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item1.name}</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{post.comparisonData.item1.brand}</p>
+                            </div>
+
+                            {/* Item 2 */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingLeft: '10px' }}>
+                                <div style={{ width: '100%', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px', backgroundColor: '#fff', border: '1px solid #eee' }}>
+                                    {post.comparisonData.item2.image ? (
+                                        <img src={post.comparisonData.item2.image} alt={post.comparisonData.item2.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                    )}
+                                </div>
+                                <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item2.name}</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{post.comparisonData.item2.brand}</p>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -169,11 +241,11 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                     </div>
                 )}
 
-                {/* Media Gallery for multiple images/videos */}
-                {post.mediaUrls && post.mediaUrls.length > 0 ? (
+                {/* Media Gallery for multiple images/videos (Normal posts only) */}
+                {post.type !== 'comparison' && post.mediaUrls && post.mediaUrls.length > 0 ? (
                     <MediaGallery mediaUrls={post.mediaUrls} altText={post.content} />
                 ) : (
-                    post.image && <img src={post.image} alt="Post content" className="post-image" />
+                    post.type !== 'comparison' && post.image && <img src={post.image} alt="Post content" className="post-image" />
                 )}
 
                 <div className="post-footer">
@@ -208,13 +280,23 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo }) => {
                     >
                         {isSaved ? '🔖' : '📑'} {isSaved ? 'Salvato' : 'Salva'}
                     </button>
+                    {onDelete && (currentUser?.uid === post.authorId || currentUser?.uid === post.uid) && (
+                        <button
+                            className="action-btn delete-btn"
+                            onClick={(e) => onDelete(post.id, e)}
+                            title="Elimina"
+                            style={{ color: '#d33', marginLeft: 'auto' }}
+                        >
+                            🗑
+                        </button>
+                    )}
                 </div>
 
                 {isExpanded && (
                     <CommentSection postId={post.id} postType={post.type} currentUser={currentUser} />
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

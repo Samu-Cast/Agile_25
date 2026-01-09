@@ -51,13 +51,13 @@ router.post('/', upload.single('file'), async (req, res) => {
             }
         });
 
-        // Make file public
-        await file.makePublic();
+        // Generate Signed URL
+        const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: '03-01-2500' // Far future
+        });
 
-        // Get public URL
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-        res.json({ url: publicUrl });
+        res.json({ url });
     } catch (error) {
         console.error('Error uploading file:', error);
         res.status(500).json({ error: 'Failed to upload file' });

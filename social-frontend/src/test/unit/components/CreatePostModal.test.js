@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CreatePostModal from '../../../components/CreatePostModal';
@@ -70,7 +69,7 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('⭐ Recensione'));
 
         expect(screen.getByLabelText('Nome articolo *')).toBeInTheDocument();
-        expect(screen.getByPlaceholderText("Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)")).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Racconta la tua esperienza...")).toBeInTheDocument();
     });
 
     it('submits a simple post', async () => {
@@ -105,7 +104,7 @@ describe('CreatePostModal', () => {
         fireEvent.change(screen.getByLabelText('Nome articolo *'), {
             target: { value: 'Good Coffee' }
         });
-        fireEvent.change(screen.getByPlaceholderText("Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)"), {
+        fireEvent.change(screen.getByPlaceholderText("Racconta la tua esperienza..."), {
             target: { value: 'Best coffee ever' }
         });
 
@@ -152,60 +151,51 @@ describe('CreatePostModal', () => {
     // NEW TESTS FOR UNCOVERED CODE
 
     describe('Comparison Mode', () => {
-        it('enables comparison mode in review', async () => {
+        it('enables comparison mode', async () => {
             render(<CreatePostModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 
-            fireEvent.click(screen.getByText('⭐ Recensione'));
-
-            const comparisonCheckbox = screen.getByText('Confronto tra due miscele?');
-            fireEvent.click(comparisonCheckbox);
+            fireEvent.click(screen.getByText('⚖️ Confronto'));
 
             await waitFor(() => {
-                expect(screen.getByPlaceholderText('Miscela 1')).toBeInTheDocument();
-                expect(screen.getByPlaceholderText('Miscela 2')).toBeInTheDocument();
+                expect(screen.getByText('Prodotto 1')).toBeInTheDocument();
+                expect(screen.getByText('Prodotto 2')).toBeInTheDocument();
+                expect(screen.getByPlaceholderText("Descrivi le differenze, i pro e i contro...")).toBeInTheDocument();
             });
         });
 
-        it('validates comparison fields when enabled', async () => {
+        it('validates comparison fields', async () => {
             window.alert = jest.fn();
 
             render(<CreatePostModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 
-            fireEvent.click(screen.getByText('⭐ Recensione'));
-            fireEvent.click(screen.getByText('Confronto tra due miscele?'));
+            fireEvent.click(screen.getByText('⚖️ Confronto'));
 
-            // Fill review data but not comparison titles
-            fireEvent.change(screen.getByLabelText('Nome articolo *'), {
-                target: { value: 'Comparison Test' }
-            });
-            fireEvent.click(screen.getByTestId('coffee-rating'));
-
-            fireEvent.click(screen.getByText('Pubblica Recensione'));
+            // Try to submit without filling item names
+            fireEvent.click(screen.getByText('Pubblica Confronto'));
 
             expect(window.alert).toHaveBeenCalledWith('Per favore inserisci i nomi di entrambe le miscele per il confronto');
         });
 
-        it('submits review with comparison data', async () => {
+        it('submits a comparison post', async () => {
             render(<CreatePostModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 
-            fireEvent.click(screen.getByText('⭐ Recensione'));
-            fireEvent.click(screen.getByText('Confronto tra due miscele?'));
+            fireEvent.click(screen.getByText('⚖️ Confronto'));
 
-            fireEvent.change(screen.getByLabelText('Nome articolo *'), {
-                target: { value: 'Coffee Comparison' }
-            });
-            fireEvent.change(screen.getByPlaceholderText('Miscela 1'), {
-                target: { value: 'Ethiopian Blend' }
-            });
-            fireEvent.change(screen.getByPlaceholderText('Miscela 2'), {
-                target: { value: 'Colombian Blend' }
-            });
-            fireEvent.change(screen.getByPlaceholderText("Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)"), {
-                target: { value: 'Comparison review' }
-            });
-            fireEvent.click(screen.getByTestId('coffee-rating'));
+            // Fill inputs 
+            const nameInputs = screen.getAllByPlaceholderText('Nome prodotto');
+            fireEvent.change(nameInputs[0], { target: { value: 'Ethiopian Blend' } });
+            fireEvent.change(nameInputs[1], { target: { value: 'Colombian Blend' } });
 
-            fireEvent.click(screen.getByText('Pubblica Recensione'));
+            const brandInputs = screen.getAllByPlaceholderText('Marca');
+            fireEvent.change(brandInputs[0], { target: { value: 'Brand A' } });
+            fireEvent.change(brandInputs[1], { target: { value: 'Brand B' } });
+
+            fireEvent.change(screen.getByPlaceholderText("Descrivi le differenze, i pro e i contro..."), {
+                target: { value: 'Comparison review text' }
+            });
+
+            // Submit
+            fireEvent.click(screen.getByText('Pubblica Confronto'));
 
             await waitFor(() => {
                 expect(global.fetch).toHaveBeenCalledWith(
@@ -217,6 +207,7 @@ describe('CreatePostModal', () => {
             });
         });
     });
+
 
     describe('Media Handling', () => {
         it('handles too many media files (max 6)', async () => {

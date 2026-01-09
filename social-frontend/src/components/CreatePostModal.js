@@ -44,11 +44,36 @@ function CreatePostModal({ onClose, onSuccess }) {
     });
 
     // Comparison fields
+    const [comparisonData, setComparisonData] = useState({
+        item1: { name: '', brand: '', file: null, preview: null },
+        item2: { name: '', brand: '', file: null, preview: null }
+    });
+
+    // Legacy Comparison fields (kept for safety during transition, though not used in new logic)
     const [isComparison, setIsComparison] = useState(false);
     const [comparisonTitle1, setComparisonTitle1] = useState('');
     const [comparisonTitle2, setComparisonTitle2] = useState('');
 
     const { currentUser } = useAuth();
+
+    // Handle separate comparison images
+    const handleComparisonImageChange = (e, itemNum) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!validateMedia(file)) return;
+
+        const previewUrl = URL.createObjectURL(file);
+
+        setComparisonData(prev => ({
+            ...prev,
+            [`item${itemNum}`]: {
+                ...prev[`item${itemNum}`],
+                file: file,
+                preview: previewUrl
+            }
+        }));
+    };
 
     useEffect(() => {
         const fetchCommunities = async () => {
@@ -171,6 +196,13 @@ function CreatePostModal({ onClose, onSuccess }) {
             }
         }
 
+        if (postType === 'comparison') {
+            if (!comparisonData.item1.name || !comparisonData.item2.name) {
+                alert('Per favore inserisci i nomi di entrambe le miscele per il confronto');
+                return;
+            }
+        }
+
         setLoading(true);
 
         try {
@@ -203,6 +235,39 @@ function CreatePostModal({ onClose, onSuccess }) {
                         item1: comparisonTitle1,
                         item2: comparisonTitle2
                     } : null
+                };
+            }
+
+            // Add comparison data if it's a comparison
+            if (postType === 'comparison') {
+                // Upload comparison images if they exist
+                let compImg1 = null;
+                let compImg2 = null;
+
+                if (comparisonData.item1.file) {
+                    console.log('Uploading comparison item 1...');
+                    const res = await uploadMultipleMedia([comparisonData.item1.file], 'posts');
+                    console.log('Comparison item 1 result:', res);
+                    compImg1 = res[0];
+                }
+                if (comparisonData.item2.file) {
+                    console.log('Uploading comparison item 2...');
+                    const res = await uploadMultipleMedia([comparisonData.item2.file], 'posts');
+                    console.log('Comparison item 2 result:', res);
+                    compImg2 = res[0];
+                }
+
+                postData.comparisonData = {
+                    item1: {
+                        name: comparisonData.item1.name,
+                        brand: comparisonData.item1.brand,
+                        image: compImg1
+                    },
+                    item2: {
+                        name: comparisonData.item2.name,
+                        brand: comparisonData.item2.brand,
+                        image: compImg2
+                    }
                 };
             }
 
@@ -261,48 +326,144 @@ function CreatePostModal({ onClose, onSuccess }) {
                     >
                         ⭐ Recensione
                     </button>
+                    <button
+                        type="button"
+                        className={`tab-btn ${postType === 'comparison' ? 'active' : ''}`}
+                        onClick={() => setPostType('comparison')}
+                    >
+                        ⚖️ Confronto
+                    </button>
+
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    {/* Comparison Fields */}
+                    {postType === 'comparison' && (
+                        <div className="comparison-fields">
+                            <div className="comparison-container" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                {/* Item 1 */}
+                                <div className="comparison-item" style={{ flex: 1, padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#555' }}>Prodotto 1</h4>
+
+                                    {/* Image Upload 1 */}
+                                    <div className="item-image-upload" style={{ marginBottom: '10px', textAlign: 'center' }}>
+                                        <input
+                                            type="file"
+                                            id="comp-img-1"
+                                            accept="image/*"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => handleComparisonImageChange(e, 1)}
+                                        />
+                                        <label htmlFor="comp-img-1" style={{ cursor: 'pointer', display: 'block' }}>
+                                            {comparisonData.item1.preview ? (
+                                                <div style={{ position: 'relative', width: '100%', paddingTop: '100%', borderRadius: '8px', overflow: 'hidden', border: '2px dashed #ddd' }}>
+                                                    <img
+                                                        src={comparisonData.item1.preview}
+                                                        alt="Preview 1"
+                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '10px', padding: '4px' }}>Cambia foto</div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: '100%', padding: '20px 0', border: '2px dashed #ddd', borderRadius: '8px', color: '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <span style={{ fontSize: '24px' }}>📷</span>
+                                                    <span style={{ fontSize: '12px' }}>Aggiungi Foto</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+
+                                    <input
+                                        type="text"
+                                        className="post-input"
+                                        placeholder="Nome prodotto"
+                                        value={comparisonData.item1.name}
+                                        onChange={(e) => setComparisonData({
+                                            ...comparisonData,
+                                            item1: { ...comparisonData.item1, name: e.target.value }
+                                        })}
+                                        required
+                                        style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="post-input"
+                                        placeholder="Marca"
+                                        value={comparisonData.item1.brand}
+                                        onChange={(e) => setComparisonData({
+                                            ...comparisonData,
+                                            item1: { ...comparisonData.item1, brand: e.target.value }
+                                        })}
+                                        style={{ fontSize: '12px' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', fontWeight: '900', color: '#ccc', fontStyle: 'italic', fontSize: '20px' }}>VS</div>
+
+                                {/* Item 2 */}
+                                <div className="comparison-item" style={{ flex: 1, padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#555' }}>Prodotto 2</h4>
+
+                                    {/* Image Upload 2 */}
+                                    <div className="item-image-upload" style={{ marginBottom: '10px', textAlign: 'center' }}>
+                                        <input
+                                            type="file"
+                                            id="comp-img-2"
+                                            accept="image/*"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => handleComparisonImageChange(e, 2)}
+                                        />
+                                        <label htmlFor="comp-img-2" style={{ cursor: 'pointer', display: 'block' }}>
+                                            {comparisonData.item2.preview ? (
+                                                <div style={{ position: 'relative', width: '100%', paddingTop: '100%', borderRadius: '8px', overflow: 'hidden', border: '2px dashed #ddd' }}>
+                                                    <img
+                                                        src={comparisonData.item2.preview}
+                                                        alt="Preview 2"
+                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '10px', padding: '4px' }}>Cambia foto</div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: '100%', padding: '20px 0', border: '2px dashed #ddd', borderRadius: '8px', color: '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <span style={{ fontSize: '24px' }}>📷</span>
+                                                    <span style={{ fontSize: '12px' }}>Aggiungi Foto</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+
+                                    <input
+                                        type="text"
+                                        className="post-input"
+                                        placeholder="Nome prodotto"
+                                        value={comparisonData.item2.name}
+                                        onChange={(e) => setComparisonData({
+                                            ...comparisonData,
+                                            item2: { ...comparisonData.item2, name: e.target.value }
+                                        })}
+                                        required
+                                        style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="post-input"
+                                        placeholder="Marca"
+                                        value={comparisonData.item2.brand}
+                                        onChange={(e) => setComparisonData({
+                                            ...comparisonData,
+                                            item2: { ...comparisonData.item2, brand: e.target.value }
+                                        })}
+                                        style={{ fontSize: '12px' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
                     {/* Review-specific fields */}
                     {postType === 'review' && (
                         <div className="review-fields">
-                            {/* Comparison Toggle */}
-                            <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '8px', border: '1px solid #eee' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: '600', color: '#5D4037', marginBottom: isComparison ? '12px' : '0' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={isComparison}
-                                        onChange={(e) => setIsComparison(e.target.checked)}
-                                        style={{ marginRight: '10px', width: '16px', height: '16px', accentColor: '#6F4E37' }}
-                                    />
-                                    Confronto tra due miscele?
-                                </label>
-
-                                {isComparison && (
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input
-                                            type="text"
-                                            className="post-input"
-                                            placeholder="Miscela 1"
-                                            value={comparisonTitle1}
-                                            onChange={(e) => setComparisonTitle1(e.target.value)}
-                                            style={{ flex: 1 }}
-                                            required
-                                        />
-                                        <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#888' }}>VS</div>
-                                        <input
-                                            type="text"
-                                            className="post-input"
-                                            placeholder="Miscela 2"
-                                            value={comparisonTitle2}
-                                            onChange={(e) => setComparisonTitle2(e.target.value)}
-                                            style={{ flex: 1 }}
-                                            required
-                                        />
-                                    </div>
-                                )}
-                            </div>
                             <div className="form-group">
                                 <label htmlFor="review-itemName">Nome articolo *</label>
                                 <input
@@ -345,7 +506,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             </div>
 
                             <div className="form-group">
-                                <label>Valutazione o risultato eventuale confronto*</label>
+                                <label>Valutazione *</label>
                                 <div style={{ padding: '12px 0' }}>
                                     <CoffeeCupRating
                                         rating={reviewData.rating}
@@ -363,7 +524,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
-                            placeholder={postType === 'review' ? "Racconta la tua esperienza con dati tencici o molto altro... (es. temperatura, pressione, tempo estrazione)" : "What's on your mind?"}
+                            placeholder={postType === 'comparison' ? "Descrivi le differenze, i pro e i contro..." : postType === 'review' ? "Racconta la tua esperienza..." : "What's on your mind?"}
                             required
                             rows="4"
                             className="post-input"
@@ -463,31 +624,27 @@ function CreatePostModal({ onClose, onSuccess }) {
                                             </div>
                                         ))
                                     }
-
-                                    {communities.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: '12px', color: '#888', textAlign: 'center', fontSize: '14px' }}>
-                                            No communities found
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Media upload */}
-                    <div className="form-group">
-                        <label htmlFor="modal-media" className="image-upload-label">
-                            {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : "📸 Aggiungi Foto/Video (Opzionale)"}
-                        </label>
-                        <input
-                            id="modal-media"
-                            type="file"
-                            accept="image/*,video/*"
-                            multiple
-                            onChange={handleMediaChange}
-                            style={{ display: 'none' }}
-                        />
-                    </div>
+                    {/* Media upload (Only for non-comparison posts) */}
+                    {postType !== 'comparison' && (
+                        <div className="form-group">
+                            <label htmlFor="modal-media" className="image-upload-label">
+                                {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : "📸 Aggiungi Foto/Video (Opzionale)"}
+                            </label>
+                            <input
+                                id="modal-media"
+                                type="file"
+                                accept="image/*,video/*"
+                                multiple
+                                onChange={handleMediaChange}
+                                style={{ display: 'none' }}
+                            />
+                        </div>
+                    )}
 
                     {/* User Tagging */}
                     <div className="form-group tag-users-section" style={{ marginBottom: '15px', position: 'relative' }}>
@@ -661,7 +818,7 @@ function CreatePostModal({ onClose, onSuccess }) {
 
 
                     {/* Media previews */}
-                    {mediaPreviews.length > 0 && (
+                    {mediaPreviews.length > 0 && postType !== 'comparison' && (
                         <div className="media-previews">
                             {mediaPreviews.map((preview, index) => (
                                 <div key={index} className="media-preview-item">
@@ -688,7 +845,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             disabled={loading}
                             className="submit-btn"
                         >
-                            {loading ? 'Posting...' : postType === 'review' ? 'Pubblica Recensione' : 'Post'}
+                            {loading ? 'Posting...' : postType === 'review' ? 'Pubblica Recensione' : postType === 'comparison' ? 'Pubblica Confronto' : 'Post'}
                         </button>
                     </div>
                 </form>

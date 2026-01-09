@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+
 import { getFeedPosts } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/Home.css';
@@ -12,7 +12,7 @@ import PostCard from '../components/PostCard';
 import { getUsersByUids, getUserSavedPostIds } from '../services/userService';
 import { getAllCommunities } from '../services/communityService';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+
 
 // Sidebar moved to components/Sidebar.js
 
@@ -49,6 +49,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                 }
                 if (feedType === 'popular') {
                     params.sort = 'popular';
+                }
+
+                if (feedType === 'comparisons') {
+                    params.type = 'comparison';
                 }
 
                 // Community filter not fully supported by backend yet, but we can pass it
@@ -121,6 +125,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         reviewData: post.reviewData || null, // Include review data
                         taggedUsers: post.taggedUsers || [], // UIDs array
                         taggedUsersData: taggedUsersData, // Full user objects for display
+                        comparisonData: post.comparisonData || null, // Include comparison data
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,
