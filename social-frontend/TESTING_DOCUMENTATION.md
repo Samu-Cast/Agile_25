@@ -224,6 +224,105 @@ Core application structure tests:
 
 ---
 
+## Coverage Improvements (2026-01-09)
+
+### Service Layer - Test Expansion
+
+#### `postService.js` (Updated)
+**Before**: 9 tests, 27% coverage  
+**After**: 29 tests (+20), ~90% coverage  
+**Improvement**: +63% coverage
+
+**New Test Coverage**:
+- `getFeedPosts()`: 4 tests (filtri multipli, paginazione, risposte vuote, errori)
+- `getPosts()`: 3 tests (mapping campi backend→frontend, gestione createdAt, errori)
+- `updateVotes()`: 2 tests (upvote/downvote, errori)
+- `toggleCoffee()`: 3 tests (aggiunta, rimozione dopo "already gave", errori)
+- `updateRating()`: 2 tests (success, errori)
+- `getUserComments()`: 2 tests (recupero, array vuoto su errore)
+- `getUserPosts()`: 2 tests (recupero con mapping, array vuoto su errore)
+- `getUserSavedPosts()`: 2 tests (recupero tramite `getUserSavedPostsDetails`, errori)
+- `deletePost()`: 2 tests (eliminazione success, errori)
+
+**Mock Strategies**:
+- Mock `global.fetch` per tutte le API calls
+- Mock `userService.getUserSavedPostsDetails` con `jest.spyOn()`
+
+### Page Components - New Test Suites
+
+#### `CreatePost.js` (New Test File)
+**Before**: 0% coverage (no tests)  
+**After**: 100% coverage, 12 tests  
+**Coverage**: 100% statements
+
+**Test Suite Structure**:
+1. **Rendering e Autenticazione** (2 tests)
+   - Rendering con utente autenticato
+   - Alert per utente non autenticato
+2. **Form Interactions** (3 tests)
+   - Cambio testo textarea
+   - Selezione file immagine
+   - Navigazione su Cancel
+3. **Form Submission** (5 tests)
+   - Submit senza immagine
+   - Submit con upload immagine
+   - Validazione immagine fallita
+   - Errore upload
+   - Errore API createPost
+4. **Loading States** (2 tests)
+   - Pulsante disabilitato durante loading
+   - Testo "Posting..." mostrato
+
+**Mock Strategies**:
+- Mock `useAuth` da AuthContext
+- Mock `useNavigate` da react-router-dom
+- Mock `uploadImage`, `validateImage` da imageService
+- Mock `createPost` da postService
+
+#### `CreateCommunityModal.js` (New Test File)
+**Before**: 0% coverage (no tests)  
+**After**: 100% coverage, 12 tests  
+**Coverage**: 100% statements
+
+**Test Suite Structure**:
+1. ** Rendering** (2 tests)
+   - Modal con form completo
+   - Presenza campi (name, description)
+2. **User Interactions** (4 tests)
+   - Cambio input name
+   - Cambio textarea description
+   - Click close button
+   - Click overlay
+3. **Form Submission** (4 tests)
+   - Submit success con callbacks
+   - Alert utente non autenticato
+   - Errore API (response.ok = false)
+   - Errore di rete
+4. **Loading States** (2 tests)
+   - Pulsante disabilitato durante submit
+   - Testo "Creating..." mostrato
+
+**Mock Strategies**:
+- Mock `useAuth` da AuthContext
+- Mock `global.fetch` per API calls
+- Props: `onClose` e `onSuccess` come `jest.fn()`
+
+### Overall Impact - Session 2026-01-09
+
+| Categoria | Tests Added | Files Modified/Created |
+|-----------|-------------|------------------------|
+| Services  | +20 tests   | 1 modified             |
+| Pages     | +12 tests   | 1 created              |
+| Components| +12 tests   | 1 created              |
+| **Total** | **+44 tests** | **3 files**          |
+
+**Execution Results**: 
+- All new tests passing (44/44)
+- Total test suite: 269 tests
+- Improved coverage for critical files with low coverage
+
+---
+
 ## Coverage
 
 To view the current coverage report:
