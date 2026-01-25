@@ -71,7 +71,7 @@ function MediaGallery({ mediaUrls = [], altText = "Media content" }) {
                                 className="media-video"
                                 preload="metadata"
                             >
-                                Your browser does not support the video tag.
+                                Your browser does not support the video tag or different format between video of same post.
                             </video>
                         ) : (
                             <img
