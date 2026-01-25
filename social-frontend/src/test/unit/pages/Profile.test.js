@@ -10,9 +10,11 @@ import * as collectionService from '../../../services/collectionService';
 import Swal from 'sweetalert2';
 
 // Mocks
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
     useParams: jest.fn(),
+    useNavigate: () => mockNavigate,
+    Link: ({ children, to }) => <a href={to}>{children}</a>,
 }));
 
 jest.mock('../../../context/AuthContext', () => ({
