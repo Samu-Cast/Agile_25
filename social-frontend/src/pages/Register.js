@@ -118,8 +118,9 @@ const Register = ({ onLoginSuccess }) => {
             <h2>Crea Account</h2>
             <form onSubmit={handleRegister}>
                 <div className="form-group">
-                    <label>Tipo di Account:</label>
+                    <label htmlFor="role">Tipo di Account:</label>
                     <select
+                        id="role"
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="role-select"
@@ -134,8 +135,9 @@ const Register = ({ onLoginSuccess }) => {
                 {role === 'Torrefazione' ? (
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Nome Torrefazione:</label>
+                            <label htmlFor="roasteryName">Nome Torrefazione:</label>
                             <input
+                                id="roasteryName"
                                 type="text"
                                 value={roasteryName}
                                 onChange={(e) => setRoasteryName(e.target.value)}
@@ -143,8 +145,9 @@ const Register = ({ onLoginSuccess }) => {
                             />
                         </div>
                         <div className="form-group">
-                            <label>Città:</label>
+                            <label htmlFor="city">Città:</label>
                             <input
+                                id="city"
                                 type="text"
                                 value={city}
                                 onChange={(e) => setCity(e.target.value)}
@@ -155,8 +158,9 @@ const Register = ({ onLoginSuccess }) => {
                 ) : (
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Nome:</label>
+                            <label htmlFor="firstName">Nome:</label>
                             <input
+                                id="firstName"
                                 type="text"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
@@ -164,8 +168,9 @@ const Register = ({ onLoginSuccess }) => {
                             />
                         </div>
                         <div className="form-group">
-                            <label>Cognome:</label>
+                            <label htmlFor="lastName">Cognome:</label>
                             <input
+                                id="lastName"
                                 type="text"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
@@ -176,8 +181,9 @@ const Register = ({ onLoginSuccess }) => {
                 )}
 
                 <div className="form-group">
-                    <label>Soprannome (Opzionale):</label>
+                    <label htmlFor="nickname">Soprannome (Opzionale):</label>
                     <input
+                        id="nickname"
                         type="text"
                         value={nickname}
                         onChange={(e) => setNickname(e.target.value)}
@@ -188,8 +194,9 @@ const Register = ({ onLoginSuccess }) => {
 
 
                 <div className="form-group">
-                    <label>Bio (Opzionale):</label>
+                    <label htmlFor="bio">Bio (Opzionale):</label>
                     <textarea
+                        id="bio"
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         placeholder="Raccontaci qualcosa di te..."
@@ -198,8 +205,9 @@ const Register = ({ onLoginSuccess }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>Email:</label>
+                    <label htmlFor="email">Email:</label>
                     <input
+                        id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -207,8 +215,9 @@ const Register = ({ onLoginSuccess }) => {
                     />
                 </div>
                 <div className="form-group">
-                    <label>Password:</label>
+                    <label htmlFor="password">Password:</label>
                     <input
+                        id="password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}

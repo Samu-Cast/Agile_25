@@ -3,11 +3,20 @@ const router = express.Router();
 const { db, admin } = require('../config/firebase');
 
 // GET /api/posts
-// GET /api/posts
 router.get('/', async (req, res) => {
     try {
-        const { uid, authorUid, filter, sort } = req.query;
+        const { uid, authorUid, filter, sort, communityId, type } = req.query;
         let query = db.collection('posts');
+
+        // Filter by community
+        if (communityId) {
+            query = query.where('communityId', '==', communityId);
+        }
+
+        // Filter by type (post or review)
+        if (type) {
+            query = query.where('type', '==', type);
+        }
 
         // If filtering by specific author (Profile page usage)
         if (authorUid) {
@@ -71,23 +80,94 @@ router.get('/', async (req, res) => {
 // POST /api/posts
 router.post('/', async (req, res) => {
     try {
-        const { uid, entityType, entityId, text, imageUrl, createdAt, commentsCount } = req.body;
+        const {
+            uid, entityType, entityId, text, imageUrl, createdAt, commentsCount, communityId,
+            type, reviewData, mediaUrls, taggedUsers
+        } = req.body;
 
         if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Validate review-specific fields
+        if (type === 'review') {
+            if (!reviewData || !reviewData.rating || !reviewData.itemName) {
+                return res.status(400).json({ error: "Missing required review fields (rating, itemName)" });
+            }
+            if (reviewData.rating < 0.5 || reviewData.rating > 5) {
+                return res.status(400).json({ error: "Rating must be between 0.5 and 5" });
+            }
+            // Accept half ratings (0.5, 1, 1.5, 2, 2.5, etc.)
+            if ((reviewData.rating * 10) % 5 !== 0) {
+                return res.status(400).json({ error: "Rating must be in 0.5 increments" });
+            }
+        }
+
+        // Validate comparison-specific fields
+        let comparisonData = req.body.comparisonData;
+        if (type === 'comparison') {
+            if (!comparisonData || !comparisonData.item1 || !comparisonData.item2 || !comparisonData.item1.name || !comparisonData.item2.name) {
+                return res.status(400).json({ error: "Missing required comparison fields (two items with names)" });
+            }
         }
 
         const newPost = {
             uid,
             entityType: entityType || "user",
             entityId: entityId || uid,
+            communityId: communityId || null,
+            type: type || "post", // "post", "review", "comparison"
             text,
-            imageUrl: imageUrl || null,
+            imageUrl: imageUrl || null, // Legacy support
+            mediaUrls: mediaUrls || (imageUrl ? [imageUrl] : []), // Array of media URLs
+            taggedUsers: taggedUsers || [], // Array of tagged user UIDs
             createdAt: createdAt ? new Date(createdAt) : new Date(),
             votes: 0,
             votedBy: {},
             commentsCount: commentsCount || 0
         };
+
+        // Add review-specific data if it's a review
+        if (type === 'review' && reviewData) {
+            newPost.reviewData = {
+                itemName: reviewData.itemName,
+                itemType: reviewData.itemType || "other",
+                brand: reviewData.brand || null,
+                rating: reviewData.rating,
+            };
+        }
+
+        // Add comparison-specific data if it's a comparison
+        if (type === 'comparison' && comparisonData) {
+            newPost.comparisonData = {
+                item1: {
+                    name: comparisonData.item1.name,
+                    brand: comparisonData.item1.brand || '',
+                    image: comparisonData.item1.image || null
+                },
+                item2: {
+                    name: comparisonData.item2.name,
+                    brand: comparisonData.item2.brand || '',
+                    image: comparisonData.item2.image || null
+                }
+            };
+        }
+
+        // Add comparison-specific data if it's a comparison
+        if (type === 'comparison' && comparisonData) {
+            newPost.comparisonData = {
+                item1: {
+                    name: comparisonData.item1.name,
+                    brand: comparisonData.item1.brand || '',
+                    image: comparisonData.item1.image || null
+                },
+                item2: {
+                    name: comparisonData.item2.name,
+                    brand: comparisonData.item2.brand || '',
+                    image: comparisonData.item2.image || null
+                }
+            };
+        }
 
         const ref = await db.collection('posts').add(newPost);
 
@@ -121,7 +201,7 @@ router.get('/:postId/comments', async (req, res) => {
 router.post('/:postId/comments', async (req, res) => {
     try {
         const { postId } = req.params;
-        const { text, uid, parentComment } = req.body;
+        const { text, uid, parentComment, mediaUrls } = req.body;
 
         if (!text || !uid) {
             return res.status(400).json({ error: "Missing required fields" });
@@ -131,6 +211,7 @@ router.post('/:postId/comments', async (req, res) => {
             text,
             uid,
             parentComment: parentComment || null,
+            mediaUrls: mediaUrls || [],
             createdAt: new Date()
         };
 

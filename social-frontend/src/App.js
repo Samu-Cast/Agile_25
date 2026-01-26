@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext'; // Import
 import './styles/App.css';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
-import CreatePost from './pages/CreatePost';
+import CreatePostModal from './components/CreatePostModal';
+// import CreatePost from './pages/CreatePost'; // Removed
 import ForgotPassword from './pages/ForgotPassword';
 
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
+import { ChatPopup } from './components/Chat/ChatPopup'; // Import
 
-function AppContent() {
+export function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false); // Modal state
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const { currentUser, logout } = useAuth();
   const isLoggedIn = !!currentUser;
@@ -45,16 +49,25 @@ function AppContent() {
         showProfile={isLoggedIn}
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
+        onCreatePostClick={() => setIsCreatePostOpen(true)}
       />
       <Routes>
         <Route path="/" element={<Home onLoginClick={handleLoginClick} isLoggedIn={isLoggedIn} />} />
-        <Route path="/create-post" element={<CreatePost />} />
+        {/* <Route path="/create-post" element={<CreatePost />} /> Removed */}
         <Route path="/profile/:uid?" element={<Profile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />
       )}
+      {isCreatePostOpen && (
+        <CreatePostModal
+          onClose={() => setIsCreatePostOpen(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
+      {/* Chat Popup available globally if logged in */}
+      {isLoggedIn && <ChatPopup />}
     </div>
   );
 }
@@ -63,7 +76,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <ChatProvider>
+          <AppContent />
+        </ChatProvider>
       </AuthProvider>
     </Router>
   );

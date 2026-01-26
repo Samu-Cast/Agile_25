@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { uploadImage, validateImage } from '../services/imageService';
+import { createPost } from '../services/postService';
 import '../styles/pages/Home.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -40,28 +41,14 @@ function CreatePost() {
                 imageUrl = await uploadImage(image, 'posts');
             }
 
+            // Map to what createPost service expects
             const postData = {
-                uid: currentUser.uid,
-                entityType: "user",
-                entityId: currentUser.uid,
-                text: text,
-                imageUrl: imageUrl,
-                createdAt: new Date().toISOString(),
-                commentsCount: 0
+                authorUid: currentUser.uid,
+                content: text,
+                imageUrl: imageUrl
             };
 
-            const response = await fetch(`${API_URL}/posts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(postData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to create post');
-            }
+            await createPost(postData);
 
             navigate('/');
         } catch (error) {
@@ -76,9 +63,11 @@ function CreatePost() {
         <div className="home-layout">
             <div className="main-container">
                 <div style={{
-                    flex: 1,
-                    maxWidth: '740px',
-                    margin: '0 auto',
+                    gridColumn: '2', /* Center in grid */
+                    height: '100%',
+                    overflowY: 'auto', /* Scrollable if needed */
+                    scrollbarWidth: 'none', /* Hide scrollbar */
+                    width: '100%',
                     padding: '2rem',
                     backgroundColor: 'var(--white)',
                     borderRadius: 'var(--border-radius)',

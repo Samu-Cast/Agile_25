@@ -18,9 +18,15 @@ router.get('/', async (req, res) => {
         const usersSnapshot = await db.collection('users').get();
         usersSnapshot.docs.forEach(doc => {
             const data = doc.data();
-            const searchableText = `${data.name || ''} ${data.nickname || ''} ${data.email || ''}`.toLowerCase();
+            // Include location in searchable text
+            const searchableText = `${data.name || ''} ${data.nickname || ''} ${data.email || ''} ${data.location || ''}`.toLowerCase();
             if (searchableText.includes(searchTerm)) {
-                results.push({ id: doc.id, type: 'user', ...data });
+                results.push({
+                    id: doc.id,
+                    uid: doc.id, // Ensure uid is available for tagging
+                    type: 'user',
+                    ...data
+                });
             }
         });
 
@@ -28,9 +34,15 @@ router.get('/', async (req, res) => {
         const barsSnapshot = await db.collection('bars').get();
         barsSnapshot.docs.forEach(doc => {
             const data = doc.data();
-            const searchableText = `${data.name || ''} ${data.address || ''}`.toLowerCase();
+            // Include city in searchable text
+            const searchableText = `${data.name || ''} ${data.address || ''} ${data.city || ''}`.toLowerCase();
             if (searchableText.includes(searchTerm)) {
-                results.push({ id: doc.id, type: 'bar', ...data });
+                results.push({
+                    id: doc.id,
+                    uid: data.ownerUid || doc.id, // Use ownerUid for bars
+                    type: 'bar',
+                    ...data
+                });
             }
         });
 
@@ -38,9 +50,15 @@ router.get('/', async (req, res) => {
         const roastersSnapshot = await db.collection('roasters').get();
         roastersSnapshot.docs.forEach(doc => {
             const data = doc.data();
-            const searchableText = `${data.name || ''} ${data.address || ''}`.toLowerCase();
+            // Include city in searchable text
+            const searchableText = `${data.name || ''} ${data.address || ''} ${data.city || ''}`.toLowerCase();
             if (searchableText.includes(searchTerm)) {
-                results.push({ id: doc.id, type: 'roaster', ...data });
+                results.push({
+                    id: doc.id,
+                    uid: data.ownerUid || doc.id, // Use ownerUid for roasters
+                    type: 'roaster',
+                    ...data
+                });
             }
         });
 

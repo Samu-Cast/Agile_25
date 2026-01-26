@@ -1,6 +1,6 @@
 //Test per verificare che il caricamento delle immagini funzioni correttamente
 //Importa le funzioni da testare dal file imageService
-import { validateImage, uploadImage } from '../../../services/imageService';
+import { validateImage, validateVideo, validateMedia, uploadImage } from '../../../services/imageService';
 
 //Crea versioni finte di fetch e alert (già fatto in setupTests.js ma ridichiarato qui)
 global.fetch = jest.fn();
@@ -76,6 +76,147 @@ describe('imageService - validateImage', () => {
             expect(result).toBe(true);
         });
     });
+
+    //Test: verifica il limite esatto di 5MB (edge case)
+    it('dovrebbe accettare file esattamente di 5MB', () => {
+        const exactFile = new File(['content'], 'exact.jpg', { type: 'image/jpeg' });
+        Object.defineProperty(exactFile, 'size', { value: 5 * 1024 * 1024 }); // Esattamente 5MB
+
+        const result = validateImage(exactFile);
+        expect(result).toBe(true);
+    });
+
+    //Test: verifica che 5MB + 1 byte venga rifiutato
+    it('dovrebbe rifiutare file di 5MB + 1 byte', () => {
+        const overFile = new File(['content'], 'over.jpg', { type: 'image/jpeg' });
+        Object.defineProperty(overFile, 'size', { value: 5 * 1024 * 1024 + 1 }); // 5MB + 1 byte
+
+        const result = validateImage(overFile);
+        expect(result).toBe(false);
+    });
+});
+
+//Gruppo di test per la funzione validateVideo
+describe('imageService - validateVideo', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    //Test: video MP4 valido sotto i 50MB
+    it('dovrebbe accettare video MP4 valido (<50MB)', () => {
+        const validVideo = new File(['video'], 'video.mp4', { type: 'video/mp4' });
+        Object.defineProperty(validVideo, 'size', { value: 20 * 1024 * 1024 }); // 20MB
+
+        const result = validateVideo(validVideo);
+        expect(result).toBe(true);
+        expect(global.alert).not.toHaveBeenCalled();
+    });
+
+    //Test: video WebM valido
+    it('dovrebbe accettare video WebM valido', () => {
+        const webmVideo = new File(['video'], 'video.webm', { type: 'video/webm' });
+        Object.defineProperty(webmVideo, 'size', { value: 30 * 1024 * 1024 }); // 30MB
+
+        const result = validateVideo(webmVideo);
+        expect(result).toBe(true);
+    });
+
+    //Test: video troppo grande (>50MB)
+    it('dovrebbe rifiutare video troppo grande (>50MB)', () => {
+        const largeVideo = new File(['video'], 'large.mp4', { type: 'video/mp4' });
+        Object.defineProperty(largeVideo, 'size', { value: 60 * 1024 * 1024 }); // 60MB
+
+        const result = validateVideo(largeVideo);
+        expect(result).toBe(false);
+        expect(global.alert).toHaveBeenCalledWith('Il video è troppo grande. Massimo 50MB.');
+    });
+
+    //Test: formato video non supportato (AVI)
+    it('dovrebbe rifiutare formato video non supportato (AVI)', () => {
+        const aviVideo = new File(['video'], 'video.avi', { type: 'video/avi' });
+        Object.defineProperty(aviVideo, 'size', { value: 10 * 1024 * 1024 });
+
+        const result = validateVideo(aviVideo);
+        expect(result).toBe(false);
+        expect(global.alert).toHaveBeenCalledWith('Formato video non supportato. Usa MP4, MOV o WebM.');
+    });
+
+    //Test: edge case - esattamente 50MB
+    it('dovrebbe accettare video esattamente di 50MB', () => {
+        const exactVideo = new File(['video'], 'exact.mp4', { type: 'video/mp4' });
+        Object.defineProperty(exactVideo, 'size', { value: 50 * 1024 * 1024 });
+
+        const result = validateVideo(exactVideo);
+        expect(result).toBe(true);
+    });
+
+    //Test: tutti i formati video supportati
+    it('dovrebbe accettare tutti i formati video supportati', () => {
+        const formats = ['video/mp4', 'video/mov', 'video/quicktime', 'video/webm'];
+
+        formats.forEach(type => {
+            jest.clearAllMocks();
+            const file = new File(['video'], 'test.mp4', { type });
+            Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 });
+
+            const result = validateVideo(file);
+            expect(result).toBe(true);
+        });
+    });
+});
+
+//Gruppo di test per la funzione validateMedia (routing tra image e video)
+describe('imageService - validateMedia', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    //Test: routing corretto per immagine
+    it('dovrebbe chiamare validateImage per file immagine', () => {
+        const imageFile = new File(['image'], 'test.png', { type: 'image/png' });
+        Object.defineProperty(imageFile, 'size', { value: 2 * 1024 * 1024 });
+
+        const result = validateMedia(imageFile);
+        expect(result).toBe(true);
+    });
+
+    //Test: routing corretto per video
+    it('dovrebbe chiamare validateVideo per file video', () => {
+        const videoFile = new File(['video'], 'test.mp4', { type: 'video/mp4' });
+        Object.defineProperty(videoFile, 'size', { value: 20 * 1024 * 1024 });
+
+        const result = validateMedia(videoFile);
+        expect(result).toBe(true);
+    });
+
+    //Test: rifiuto file non media (es: documento)
+    it('dovrebbe rifiutare file che non è né immagine né video', () => {
+        const docFile = new File(['doc'], 'document.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        Object.defineProperty(docFile, 'size', { value: 1 * 1024 * 1024 });
+
+        const result = validateMedia(docFile);
+        expect(result).toBe(false);
+        expect(global.alert).toHaveBeenCalledWith('Formato file non supportato. Usa immagini (JPG, PNG, GIF, WebP) o video (MP4, MOV, WebM).');
+    });
+
+    //Test: file audio rifiutato
+    it('dovrebbe rifiutare file audio', () => {
+        const audioFile = new File(['audio'], 'song.mp3', { type: 'audio/mpeg' });
+        Object.defineProperty(audioFile, 'size', { value: 5 * 1024 * 1024 });
+
+        const result = validateMedia(audioFile);
+        expect(result).toBe(false);
+    });
+
+    //Test: immagine troppo grande passa a validateImage che la rifiuta
+    it('dovrebbe rifiutare immagine troppo grande attraverso validateMedia', () => {
+        const largeImage = new File(['image'], 'large.jpg', { type: 'image/jpeg' });
+        Object.defineProperty(largeImage, 'size', { value: 10 * 1024 * 1024 }); // 10MB > 5MB limit
+
+        const result = validateMedia(largeImage);
+        expect(result).toBe(false);
+        expect(global.alert).toHaveBeenCalledWith('Il file è troppo grande. Massimo 5MB.');
+    });
 });
 
 //Gruppo di test per la funzione uploadImage
@@ -126,6 +267,7 @@ describe('imageService - uploadImage', () => {
         //Verifica che la funzione lanci un errore con il messaggio corretto
         await expect(uploadImage(file, 'posts')).rejects.toThrow('Upload failed');
     });
+
 
     //Test: verifica che i dati inviati al server siano corretti
     it('dovrebbe inviare FormData con file e folder corretti', async () => {

@@ -4,6 +4,7 @@ const app = express();
 const cors = require('cors');
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/', (req, res) => {
   res.json({ message: "API ok" });
@@ -16,6 +17,8 @@ const barsRouter = require('./routes/bars');
 const roastersRouter = require('./routes/roasters');
 const searchRouter = require('./routes/search');
 const uploadRouter = require('./routes/upload');
+const communitiesRouter = require('./routes/communities'); // Import
+const chatsRouter = require('./routes/chats'); // Import
 
 app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
@@ -24,5 +27,7 @@ app.use('/api/roasters', roastersRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/upload', uploadRouter);
+app.use('/api/communities', communitiesRouter);
+app.use('/api/chats', chatsRouter);
 
 module.exports = app;

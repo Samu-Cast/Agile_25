@@ -1,0 +1,164 @@
+.coffee-cup-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.coffee-cup-rating.small {
+    gap: 2px;
+}
+
+.coffee-cup-rating.small .coffee-cup-svg {
+    width: 18px;
+    height: 18px;
+}
+
+.coffee-cup-rating.medium {
+    gap: 4px;
+}
+
+.coffee-cup-rating.medium .coffee-cup-svg {
+    width: 24px;
+    height: 24px;
+}
+
+.coffee-cup-rating.large {
+    gap: 6px;
+}
+
+.coffee-cup-rating.large .coffee-cup-svg {
+    width: 32px;
+    height: 32px;
+}
+
+.cup-container {
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* SVG Coffee Cup Styling */
+.coffee-cup-svg {
+    display: block;
+    transition: all 0.2s ease;
+}
+
+/* Empty cup - gray outline */
+.coffee-cup-svg.empty .cup-body {
+    fill: #f5f5f5;
+    stroke: #bdbdbd;
+    stroke-width: 1.5;
+}
+
+.coffee-cup-svg.empty .cup-handle {
+    stroke: #bdbdbd;
+}
+
+.coffee-cup-svg.empty .cup-steam {
+    stroke: #e0e0e0;
+}
+
+/* Half cup - gradient or half fill */
+.coffee-cup-svg.half .cup-body {
+    fill: #f5f5f5;
+    stroke: #8D6E63;
+    stroke-width: 1.5;
+}
+
+.coffee-cup-svg.half .cup-half-fill {
+    fill: #8D6E63;
+}
+
+.coffee-cup-svg.half .cup-handle {
+    stroke: #8D6E63;
+}
+
+.coffee-cup-svg.half .cup-steam {
+    stroke: #A1887F;
+}
+
+/* Full cup - brown coffee color */
+.coffee-cup-svg.full .cup-body {
+    fill: #8D6E63;
+    stroke: #6D4C41;
+    stroke-width: 1.5;
+}
+
+.coffee-cup-svg.full .cup-handle {
+    stroke: #6D4C41;
+}
+
+.coffee-cup-svg.full .cup-steam {
+    stroke: #A1887F;
+}
+
+/* Interactive mode */
+.coffee-cup-rating.interactive .cup-container {
+    cursor: pointer;
+    transform-origin: center;
+}
+
+.coffee-cup-rating.interactive .cup-container:hover {
+    transform: scale(1.15);
+}
+
+.coffee-cup-rating.interactive .cup-container:active {
+    transform: scale(1.05);
+}
+
+/* Hover state for interactive cups */
+.coffee-cup-rating.interactive .cup-container:hover .coffee-cup-svg.empty .cup-body,
+.coffee-cup-rating.interactive .cup-container:hover .coffee-cup-svg.half .cup-body {
+    fill: #BCAAA4;
+}
+
+.coffee-cup-rating.interactive .cup-container:hover .coffee-cup-svg.full .cup-body {
+    fill: #6D4C41;
+}
+
+/* Rating value display */
+.rating-value {
+    margin-left: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #8D6E63;
+}
+
+/* Animation for rating changes */
+.cup-container {
+    animation: cupAppear 0.3s ease;
+}
+
+@keyframes cupAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Pulse animation on hover for interactive mode */
+.coffee-cup-rating.interactive .cup-container:hover .cup-steam {
+    animation: steamPulse 1s ease-in-out infinite;
+}
+
+@keyframes steamPulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}

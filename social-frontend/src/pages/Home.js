@@ -1,122 +1,143 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import CommentSection from '../components/CommentSection';
-import { toggleSavePost } from '../services/postService';
+
+import { getFeedPosts } from '../services/postService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/Home.css';
-import { getUsersByUids } from '../services/userService';
+import '../styles/components/Sidebar.css';
+import Sidebar from '../components/Sidebar';
+import CommunityFeed from '../components/CommunityFeed';
+import CommunityExplorer from '../components/CommunityExplorer';
+import CommunityInfoCard from '../components/CommunityInfoCard';
+import PostCard from '../components/PostCard';
+import { getUsersByUids, getUserSavedPostIds } from '../services/userService';
+import { getAllCommunities } from '../services/communityService';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-const Sidebar = ({ activeFeed, onFeedChange }) => {
-    return (
-        <aside className="sidebar">
-            <div className="sidebar-section">
-                <div
-                    className={`sidebar-item ${activeFeed === 'home' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('home')}
-                >
-                    <span className="icon"></span> Home
-                </div>
-                <div
-                    className={`sidebar-item ${activeFeed === 'popular' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('popular')}
-                >
-                    <span className="icon"></span> Popular
-                </div>
-                <div
-                    className={`sidebar-item ${activeFeed === 'all' ? 'active' : ''}`}
-                    onClick={() => onFeedChange('all')}
-                >
-                    <span className="icon"></span> All
-                </div>
-            </div>
 
-            <div className="sidebar-section">
-                <h3 className="sidebar-title">COMMUNITIES</h3>
-                <div className="sidebar-item">
-                    <span className="icon"></span> cappucinos
-                </div>
-                <div className="sidebar-item">
-                    <span className="icon"></span> latteArt
-                </div>
-                <div className="sidebar-item">
-                    <span className="icon"></span> coffeeChats
-                </div>
-            </div>
-        </aside>
-    );
+// Sidebar moved to components/Sidebar.js
+
+const timeAgo = (date) => {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m";
+    return Math.floor(seconds) + "s";
 };
 
 const Feed = ({ isLoggedIn, user, feedType }) => {
     const [posts, setPosts] = React.useState([]);
-    const [expandedPostId, setExpandedPostId] = React.useState(null);
-    // Local state to track user votes: { [postId]: 1 (up) | -1 (down) | 0 (none) }
-    const [userVotes, setUserVotes] = React.useState({});
+
     // Local state to track saved posts: { [postId]: true/false }
     const [savedPosts, setSavedPosts] = React.useState({});
 
     React.useEffect(() => {
         const fetchPosts = async () => {
             try {
-                let url = `${API_URL}/posts`;
-                const params = new URLSearchParams();
-
+                const params = {};
                 if (user?.uid) {
-                    params.append('uid', user.uid);
-
+                    params.uid = user.uid;
                     if (feedType === 'home') {
-                        params.append('filter', 'followed');
+                        params.filter = 'followed';
                     }
                 }
-
                 if (feedType === 'popular') {
-                    params.append('sort', 'popular');
+                    params.sort = 'popular';
                 }
 
-                if (Array.from(params).length > 0) {
-                    url += `?${params.toString()}`;
+                if (feedType === 'comparisons') {
+                    params.type = 'comparison';
                 }
 
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                // Community filter not fully supported by backend yet, but we can pass it
+                if (feedType.startsWith('community-')) {
+                    // params.communityId = feedType.replace('community-', '');
                 }
-                const data = await response.json();
 
-                // Initialize votes state
-                const initialVotes = {};
+                const data = await getFeedPosts(params);
 
-                // Extract unique UIDs
+
+
+                // Extract unique UIDs and Community IDs
                 const uids = [...new Set(data.map(post => post.uid))];
-                const users = await getUsersByUids(uids);
+
+                // Also extract tagged user UIDs
+                const taggedUids = new Set();
+                data.forEach(post => {
+                    if (post.taggedUsers && Array.isArray(post.taggedUsers)) {
+                        post.taggedUsers.forEach(uid => taggedUids.add(uid));
+                    }
+                });
+
+                // Combine all UIDs to fetch
+                const allUids = [...new Set([...uids, ...Array.from(taggedUids)])];
+
+                const [users, communities] = await Promise.all([
+                    getUsersByUids(allUids),
+                    getAllCommunities()
+                ]);
+
                 const userMap = {};
                 users.forEach(u => {
-                    userMap[u.uid] = u.nickname || u.name;
+                    userMap[u.uid] = {
+                        uid: u.uid,
+                        name: u.nickname || u.name,
+                        nickname: u.nickname,
+                        avatar: u.profilePic || u.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+                        profilePic: u.profilePic,
+                        photoURL: u.photoURL
+                    };
+                });
+
+                const communityMap = {};
+                communities.forEach(c => {
+                    communityMap[c.id] = { name: c.name, avatar: c.avatar };
                 });
 
                 // Map backend data to frontend format
                 const formattedPosts = data.map(post => {
-                    // Set initial vote state for this post
-                    if (post.userVote) {
-                        initialVotes[post.id] = post.userVote;
-                    }
+
+
+                    const postUser = userMap[post.uid] || { name: "User", avatar: "https://cdn-icons-png.flaticon.com/512/847/847969.png" };
+                    const postCommunity = communityMap[post.communityId];
+
+                    // Map tagged users
+                    const taggedUsersData = post.taggedUsers && post.taggedUsers.length > 0
+                        ? post.taggedUsers.map(uid => userMap[uid]).filter(Boolean)
+                        : [];
 
                     return {
                         id: post.id,
-                        author: userMap[post.uid] || post.uid,
+                        type: post.type || 'post', // Include post type
+                        author: postUser.name,
+                        authorAvatar: postUser.avatar,
                         authorId: post.uid,
-                        time: new Date(post.createdAt).toLocaleDateString(),
-                        title: post.text ? (post.text.substring(0, 50) + (post.text.length > 50 ? "..." : "")) : "No Title",
+                        time: post.createdAt ? timeAgo(new Date(post.createdAt)) : "just now",
                         content: post.text,
                         image: post.imageUrl,
+                        mediaUrls: post.mediaUrls || [], // Include media URLs array
+                        reviewData: post.reviewData || null, // Include review data
+                        taggedUsers: post.taggedUsers || [], // UIDs array
+                        taggedUsersData: taggedUsersData, // Full user objects for display
+                        comparisonData: post.comparisonData || null, // Include comparison data
                         votes: post.votes || 0,
-                        comments: post.commentsCount || 0
+                        comments: post.commentsCount || 0,
+                        userVote: post.userVote || 0,
+                        communityName: postCommunity?.name,
+                        communityAvatar: postCommunity?.avatar,
+                        communityId: post.communityId,
+                        createdAt: post.createdAt
                     };
                 });
 
                 setPosts(formattedPosts);
-                setUserVotes(initialVotes);
+
             } catch (error) {
                 console.error("Error fetching posts:", error);
             }
@@ -125,13 +146,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
         const fetchSavedPosts = async () => {
             if (!user?.uid) return;
             try {
-                const response = await fetch(`${API_URL}/users/${user.uid}/savedPosts`);
-                if (response.ok) {
-                    const savedPostIds = await response.json();
-                    const savedMap = {};
-                    savedPostIds.forEach(id => { savedMap[id] = true; });
-                    setSavedPosts(savedMap);
-                }
+                const savedPostIds = await getUserSavedPostIds(user.uid);
+                const savedMap = {};
+                savedPostIds.forEach(id => { savedMap[id] = true; });
+                setSavedPosts(savedMap);
             } catch (error) {
                 console.error("Error fetching saved posts:", error);
             }
@@ -139,146 +157,23 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 
         fetchPosts();
         fetchSavedPosts();
-        fetchPosts();
-        fetchSavedPosts();
     }, [user?.uid, feedType]); // Re-fetch when user or feedType changes
 
-    const toggleComments = (postId) => {
-        if (expandedPostId === postId) {
-            setExpandedPostId(null);
-        } else {
-            setExpandedPostId(postId);
-        }
-    };
 
-    const handleVote = async (postId, type) => {
-        if (!isLoggedIn) return;
-
-        const currentVote = userVotes[postId] || 0;
-        const newVote = currentVote === 1 ? 0 : 1; // Toggle if already upvoted
-
-        // Optimistic update
-        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                let voteChange = 0;
-                if (currentVote === 1) voteChange = -1; // Remove upvote
-                else if (currentVote === -1) voteChange = 2; // Change down to up
-                else voteChange = 1; // Add upvote
-                return { ...p, votes: p.votes + voteChange };
-            }
-            return p;
-        }));
-
-        try {
-            await fetch(`${API_URL}/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: user?.uid, value: 1 }),
-            });
-        } catch (error) {
-            console.error("Error liking post:", error);
-            // Revert logic could be added here
-        }
-    };
-
-    const handleDownvote = async (postId) => {
-        if (!isLoggedIn) return;
-
-        const currentVote = userVotes[postId] || 0;
-        const newVote = currentVote === -1 ? 0 : -1; // Toggle if already downvoted
-
-        // Optimistic update
-        setUserVotes(prev => ({ ...prev, [postId]: newVote }));
-        setPosts(prevPosts => prevPosts.map(p => {
-            if (p.id === postId) {
-                let voteChange = 0;
-                if (currentVote === -1) voteChange = 1; // Remove downvote
-                else if (currentVote === 1) voteChange = -2; // Change up to down
-                else voteChange = -1; // Add downvote
-                return { ...p, votes: p.votes + voteChange };
-            }
-            return p;
-        }));
-
-        try {
-            await fetch(`${API_URL}/posts/${postId}/like`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: user?.uid, value: -1 }),
-            });
-        } catch (error) {
-            console.error("Error unliking post:", error);
-        }
-    };
-
-    const handleToggleSave = async (postId) => {
-        if (!isLoggedIn || !user?.uid) return;
-
-        const isSaved = savedPosts[postId] || false;
-
-        // Optimistic update
-        setSavedPosts(prev => ({ ...prev, [postId]: !isSaved }));
-
-        try {
-            await toggleSavePost(postId, user.uid, isSaved);
-        } catch (error) {
-            console.error("Error toggling save:", error);
-            // Revert on error
-            setSavedPosts(prev => ({ ...prev, [postId]: isSaved }));
-        }
-    };
 
     return (
         <main className="feed">
             {posts.map(post => {
-                const userVote = userVotes[post.id] || 0;
-
+                const isSaved = savedPosts[post.id] || false;
+                // Merge isSaved into post object for PostCard or pass as prop
+                // We'll pass as prop.
                 return (
-                    <div key={post.id} className="post-card">
-                        <div className="post-sidebar">
-                            <button
-                                className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
-                                onClick={() => handleVote(post.id)}
-                                style={{ color: userVote === 1 ? '#4169E1' : '' }}
-                            >
-                                ▲
-                            </button>
-                            <span className="vote-count">{post.votes >= 1000 ? (post.votes / 1000).toFixed(1) + 'k' : post.votes}</span>
-                            <button
-                                className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
-                                onClick={() => handleDownvote(post.id)}
-                                style={{ color: userVote === -1 ? '#4169E1' : '' }}
-                            >
-                                ▼
-                            </button>
-                        </div>
-                        <div className="post-content">
-                            <div className="post-header">
-                                <span className="post-author">{post.author}</span>
-                                <span className="post-time">• {post.time}</span>
-                            </div>
-                            <h3 className="post-title">{post.title}</h3>
-                            {post.image && <img src={post.image} alt="Post content" className="post-image" />}
-                            <p className="post-text">{post.content}</p>
-                            <div className="post-footer">
-                                <button className="action-btn" onClick={() => toggleComments(post.id)}>
-                                    {post.comments} Comments
-                                </button>
-                                <button className="action-btn">↗ Share</button>
-                                <button
-                                    className="action-btn"
-                                    onClick={() => handleToggleSave(post.id)}
-                                    style={{ color: savedPosts[post.id] ? '#FFD700' : 'inherit' }}
-                                >
-                                    {savedPosts[post.id] ? '🔖' : '📑'} {savedPosts[post.id] ? 'Salvato' : 'Salva'}
-                                </button>
-                            </div>
-                            {expandedPostId === post.id && (
-                                <CommentSection postId={post.id} currentUser={user} />
-                            )}
-                        </div>
-                    </div>
+                    <PostCard
+                        key={post.id}
+                        post={{ ...post, isSaved }}
+                        currentUser={user}
+                        isLoggedIn={isLoggedIn}
+                    />
                 );
             })}
         </main>
@@ -290,23 +185,56 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
 const Home = ({ onLoginClick, isLoggedIn }) => {
     const { currentUser } = useAuth();
     const [feedType, setFeedType] = React.useState('all');
+    const [sidebarRefresh, setSidebarRefresh] = React.useState(0);
+    const [currentCommunity, setCurrentCommunity] = React.useState(null);
 
     return (
         <div className="home-layout">
-            <div className="main-container">
-                <Sidebar activeFeed={feedType} onFeedChange={setFeedType} />
-                <Feed isLoggedIn={isLoggedIn} user={currentUser} feedType={feedType} />
+            <div className={`main-container ${feedType.startsWith('community-') ? 'community-view' : ''}`}>
+                <Sidebar
+                    activeFeed={feedType}
+                    onFeedChange={setFeedType}
+                    refreshTrigger={sidebarRefresh}
+                />
+
+
+
+                {feedType === 'explore' ? (
+                    <CommunityExplorer
+                        currentUser={currentUser}
+                        onNavigate={setFeedType}
+                        onCommunityUpdate={() => setSidebarRefresh(prev => prev + 1)}
+                    />
+                ) : feedType.startsWith('community-') ? (
+                    <CommunityFeed
+                        communityId={feedType.replace('community-', '')}
+                        isLoggedIn={isLoggedIn}
+                        user={currentUser}
+                        onCommunityUpdate={() => setSidebarRefresh(prev => prev + 1)}
+                        onCommunityLoaded={setCurrentCommunity}
+                    />
+                ) : (
+                    <Feed isLoggedIn={isLoggedIn} user={currentUser} feedType={feedType} />
+                )}
+
                 <div className="right-sidebar">
-                    {/* Create Post button - only visible when logged in */}
-                    {isLoggedIn && (
-                        <div className="info-card">
-                            <h3>Create Post</h3>
-                            <p>Share your thoughts with the community.</p>
-                            <Link to="/create-post" className="btn-primary" style={{ textDecoration: 'none', textAlign: 'center' }}>
-                                + New Post
-                            </Link>
-                        </div>
+                    {feedType.startsWith('community-') && currentCommunity && (
+                        <CommunityInfoCard
+                            community={currentCommunity}
+                            currentUser={currentUser}
+                            onCommunityUpdate={() => {
+                                setSidebarRefresh(prev => prev + 1);
+                                // Also need to re-fetch current community? 
+                                // Actually sidebar refresh triggers nothing for *current* community details directly 
+                                // unless CommunityFeed re-fetches. 
+                                // But CommunityFeed fetches on mount/id change.
+                                // We might need to force CommunityFeed to update?
+                                // For now, let's just assume we update the local state in the card or rely on the feed to update eventually.
+                                // Better: Pass a function that updates 'currentCommunity' locally too if returned.
+                            }}
+                        />
                     )}
+                    {/* Create Post button/Footer if needed */}
                 </div>
             </div>
         </div>

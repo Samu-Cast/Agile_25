@@ -9,6 +9,32 @@ import Header from '../../../components/Header';
 //Il mock di react-router-dom è in src/__mocks__/react-router-dom.js
 //Jest lo usa automaticamente senza bisogno di configurazione qui
 
+//Crea una versione finta del ChatContext per evitare errori con useChat()
+jest.mock('../../../context/ChatContext', () => ({
+    useChat: () => ({
+        isChatOpen: false,
+        isMinimized: true,
+        viewState: 'LIST',
+        chats: [],
+        activeChatId: null,
+        messagesCache: {},
+        loadingChats: false,
+        toggleChat: jest.fn(),
+        openChat: jest.fn(),
+        startChatWithUser: jest.fn(),
+        handleSendMessage: jest.fn(),
+        goBackToList: jest.fn(),
+        setIsMinimized: jest.fn()
+    }),
+    ChatProvider: ({ children }) => children
+}));
+
+//Mock del servizio utente per evitare chiamate reali
+jest.mock('../../../services/userService', () => ({
+    getUser: jest.fn(() => Promise.resolve({ uid: 'test-user', nickname: 'Test User', photoURL: null })),
+    searchUsers: jest.fn(() => Promise.resolve([]))
+}));
+
 //Gruppo di test per il componente Header
 describe('Header Component', () => {
     //Proprietà di default da passare al componente Header in ogni test
@@ -44,9 +70,13 @@ describe('Header Component', () => {
 
     //Test: verifica che il bottone Logout venga mostrato quando l'utente è loggato
     it('dovrebbe mostrare bottone Logout quando loggato', () => {
-        //Mostra il componente Header con utente loggato
-        render(<Header {...defaultProps} isLoggedIn={true} />);
-        //Verifica che il bottone "Log Out" sia presente
+        //Mostra il componente Header con utente loggato e profilo visibile
+        render(<Header {...defaultProps} isLoggedIn={true} showProfile={true} currentUser={{ uid: 'test-user' }} />);
+        //Clicca sul bottone del profilo per aprire il dropdown
+        const profileBtn = screen.getByLabelText('Profile Menu');
+        fireEvent.click(profileBtn);
+
+        //Verifica che il bottone "Log Out" sia presente nel dropdown
         expect(screen.getByText('Log Out')).toBeInTheDocument();
         //Verifica che il bottone "Log In" NON sia presente
         expect(screen.queryByText('Log In')).not.toBeInTheDocument();
@@ -69,8 +99,12 @@ describe('Header Component', () => {
     it('dovrebbe chiamare onLogoutClick quando si clicca Logout', () => {
         //Crea una funzione finta per tracciare i click
         const mockOnLogoutClick = jest.fn();
-        //Mostra il componente Header con la funzione finta
-        render(<Header {...defaultProps} onLogoutClick={mockOnLogoutClick} isLoggedIn={true} />);
+        //Mostra il componente Header con la funzione finta, profilo visibile e utente loggato
+        render(<Header {...defaultProps} onLogoutClick={mockOnLogoutClick} isLoggedIn={true} showProfile={true} currentUser={{ uid: 'test-user' }} />);
+
+        //Clicca sul bottone del profilo per aprire il dropdown
+        const profileBtn = screen.getByLabelText('Profile Menu');
+        fireEvent.click(profileBtn);
 
         //Simula un click sul bottone "Log Out"
         fireEvent.click(screen.getByText('Log Out'));
@@ -82,8 +116,13 @@ describe('Header Component', () => {
     it('dovrebbe mostrare link profilo quando showProfile è true', () => {
         //Mostra il componente Header con link profilo abilitato
         render(<Header {...defaultProps} isLoggedIn={true} showProfile={true} currentUser={{ uid: 'test-user', photoURL: null }} />);
-        //Trova il link al profilo usando l'etichetta "Profile"
-        const profileLink = screen.getByLabelText('Profile');
+
+        //Clicca sul bottone del profilo per aprire il dropdown
+        const profileBtn = screen.getByLabelText('Profile Menu');
+        fireEvent.click(profileBtn);
+
+        //Trova il link al profilo usando il testo "Profile"
+        const profileLink = screen.getByRole('link', { name: /Profile/i });
         //Verifica che il link sia presente
         expect(profileLink).toBeInTheDocument();
         //Verifica che il link punti alla pagina /profile

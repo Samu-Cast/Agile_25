@@ -21,19 +21,54 @@ export const searchUsers = async (queryText, role = null) => {
 };
 
 /**
+ * Global search across users, bars, roasters, posts.
+ * @param {string} queryText 
+ * @returns {Promise<Array>}
+ */
+export const searchGlobal = async (queryText) => {
+    try {
+        const params = new URLSearchParams({ q: queryText });
+        const response = await fetch(`${API_URL}/search?${params.toString()}`);
+        if (!response.ok) throw new Error('Global search failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error searching global:", error);
+        return [];
+    }
+};
+
+// In-memory cache for user profiles to reduce read operations
+const userCache = new Map();
+
+/**
  * Get user details for a list of UIDs.
  * @param {Array<string>} uids - List of user IDs.
  * @returns {Promise<Array>} - List of user details.
  */
 export const getUsersByUids = async (uids) => {
     try {
-        const response = await fetch(`${API_URL}/users/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uids })
-        });
-        if (!response.ok) throw new Error('Batch fetch failed');
-        return await response.json();
+        const uniqueUids = [...new Set(uids)];
+        const missingUids = uniqueUids.filter(uid => !userCache.has(uid));
+
+        if (missingUids.length > 0) {
+            const response = await fetch(`${API_URL}/users/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uids: missingUids })
+            });
+            if (!response.ok) throw new Error('Batch fetch failed');
+            const newUsers = await response.json();
+
+            // Update cache
+            newUsers.forEach(user => {
+                if (user && user.uid) {
+                    userCache.set(user.uid, user);
+                }
+            });
+        }
+
+        // Return users from cache in the order requested (or just all found)
+        return uniqueUids.map(uid => userCache.get(uid)).filter(u => u !== undefined);
     } catch (error) {
         console.error("Error fetching users by UIDs:", error);
         return [];
@@ -88,6 +123,17 @@ export const getUserSavedPostsDetails = async (uid) => {
         return await response.json();
     } catch (error) {
         console.error("Error fetching saved posts:", error);
+        return [];
+    }
+};
+
+export const getUserSavedPostIds = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/savedPosts`);
+        if (!response.ok) throw new Error('Fetch saved posts IDs failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching saved posts IDs:", error);
         return [];
     }
 };
@@ -257,6 +303,19 @@ export const createProduct = async (roasteryId, productData) => {
         return await response.json();
     } catch (error) {
         console.error("Error creating product:", error);
+        throw error;
+    }
+};
+
+export const deleteProduct = async (roasterId, productId) => {
+    try {
+        const response = await fetch(`${API_URL}/roasters/${roasterId}/products/${productId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete product');
+        return await response.json();
+    } catch (error) {
+        console.error("Error deleting product:", error);
         throw error;
     }
 };
