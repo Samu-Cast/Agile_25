@@ -1,0 +1,58 @@
+#CD Pipeline - Deploy & Verify
+#Esegue il deploy di prova e verifica i servizi dopo il successo della CI
+
+name: CD - Deploy & Verify
+
+on:
+  workflow_run:
+    workflows: ["CI tests"]
+    types:
+      - completed
+  #Aggiunto trigger manuale per testare il workflow anche prima del merge su main
+  workflow_dispatch:
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    #Esegue se avviato manualmente OPPURE se la CI è passata con successo
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success') }}
+    
+    steps:
+      #Checkout del commit
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          #Se workflow_run, usa il commit testato dalla CI. Altrimenti usa il branch corrente.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+      
+      #Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      #Backend
+      - name: Install Backend Dependencies
+        run: cd social-backend && npm ci
+      
+      - name: Start Backend
+        run: cd social-backend && npm start &
+      
+      - name: Wait for Backend
+        run: sleep 5
+      
+      - name: Verify Backend Health
+        run: |
+          echo "=== Backend Health Check (Port 3001) ==="
+          curl -f http://localhost:3001/ || exit 1
+          echo "=== Backend is healthy ==="
+      
+      #Frontend
+      - name: Install Frontend Dependencies
+        run: cd social-frontend && npm ci
+      
+      - name: Build Frontend
+        run: |
+          echo "=== Building Frontend ==="
+          cd social-frontend && npm run build
+          echo "=== Frontend build successful ==="
