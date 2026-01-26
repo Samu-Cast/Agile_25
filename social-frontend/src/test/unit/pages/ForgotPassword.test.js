@@ -16,7 +16,7 @@ describe('ForgotPassword', () => {
         jest.clearAllMocks();
     });
 
-    it('renders the component', () => {
+    it('Renderizza il componente', () => {
         render(
             <MemoryRouter>
                 <ForgotPassword />
@@ -26,7 +26,7 @@ describe('ForgotPassword', () => {
     });
 
     //test per errore se non è stata scritta la mail
-    it('shows error message when email is empty', async () => {
+    it('Mostra un messaggio di errore quando l\'email è vuota', async () => {
         render(
             <MemoryRouter>
                 <ForgotPassword />
@@ -42,7 +42,7 @@ describe('ForgotPassword', () => {
     });
 
     //test per verificare che la mail sia inviata
-    it('calls sendPasswordResetEmail with the correct email', async () => {
+    it('Invia la mail con l\'email corretta', async () => {
         sendPasswordResetEmail.mockResolvedValue();
 
         render(
@@ -63,7 +63,7 @@ describe('ForgotPassword', () => {
     });
 
     //test per verificare se si è creato un errore nell'invio della mail
-    it('shows error message when sendPasswordResetEmail fails', async () => {
+    it('Mostra un messaggio di errore quando l\'invio della mail fallisce', async () => {
         sendPasswordResetEmail.mockRejectedValue(new Error('Firebase error'));
 
         render(
