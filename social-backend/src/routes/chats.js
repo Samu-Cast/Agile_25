@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const admin = require('firebase-admin');
-const db = admin.firestore();
+const { admin, db } = require('../config/firebase');
 
 // Middleware to checking auth
 // In a real app we'd decode the token. For now we trust the body or header, 
