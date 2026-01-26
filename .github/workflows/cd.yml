@@ -1,5 +1,5 @@
 #CD Pipeline - Deploy & Verify
-#Esegue il deploy di prova e verifica i servizi
+#Esegue il deploy di prova e verifica i servizi dopo il successo della CI
 
 name: CD - Deploy & Verify
 
@@ -8,12 +8,14 @@ on:
     workflows: ["CI tests"]
     types:
       - completed
-  # Aggiunto trigger manuale per testare il workflow anche prima del merge su main
+  #Trigger manuale per testare
   workflow_dispatch:
 
 jobs:
   deploy-and-verify:
     runs-on: ubuntu-latest
+    #Esegue se avviato manualmente OPPURE se la CI è passata con successo
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success') }}
     
     steps:
       #Checkout del commit
