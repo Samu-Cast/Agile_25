@@ -4,11 +4,11 @@
 name: CD - Deploy & Verify
 
 on:
-  push:
-    branches: [ main, preRelease, sam-branch ]
-  pull_request:
-    branches: [ main, preRelease, sam-branch ]
-  #Trigger manuale
+  workflow_run:
+    workflows: ["CI Tests"]
+    types:
+      - completed
+  # Aggiunto trigger manuale per testare il workflow anche prima del merge su main
   workflow_dispatch:
 
 jobs:
@@ -31,15 +31,21 @@ jobs:
         run: cd social-backend && npm ci
       
       - name: Start Backend
-        run: cd social-backend && npm start &
+        run: |
+          cd social-backend
+          nohup npm start > backend.log 2>&1 &
+          echo $! > backend.pid
+          echo "Backend started with PID $(cat backend.pid)"
       
       - name: Wait for Backend
-        run: sleep 5
+        run: sleep 10
       
       - name: Verify Backend Health
         run: |
+          echo "=== Backend Logs ==="
+          cat social-backend/backend.log || true
           echo "=== Backend Health Check (Port 3001) ==="
-          curl -f http://localhost:3001/ || exit 1
+          curl -f http://localhost:3001/ || (cat social-backend/backend.log && exit 1)
           echo "=== Backend is healthy ==="
       
       #Frontend
