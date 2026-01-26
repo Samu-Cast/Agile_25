@@ -4,26 +4,19 @@
 name: CD - Deploy & Verify
 
 on:
-  workflow_run:
-    workflows: ["CI tests"]
-    types:
-      - completed
+  push:
+    branches: [ "main", "preRelease" ]
   #Trigger manuale per testare
   workflow_dispatch:
 
 jobs:
   deploy-and-verify:
     runs-on: ubuntu-latest
-    #Esegue se avviato manualmente OPPURE se la CI è passata con successo
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success') }}
     
     steps:
-      #Checkout del commit che ha triggerato la CI
+      #Checkout del commit corrente
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          repository: ${{ github.event.workflow_run.head_repository.full_name }}
       
       #Setup Node.js
       - name: Setup Node.js
