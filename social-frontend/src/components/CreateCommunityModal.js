@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import '../styles/components/CreateCommunityModal.css';
 
+// eslint-disable-next-line no-unused-vars
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function CreateCommunityModal({ onClose, onSuccess }) {

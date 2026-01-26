@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import '../styles/components/CollectionManager.css';
 
 const CollectionManager = ({ roasterId, currentUser, products, onClose, onSave, initialData = null }) => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
 import { searchUsers } from '../../services/userService';
@@ -143,12 +143,13 @@ const ChatWindow = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    const messages = useMemo(() => messagesCache[activeChatId] || [], [messagesCache, activeChatId]);
+    const chat = chats.find(c => c.id === activeChatId);
+    const chatDataUpdatedAt = chat?.updatedAt;
+
     useEffect(() => {
         scrollToBottom();
-    }, [messagesCache[activeChatId]]);
-
-    const messages = messagesCache[activeChatId] || [];
-    const chat = chats.find(c => c.id === activeChatId);
+    }, [messages, chatDataUpdatedAt]);
 
     // Resolve other user name for header
     const otherUid = chat?.participants.find(p => p !== currentUser.uid);

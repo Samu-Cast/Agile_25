@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { createUserProfile, createRoleProfile } from '../services/userService';
-import { useAuth } from '../context/AuthContext';
+// useAuth removed
 
 const Register = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { addComment, getComments } from '../services/postService';
 import { uploadMultipleMedia, validateMedia } from '../services/imageService';
 import { useAuth } from '../context/AuthContext';
@@ -18,11 +18,7 @@ const CommentSection = ({ postId, postType }) => {
 
     const isReview = postType === 'review';
 
-    useEffect(() => {
-        loadComments();
-    }, [postId]);
-
-    const loadComments = async () => {
+    const loadComments = useCallback(async () => {
         try {
             setLoading(true);
             const fetchedComments = await getComments(postId);
@@ -50,7 +46,11 @@ const CommentSection = ({ postId, postType }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [postId]);
+
+    useEffect(() => {
+        loadComments();
+    }, [loadComments]);
 
     const handleMediaChange = (e) => {
         const files = Array.from(e.target.files);

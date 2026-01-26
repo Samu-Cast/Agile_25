@@ -146,5 +146,6 @@ export const uploadMultipleMedia = async (files, folder = 'posts') => {
     }
 };
 
-export default { uploadImage, validateImage, validateVideo, validateMedia, uploadVideo, uploadMultipleMedia };
+const imageService = { uploadImage, validateImage, validateVideo, validateMedia, uploadVideo, uploadMultipleMedia };
+export default imageService;
 

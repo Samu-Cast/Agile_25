@@ -13,20 +13,6 @@ import '../styles/components/CoffeeCupRating.css';
 function CoffeeCupRating({ rating = 0, interactive = false, onChange, size = 'medium' }) {
     const [hoverRating, setHoverRating] = useState(0);
 
-    const handleClick = (value) => {
-        if (interactive && onChange) {
-            // Allow toggling: clicking same rating sets it to 0, or use value as-is
-            // For half ratings: we'll support clicking on left/right half of cup
-            onChange(value);
-        }
-    };
-
-    const handleMouseEnter = (value) => {
-        if (interactive) {
-            setHoverRating(value);
-        }
-    };
-
     const handleMouseLeave = () => {
         if (interactive) {
             setHoverRating(0);

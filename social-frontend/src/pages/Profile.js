@@ -53,6 +53,7 @@ const CollectionCarousel = ({ images }) => {
 };
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+// eslint-disable-next-line no-unused-vars
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function Profile() {
@@ -171,7 +172,7 @@ function Profile() {
         imageUrl: ''
     });
     const [newProductImageFile, setNewProductImageFile] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [, setIsSubmitting] = useState(false);
 
     // Edit Form State
     const [editForm, setEditForm] = useState({

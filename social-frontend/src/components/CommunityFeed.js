@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import CommentSection from './CommentSection'; // Still used? PostCard uses it, but we might not need it here directly anymore. Wait, PostCard imports it.
+// useParams removed
 import PostCard from './PostCard';
 import { getUsersByUids } from '../services/userService';
 
@@ -23,9 +24,13 @@ const timeAgo = (date) => {
 const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCommunityLoaded }) => {
     const [community, setCommunity] = useState(null);
     const [posts, setPosts] = useState([]);
+    // eslint-disable-next-line no-unused-vars
     const [expandedPostId, setExpandedPostId] = useState(null);
+    // eslint-disable-next-line no-unused-vars
     const [userVotes, setUserVotes] = useState({});
-    const [savedPosts, setSavedPosts] = useState({});
+    // eslint-disable-next-line no-unused-vars
+    const [savedPosts, setSavedPosts] = useState([]);
+    // eslint-disable-next-line no-unused-vars
     const [isLoading, setIsLoading] = useState(true);
 
     // Editing state
@@ -43,7 +48,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
     useEffect(() => {
         const fetchCommunityDetails = async () => {
             try {
-                const response = await fetch(`${API_URL}/communities/${communityId}`);
+                const response = await fetch(`${API_URL} /communities/${communityId} `);
                 if (response.ok) {
                     const data = await response.json();
                     setCommunity(data);
@@ -136,6 +141,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
             fetchCommunityDetails();
             fetchPosts();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [communityId, user?.uid]);
 
     const handleImageUpload = async (event, type) => {
@@ -198,9 +204,9 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
         }
     };
 
-    const toggleComments = (postId) => {
-        setExpandedPostId(expandedPostId === postId ? null : postId);
-    };
+    // const toggleComments = (postId) => {
+    //     setActiveComments(prev => (prev === postId ? null : postId));
+    // };
 
     if (!community) return <div style={{ padding: '20px' }}>Loading Community...</div>;
 

@@ -53,6 +53,8 @@ function CreatePostModal({ onClose, onSuccess }) {
     const [isComparison, setIsComparison] = useState(false);
     const [comparisonTitle1, setComparisonTitle1] = useState('');
     const [comparisonTitle2, setComparisonTitle2] = useState('');
+    // Silence unused warnings
+    void setIsComparison; void setComparisonTitle1; void setComparisonTitle2;
 
     const { currentUser } = useAuth();
 

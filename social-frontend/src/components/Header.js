@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { searchUsers, getUser, searchGlobal } from '../services/userService';
+import { getUser, searchGlobal } from '../services/userService';
 import { useChat } from '../context/ChatContext'; // Import
 import '../styles/components/Header.css';
 
@@ -139,7 +139,7 @@ function Header({ onLoginClick, onLogoutClick, showProfile, isLoggedIn, currentU
             )}
             <div className="navbar-actions">
                 {!isLoggedIn && (
-                    <button className="-login"btn onClick={onLoginClick}>Log In</button>
+                    <button className="-login" btn onClick={onLoginClick}>Log In</button>
                 )}
 
                 {/* Chat Button */}

@@ -20,18 +20,7 @@ export const ChatProvider = ({ children }) => {
     const [messagesCache, setMessagesCache] = useState({}); // { chatId: [messages] }
     const [loadingChats, setLoadingChats] = useState(false);
 
-    // Initial load of chat list (only once when user logs in or manually refreshes)
-    // We do NOT poll this constantly to save reads.
-    useEffect(() => {
-        if (currentUser) {
-            loadChats();
-        } else {
-            setChats([]);
-            setMessagesCache({});
-        }
-    }, [currentUser]);
-
-    const loadChats = async () => {
+    const loadChats = useCallback(async () => {
         if (!currentUser) return;
         setLoadingChats(true);
         try {
@@ -42,7 +31,18 @@ export const ChatProvider = ({ children }) => {
         } finally {
             setLoadingChats(false);
         }
-    };
+    }, [currentUser]);
+
+    // Initial load of chat list (only once when user logs in or manually refreshes)
+    // We do NOT poll this constantly to save reads.
+    useEffect(() => {
+        if (currentUser) {
+            loadChats();
+        } else {
+            setChats([]);
+            setMessagesCache({});
+        }
+    }, [currentUser, loadChats]);
 
     const toggleChat = () => {
         if (isMinimized) {

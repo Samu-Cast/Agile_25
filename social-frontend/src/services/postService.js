@@ -257,4 +257,5 @@ export const deletePost = async (postId, userId) => {
     }
 };
 
-export default { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost };
+const postService = { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost };
+export default postService;
