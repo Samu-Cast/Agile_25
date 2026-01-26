@@ -191,7 +191,7 @@
 ### US19
 - **Epica**: Gestione post
 - **User**: Appassionato, Torrefazione, Barista
-- **User Story**: Voglio poter interagire con i post (like, commenti).
+- **User Story**: Voglio poter interagire con i post (like, commenti, eliminare propri).
 - **Effort**: 4
 - **Priority**: 4
 
