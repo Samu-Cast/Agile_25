@@ -23,6 +23,15 @@ beforeAll(() => {
     // Silenzia console.error durante i test per output pulito
     // I test di gestione errori funzionano comunque!
     console.error = jest.fn();
+
+    //uppress React Router v7 future flag warnings
+    const originalWarn = console.warn;
+    console.warn = (msg, ...args) => {
+        if (msg && msg.includes && msg.includes("React Router Future Flag Warning")) {
+            return;
+        }
+        originalWarn(msg, ...args);
+    };
 });
 
 //Eseguito una volta alla fine di tutti i test
