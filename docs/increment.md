@@ -174,7 +174,8 @@ Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), 
 **Sprint Goal**: Perfezionare test e ultime funzionalità del sistema
 
 **User Stories completate**:
-- US10: 
+- US10:
+- US46:  
 
 
 
