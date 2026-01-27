@@ -54,7 +54,10 @@ const Sidebar = ({ activeFeed, onFeedChange, refreshTrigger }) => {
                             <span className="sidebar-label">All</span>
                         </div>
 
+
                     </div>
+
+
 
                     <div className="sidebar-section">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '12px' }}>
@@ -148,6 +151,19 @@ const Sidebar = ({ activeFeed, onFeedChange, refreshTrigger }) => {
                         )}
                     </div>
                 </div>
+
+                <div className="sidebar-section" style={{ borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
+                    <div
+                        className={`sidebar-item ${activeFeed === 'report-problem' ? 'active' : ''}`}
+                        onClick={() => {
+                            window.location.href = "/report-problem";
+                        }}
+                    >
+                        <span className="icon">⚠️</span>
+                        <span className="sidebar-label">Report Problem</span>
+                    </div>
+                </div>
+
                 <button
                     className="sidebar-toggle"
                     onClick={() => setIsCollapsed(!isCollapsed)}

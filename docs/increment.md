@@ -163,3 +163,28 @@ Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), 
 - Collezioni implementate per tutti i tipi di utente
 - Messaggistica diretta tra utenti funzionante
 - Ricerca estesa a tutte le categorie di profilo
+
+---
+
+### Sprint 4
+**Data inizio**: 9 Gennaio 2026  
+**Data fine**: 5 Febbraio 2026 
+**Status**: Done
+
+**Sprint Goal**: Perfezionare test e ultime funzionalità del sistema
+
+**User Stories completate**:
+- US10: 
+
+
+
+**Story Points completati**: 
+
+**Descrizione**:
+
+
+**Funzionalità implementate**:
+
+
+**Note incrementate**:
+

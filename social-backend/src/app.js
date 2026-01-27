@@ -29,5 +29,6 @@ app.use('/api/comments', require('./routes/comments'));
 app.use('/api/upload', uploadRouter);
 app.use('/api/communities', communitiesRouter);
 app.use('/api/chats', chatsRouter);
+app.use('/api/reports', require('./routes/report'));
 
 module.exports = app;

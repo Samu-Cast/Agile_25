@@ -8,10 +8,12 @@
     position: relative;
     transition: width 0.3s ease;
     width: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-scroll-area {
-    height: 100%;
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 20px 0;
