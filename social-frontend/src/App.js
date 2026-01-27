@@ -9,6 +9,7 @@ import CreatePostModal from './components/CreatePostModal';
 // import CreatePost from './pages/CreatePost'; // Removed
 import ForgotPassword from './pages/ForgotPassword';
 import ReportProblem from './pages/ReportProblem';
+import ModeratorReports from './pages/ModeratorReports';
 
 import Header from './components/Header';
 import AuthModal from './components/AuthModal';
@@ -58,6 +59,7 @@ export function AppContent() {
         <Route path="/profile/:uid?" element={<Profile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/report-problem" element={<ReportProblem />} />
+        <Route path="/moderator/reports" element={<ModeratorReports />} />
       </Routes>
       {showAuthModal && (
         <AuthModal mode={authMode} onClose={closeModal} onLoginSuccess={handleLoginSuccess} />

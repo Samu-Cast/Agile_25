@@ -40,6 +40,7 @@ describe('ReportProblem Component', () => {
         );
 
         expect(screen.getByText('Area segnalazioni')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Breve riassunto (es. Login non funzionante)')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Descrivi dettagliatamente cosa è successo...')).toBeInTheDocument();
         expect(screen.getByText('Invia Segnalazione')).toBeInTheDocument();
     });
@@ -75,6 +76,9 @@ describe('ReportProblem Component', () => {
             </BrowserRouter>
         );
 
+        const titleInput = screen.getByPlaceholderText('Breve riassunto (es. Login non funzionante)');
+        fireEvent.change(titleInput, { target: { value: 'Bug' } });
+
         const textarea = screen.getByPlaceholderText('Descrivi dettagliatamente cosa è successo...');
         fireEvent.change(textarea, { target: { value: 'Something is broken' } });
 
@@ -84,6 +88,7 @@ describe('ReportProblem Component', () => {
         await waitFor(() => {
             expect(reportService.createReport).toHaveBeenCalledWith({
                 uid: 'test-uid',
+                title: 'Bug',
                 description: 'Something is broken'
             });
             expect(screen.getByText(/Segnalazione inviata con successo/i)).toBeInTheDocument();
