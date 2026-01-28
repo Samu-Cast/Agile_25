@@ -79,10 +79,29 @@ export const getAllCommunities = async () => {
     }
 };
 
+/**
+ * Get communities a user has joined
+ * @param {string} uid - User ID
+ * @returns {Promise<Array>} - List of communities the user belongs to
+ */
+export const getUserCommunities = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/communities`);
+        if (response.ok) {
+            return await response.json();
+        }
+        return [];
+    } catch (error) {
+        console.error("Error fetching user communities:", error);
+        return [];
+    }
+};
+
 const communityService = {
     getCommunitiesByIds,
     getCommunity,
-    getAllCommunities
+    getAllCommunities,
+    getUserCommunities
 };
 
 export default communityService;

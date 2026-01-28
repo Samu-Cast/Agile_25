@@ -462,4 +462,112 @@ router.get('/:uid/following', async (req, res) => {
     }
 });
 
+// GET /api/users/:uid/savedCollections
+router.get('/:uid/savedCollections', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const savedSnapshot = await db.collection('users').doc(uid).collection('savedCollections').orderBy('savedAt', 'desc').get();
+
+        if (savedSnapshot.empty) {
+            return res.json([]);
+        }
+
+        // Fetch full collection details for each saved collection
+        const collectionsWithDetails = await Promise.all(
+            savedSnapshot.docs.map(async (doc) => {
+                const savedData = doc.data();
+                const { roasterId, collectionId } = savedData;
+
+                try {
+                    // Get collection details
+                    const collectionDoc = await db.collection('roasters').doc(roasterId).collection('collections').doc(collectionId).get();
+
+                    if (!collectionDoc.exists) {
+                        return null; // Collection was deleted
+                    }
+
+                    // Get roaster details for display
+                    const roasterDoc = await db.collection('roasters').doc(roasterId).get();
+                    const roasterName = roasterDoc.exists ? roasterDoc.data().name : 'Unknown Roaster';
+
+                    // Get products in the collection
+                    const collectionData = collectionDoc.data();
+                    const productIds = collectionData.products || [];
+
+                    let products = [];
+                    if (productIds.length > 0) {
+                        const productsSnapshot = await db.collection('roasters').doc(roasterId).collection('products').get();
+                        products = productsSnapshot.docs
+                            .filter(pDoc => productIds.includes(pDoc.id))
+                            .map(pDoc => ({ id: pDoc.id, ...pDoc.data() }));
+                    }
+
+                    return {
+                        id: collectionId,
+                        roasterId,
+                        roasterName,
+                        ...collectionData,
+                        products,
+                        savedAt: savedData.savedAt ? savedData.savedAt.toDate().toISOString() : null
+                    };
+                } catch (err) {
+                    console.error(`Error fetching collection ${collectionId}:`, err);
+                    return null;
+                }
+            })
+        );
+
+        // Filter out null entries (deleted collections)
+        const validCollections = collectionsWithDetails.filter(c => c !== null);
+        res.json(validCollections);
+    } catch (error) {
+        console.error("Error fetching saved collections:", error);
+        res.status(500).json({ error: "Failed to fetch saved collections" });
+    }
+});
+
+// POST /api/users/:uid/savedCollections
+router.post('/:uid/savedCollections', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const { roasterId, collectionId } = req.body;
+
+        if (!roasterId || !collectionId) {
+            return res.status(400).json({ error: "Missing roasterId or collectionId" });
+        }
+
+        // Verify collection exists
+        const collectionDoc = await db.collection('roasters').doc(roasterId).collection('collections').doc(collectionId).get();
+        if (!collectionDoc.exists) {
+            return res.status(404).json({ error: "Collection not found" });
+        }
+
+        // Save the collection reference
+        await db.collection('users').doc(uid).collection('savedCollections').doc(collectionId).set({
+            roasterId,
+            collectionId,
+            savedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.json({ message: "Collection saved successfully" });
+    } catch (error) {
+        console.error("Error saving collection:", error);
+        res.status(500).json({ error: "Failed to save collection" });
+    }
+});
+
+// DELETE /api/users/:uid/savedCollections/:collectionId
+router.delete('/:uid/savedCollections/:collectionId', async (req, res) => {
+    try {
+        const { uid, collectionId } = req.params;
+
+        await db.collection('users').doc(uid).collection('savedCollections').doc(collectionId).delete();
+
+        res.json({ message: "Collection unsaved successfully" });
+    } catch (error) {
+        console.error("Error unsaving collection:", error);
+        res.status(500).json({ error: "Failed to unsave collection" });
+    }
+});
+
 module.exports = router;

@@ -5,6 +5,10 @@ import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
 import { toggleSavePost, updateVotes } from '../services/postService';
 
+// Default images
+import defaultPostImage from '../image_post/defaults/default_post.png';
+import defaultComparisonImage from '../image_post/defaults/default_comparison.png';
+
 
 
 const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }) => {
@@ -160,7 +164,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                                     {post.comparisonData.item1.image ? (
                                         <img src={post.comparisonData.item1.image} alt={post.comparisonData.item1.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                        <img src={defaultComparisonImage} alt={post.comparisonData.item1.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     )}
                                 </div>
                                 <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item1.name}</h3>
@@ -173,7 +177,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                                     {post.comparisonData.item2.image ? (
                                         <img src={post.comparisonData.item2.image} alt={post.comparisonData.item2.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                        <img src={defaultComparisonImage} alt={post.comparisonData.item2.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     )}
                                 </div>
                                 <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item2.name}</h3>
@@ -245,7 +249,13 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                 {post.type !== 'comparison' && post.mediaUrls && post.mediaUrls.length > 0 ? (
                     <MediaGallery mediaUrls={post.mediaUrls} altText={post.content} />
                 ) : (
-                    post.type !== 'comparison' && post.image && <img src={post.image} alt="Post content" className="post-image" />
+                    post.type !== 'comparison' && (
+                        <img
+                            src={post.image || defaultPostImage}
+                            alt="Post content"
+                            className="post-image"
+                        />
+                    )
                 )}
 
                 <div className="post-footer">

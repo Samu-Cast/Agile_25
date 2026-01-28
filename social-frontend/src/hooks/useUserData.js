@@ -2,23 +2,25 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getUser, getRoleProfile } from "../services/userService";
 
-export const useUserData = () => {
+export const useUserData = (targetUid) => {
     const { currentUser } = useAuth();
     const [userData, setUserData] = useState(null);
 
+    const uid = targetUid || currentUser?.uid;
+
     useEffect(() => {
-        if (!currentUser) {
+        if (!uid) {
             setUserData(null);
             return;
         }
 
         const fetchUser = async () => {
-            const user = await getUser(currentUser.uid);
+            const user = await getUser(uid);
             setUserData(user);
         };
 
         fetchUser();
-    }, [currentUser]);
+    }, [uid]);
 
     return userData;
 };

@@ -48,7 +48,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
     useEffect(() => {
         const fetchCommunityDetails = async () => {
             try {
-                const response = await fetch(`${API_URL} /communities/${communityId} `);
+                const response = await fetch(`${API_URL}/communities/${communityId}`);
                 if (response.ok) {
                     const data = await response.json();
                     setCommunity(data);
