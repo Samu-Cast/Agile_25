@@ -118,4 +118,81 @@ describe('collectionService', () => {
             await expect(deleteCollection(mockRoasterId, mockCollectionId, mockUid)).rejects.toThrow('Delete collection failed');
         });
     });
+
+    describe('getUserSavedCollections', () => {
+        it('should fetch saved collections for a user', async () => {
+            const { getUserSavedCollections } = require('../../../services/collectionService');
+            const mockSavedCollections = [{ id: 'col1', name: 'My Saved', roasterName: 'Test Roaster' }];
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => mockSavedCollections
+            });
+
+            const result = await getUserSavedCollections(mockUid);
+
+            expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(`/users/${mockUid}/savedCollections`));
+            expect(result).toEqual(mockSavedCollections);
+        });
+
+        it('should return empty array on failure', async () => {
+            const { getUserSavedCollections } = require('../../../services/collectionService');
+            global.fetch.mockResolvedValueOnce({ ok: false });
+            const result = await getUserSavedCollections(mockUid);
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('saveCollection', () => {
+        it('should save a collection', async () => {
+            const { saveCollection } = require('../../../services/collectionService');
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ message: 'Collection saved successfully' })
+            });
+
+            const result = await saveCollection(mockUid, mockRoasterId, mockCollectionId);
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining(`/users/${mockUid}/savedCollections`),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({ roasterId: mockRoasterId, collectionId: mockCollectionId })
+                })
+            );
+            expect(result).toEqual({ message: 'Collection saved successfully' });
+        });
+
+        it('should throw error on save failure', async () => {
+            const { saveCollection } = require('../../../services/collectionService');
+            global.fetch.mockResolvedValueOnce({ ok: false });
+            await expect(saveCollection(mockUid, mockRoasterId, mockCollectionId)).rejects.toThrow('Save collection failed');
+        });
+    });
+
+    describe('unsaveCollection', () => {
+        it('should unsave a collection', async () => {
+            const { unsaveCollection } = require('../../../services/collectionService');
+            global.fetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ message: 'Collection unsaved successfully' })
+            });
+
+            const result = await unsaveCollection(mockUid, mockCollectionId);
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining(`/users/${mockUid}/savedCollections/${mockCollectionId}`),
+                expect.objectContaining({
+                    method: 'DELETE'
+                })
+            );
+            expect(result).toEqual({ message: 'Collection unsaved successfully' });
+        });
+
+        it('should throw error on unsave failure', async () => {
+            const { unsaveCollection } = require('../../../services/collectionService');
+            global.fetch.mockResolvedValueOnce({ ok: false });
+            await expect(unsaveCollection(mockUid, mockCollectionId)).rejects.toThrow('Unsave collection failed');
+        });
+    });
 });
+

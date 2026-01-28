@@ -131,6 +131,16 @@ function Profile() {
     const [followersCount, setFollowersCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
 
+    // Collection Filter/Sort State
+    const [filterOccasion, setFilterOccasion] = useState('');
+    const [sortPriceOrder, setSortPriceOrder] = useState(''); // 'asc' or 'desc' or ''
+
+    // Helper to calc price
+    const calculateCollectionPrice = (collection) => {
+        if (!collection.products || collection.products.length === 0) return 0;
+        return collection.products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+    };
+
     // Load user's posts and reviews
     useEffect(() => {
         const loadUserPosts = async () => {
@@ -930,34 +940,125 @@ function Profile() {
 
             if (activeTab === 'savedGuides') return renderPostGrid(savedGuides, "Nessuna guida salvata.");
             if (activeTab === 'savedCollections') {
+                // Filter Logic
+                let filtered = [...savedCollections];
+
+                if (filterOccasion) {
+                    filtered = filtered.filter(c => c.occasion === filterOccasion);
+                }
+
+                // Sort Logic
+                if (sortPriceOrder) {
+                    filtered.sort((a, b) => {
+                        const priceA = calculateCollectionPrice(a);
+                        const priceB = calculateCollectionPrice(b);
+                        return sortPriceOrder === 'asc' ? priceA - priceB : priceB - priceA;
+                    });
+                }
+
                 return (
-                    <div className="profile-content-grid">
-                        {savedCollections.length > 0 ? savedCollections.map(collection => (
-                            <div
-                                key={collection.id}
-                                className="content-item"
-                                onClick={() => showSavedCollectionDetails(collection)}
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                        {/* Filter Sidebar */}
+                        <div style={{
+                            width: '250px',
+                            flexShrink: 0,
+                            padding: '20px',
+                            background: '#fff',
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                            position: 'sticky',
+                            top: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '20px'
+                        }}>
+                            <h4 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>Filtri</h4>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Occasione</label>
+                                <select
+                                    value={filterOccasion}
+                                    onChange={(e) => setFilterOccasion(e.target.value)}
+                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                                >
+                                    <option value="">Tutte</option>
+                                    <option value="Festa del Papà">Festa del Papà</option>
+                                    <option value="Colazione">Colazione</option>
+                                    <option value="Pausa Caffè">Pausa Caffè</option>
+                                    <option value="Dopo Cena">Dopo Cena</option>
+                                    <option value="Regalo">Regalo</option>
+                                    <option value="Degustazione">Degustazione</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Ordina per Prezzo</label>
+                                <select
+                                    value={sortPriceOrder}
+                                    onChange={(e) => setSortPriceOrder(e.target.value)}
+                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                                >
+                                    <option value="">Nessun ordine</option>
+                                    <option value="asc">Crescente (Low to High)</option>
+                                    <option value="desc">Decrescente (High to Low)</option>
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={() => { setFilterOccasion(''); setSortPriceOrder(''); }}
+                                style={{
+                                    padding: '10px',
+                                    marginTop: '10px',
+                                    background: '#eee',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    color: '#666'
+                                }}
                             >
-                                {collection.products?.length > 0 && collection.products[0]?.imageUrl ? (
-                                    <img
-                                        src={collection.products[0].imageUrl}
-                                        alt={collection.name}
-                                        className="content-image"
-                                    />
-                                ) : (
-                                    <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
-                                        🍹
+                                Reset Filtri
+                            </button>
+                        </div>
+
+                        {/* Main Grid Content */}
+                        <div style={{ flexGrow: 1 }}>
+                            <div className="profile-content-grid">
+                                {filtered.length > 0 ? filtered.map(collection => (
+                                    <div
+                                        key={collection.id}
+                                        className="content-item"
+                                        onClick={() => showSavedCollectionDetails(collection)}
+                                        style={{ marginBottom: '0' }}
+                                    >
+                                        {collection.products?.length > 0 && collection.products[0]?.imageUrl ? (
+                                            <img
+                                                src={collection.products[0].imageUrl}
+                                                alt={collection.name}
+                                                className="content-image"
+                                            />
+                                        ) : (
+                                            <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
+                                                🍹
+                                            </div>
+                                        )}
+                                        <div className="content-info">
+                                            <h3 className="content-title">{collection.name}</h3>
+                                            <p className="content-preview">di {collection.roasterName}</p>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.8rem', color: '#8D6E63' }}>{collection.products?.length || 0} prodotti</span>
+                                                <span style={{ fontWeight: 'bold', color: '#6F4E37' }}>€{calculateCollectionPrice(collection).toFixed(2)}</span>
+                                            </div>
+                                            {collection.occasion && <span className="collection-badge" style={{ fontSize: '0.7rem', background: '#eee', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{collection.occasion}</span>}
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+                                        Nessuna collezione trovata con questi filtri.
                                     </div>
                                 )}
-                                <div className="content-info">
-                                    <h3 className="content-title">{collection.name}</h3>
-                                    <p className="content-preview">di {collection.roasterName}</p>
-                                    <span style={{ fontSize: '0.8rem', color: '#8D6E63' }}>{collection.products?.length || 0} prodotti</span>
-                                </div>
                             </div>
-                        )) : (
-                            <div className="empty-state">Nessuna collezione salvata. Visita i profili delle torrefazioni per salvare le loro collezioni!</div>
-                        )}
+                        </div>
                     </div>
                 );
             }

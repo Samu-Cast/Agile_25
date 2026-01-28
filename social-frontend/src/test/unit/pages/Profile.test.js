@@ -863,6 +863,7 @@ describe('Profile Page', () => {
             useParams.mockReturnValue({ uid: 'torrefazione-uid' });
             userService.getUser.mockResolvedValue({ ...mockTorrefazioneUser });
             userService.getRoleProfile.mockResolvedValue(mockTorrefazioneRoleData);
+            Swal.fire.mockResolvedValue({ isConfirmed: false });
 
             const collection = {
                 id: 'col1',
@@ -929,6 +930,83 @@ describe('Profile Page', () => {
 
             // Post should still be there after cancel
             expect(postService.deletePost).not.toHaveBeenCalled();
+        });
+        describe('Saved Collection Filtering', () => {
+            const appassionatoUser = { ...mockCurrentUser, role: 'Appassionato' };
+            const savedCol1 = {
+                id: 'c1',
+                name: 'Morning Brew',
+                occasion: 'Colazione',
+                tags: ['Bio', 'Intenso'],
+                products: [{ price: '10' }] // Total 10
+            };
+            const savedCol2 = {
+                id: 'c2',
+                name: 'Party Pack',
+                occasion: 'Festa',
+                tags: ['Novità'],
+                products: [{ price: '10' }, { price: '20' }] // Total 30
+            };
+
+            beforeEach(() => {
+                useParams.mockReturnValue({});
+                useAuth.mockReturnValue({ currentUser: appassionatoUser });
+                useUserData.mockReturnValue(appassionatoUser);
+                // Mock saved collections return
+                collectionService.getUserSavedCollections.mockResolvedValue([savedCol1, savedCol2]);
+            });
+
+            test('filters by occasion', async () => {
+                render(<Profile />);
+
+                // Go to Saved Collections tab
+                const savedCollectionsTab = await screen.findByRole('button', { name: /Collezioni Salvate/i });
+                fireEvent.click(savedCollectionsTab);
+
+                // Wait for items to load
+                await waitFor(() => {
+                    expect(screen.getByText('Morning Brew')).toBeInTheDocument();
+                    expect(screen.getByText('Party Pack')).toBeInTheDocument();
+                });
+
+                // Select 'Colazione' from Occasion dropdown
+                // Note: We need to find the select. In our implementation it has a label "Occasione"
+                const occasionSelect = screen.getAllByRole('combobox')[0]; // First select is Occasion
+                fireEvent.change(occasionSelect, { target: { value: 'Colazione' } });
+
+                await waitFor(() => {
+                    expect(screen.getByText('Morning Brew')).toBeInTheDocument();
+                    expect(screen.queryByText('Party Pack')).not.toBeInTheDocument();
+                });
+            });
+
+            test('sorts by price descending', async () => {
+                render(<Profile />);
+
+                const savedCollectionsTab = await screen.findByRole('button', { name: /Collezioni Salvate/i });
+                fireEvent.click(savedCollectionsTab);
+
+                await waitFor(() => {
+                    expect(screen.getByText('Morning Brew')).toBeInTheDocument();
+                });
+
+                // Select Price Descending
+                const filterInputs = screen.getAllByRole('combobox');
+                const priceSelect = filterInputs[1]; // Second select is Price (0=Occasion, 1=Price) -> Check implementation order!
+                // Implementation: Occasion, Tags(input), Price(select). So Price is 2nd select.
+
+                fireEvent.change(priceSelect, { target: { value: 'desc' } });
+
+                // Checking order in DOM is tricky with RTL, but we can verify both are still there
+                // and maybe check if the first one in the list is Party Pack (price 30)
+                await waitFor(() => {
+                    const items = screen.getAllByText(/Morning Brew|Party Pack/);
+                    // Party Pack should be first in DOM if mapped in order
+                    // This test relies on DOM order which RTL preserves
+                    expect(items[0]).toHaveTextContent('Party Pack');
+                    expect(items[1]).toHaveTextContent('Morning Brew');
+                });
+            });
         });
     });
 });
