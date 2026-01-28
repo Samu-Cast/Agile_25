@@ -261,16 +261,18 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                 <div className="post-footer">
                     <div className="vote-actions">
                         <button
+                            data-testid="upvote-btn"
                             className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
                             onClick={() => handleVote(1)}
                             style={{ color: userVote === 1 ? '#4169E1' : '' }}
                         >
                             ▲
                         </button>
-                        <span className="vote-count">
+                        <span className="vote-count" data-testid="vote-count">
                             {voteCount >= 1000 ? (voteCount / 1000).toFixed(1) + 'k' : voteCount}
                         </span>
                         <button
+                            data-testid="downvote-btn"
                             className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
                             onClick={() => handleVote(-1)}
                             style={{ color: userVote === -1 ? '#4169E1' : '' }}
@@ -310,7 +312,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
     );
 };
 
-// Helper function to get item type label
+//Helper function to get item type label
 function getItemTypeLabel(itemType) {
     const labels = {
         coffee: 'Caffè in grani',
