@@ -11,12 +11,12 @@ function PostDetails({ posts, onVote, onCoffee, currentUser }) {
     const [comments, setComments] = useState([]);
 
     useEffect(() => {
-        // Find the post by ID
-        // Note: id from params is string, post.id might be number or string
+        //Find the post by ID
+        //Note: id from params is string, post.id might be number or string
         const foundPost = posts.find(p => String(p.id) === id);
         setPost(foundPost);
 
-        // Load comments
+        //Load comments
         if (foundPost) {
             const loadComments = async () => {
                 try {
