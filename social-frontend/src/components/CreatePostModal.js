@@ -223,7 +223,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                 mediaUrls: mediaUrls,
                 imageUrl: mediaUrls.length > 0 ? mediaUrls[0] : null, // Legacy support
                 taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
-                taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
+
                 createdAt: new Date().toISOString(),
                 commentsCount: 0
             };
@@ -312,7 +312,7 @@ function CreatePostModal({ onClose, onSuccess }) {
         }
     };
 
-    const isEvent = postType === 'event';
+
 
     return (
         <div className="modal-overlay" onClick={onClose}>

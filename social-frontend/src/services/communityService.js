@@ -126,12 +126,64 @@ export const createCommunity = async (communityData) => {
     }
 };
 
+
+
+/**
+ * Join or leave a community
+ * @param {string} communityId
+ * @param {string} userId
+ * @returns {Promise<Object>}
+ */
+export const joinCommunity = async (communityId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/communities/${communityId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+        throw new Error('Failed to join/leave community');
+    } catch (error) {
+        console.error("Error joining/leaving community:", error);
+        throw error;
+    }
+};
+
+/**
+ * Update community details
+ * @param {string} communityId
+ * @param {Object} data 
+ * @returns {Promise<Object>}
+ */
+export const updateCommunity = async (communityId, data) => {
+    try {
+        const response = await fetch(`${API_URL}/communities/${communityId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (response.ok) {
+            const updated = await response.json();
+            communityCache.set(communityId, updated);
+            return updated;
+        }
+        throw new Error('Failed to update community');
+    } catch (error) {
+        console.error("Error updating community:", error);
+        throw error;
+    }
+};
+
 const communityService = {
     getCommunitiesByIds,
     getCommunity,
     getAllCommunities,
     getUserCommunities,
-    createCommunity
+    createCommunity,
+    joinCommunity,
+    updateCommunity
 };
 
 export default communityService;
