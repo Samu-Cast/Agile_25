@@ -98,11 +98,40 @@ export const getUserCommunities = async (uid) => {
     }
 };
 
+/**
+ * Create a new community
+ * @param {Object} communityData 
+ * @returns {Promise<Object>} The created community
+ */
+export const createCommunity = async (communityData) => {
+    try {
+        const response = await fetch(`${API_URL}/communities`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(communityData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create community');
+        }
+
+        const newCommunity = await response.json();
+        // Cache the new community
+        communityCache.set(newCommunity.id, newCommunity);
+        return newCommunity;
+    } catch (error) {
+        console.error("Error creating community:", error);
+        throw error;
+    }
+};
+
 const communityService = {
     getCommunitiesByIds,
     getCommunity,
     getAllCommunities,
-    getUserCommunities
+    getUserCommunities,
+    createCommunity
 };
 
 export default communityService;

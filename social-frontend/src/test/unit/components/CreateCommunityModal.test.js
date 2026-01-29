@@ -14,6 +14,12 @@ import { useAuth } from '../../../context/AuthContext';
 //Mock di fetch globale
 global.fetch = jest.fn();
 
+//Mock communityService
+jest.mock('../../../services/communityService', () => ({
+    createCommunity: jest.fn()
+}));
+import { createCommunity } from '../../../services/communityService';
+
 describe('CreateCommunityModal - Rendering', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -117,10 +123,7 @@ describe('CreateCommunityModal - Form Submission', () => {
         const mockOnClose = jest.fn();
         const mockOnSuccess = jest.fn();
 
-        global.fetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ id: 'community123', name: 'Test Community' })
-        });
+        createCommunity.mockResolvedValueOnce({ id: 'community123', name: 'Test Community' });
 
         render(<CreateCommunityModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 
@@ -134,18 +137,11 @@ describe('CreateCommunityModal - Form Submission', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                'http://localhost:3001/api/communities',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: 'Test Community',
-                        description: 'Test Description',
-                        creatorId: 'user123'
-                    })
-                })
-            );
+            expect(createCommunity).toHaveBeenCalledWith({
+                name: 'Test Community',
+                description: 'Test Description',
+                creatorId: 'user123'
+            });
             expect(mockOnSuccess).toHaveBeenCalledTimes(1);
             expect(mockOnClose).toHaveBeenCalledTimes(1);
         });
@@ -167,6 +163,7 @@ describe('CreateCommunityModal - Form Submission', () => {
 
         await waitFor(() => {
             expect(alertMock).toHaveBeenCalledWith('You must be logged in.');
+            expect(createCommunity).not.toHaveBeenCalled();
         });
 
         alertMock.mockRestore();
@@ -174,10 +171,7 @@ describe('CreateCommunityModal - Form Submission', () => {
 
     //Test: gestione errore API (response.ok = false)
     it('dovrebbe mostrare alert in caso di errore API', async () => {
-        global.fetch.mockResolvedValueOnce({
-            ok: false,
-            json: async () => ({ error: 'Community already exists' })
-        });
+        createCommunity.mockRejectedValueOnce(new Error('Community already exists'));
 
         const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => { });
 
@@ -198,7 +192,7 @@ describe('CreateCommunityModal - Form Submission', () => {
 
     //Test: gestione errore fetch
     it('dovrebbe gestire errori di rete', async () => {
-        global.fetch.mockRejectedValueOnce(new Error('Network error'));
+        createCommunity.mockRejectedValueOnce(new Error('Network error'));
 
         const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => { });
 
@@ -228,7 +222,7 @@ describe('CreateCommunityModal - Loading States', () => {
 
     //Test: pulsante disabilitato durante loading
     it('dovrebbe disabilitare il pulsante durante il submit', async () => {
-        global.fetch.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+        createCommunity.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
         render(<CreateCommunityModal onClose={jest.fn()} onSuccess={jest.fn()} />);
 
@@ -247,9 +241,9 @@ describe('CreateCommunityModal - Loading States', () => {
 
     //Test: testo "Creating..." durante submit
     it('dovrebbe mostrare "Creating..." durante il caricamento', async () => {
-        let resolveFetch;
-        global.fetch.mockReturnValue(new Promise(resolve => {
-            resolveFetch = resolve;
+        let resolveCreate;
+        createCommunity.mockReturnValue(new Promise(resolve => {
+            resolveCreate = resolve;
         }));
 
         render(<CreateCommunityModal onClose={jest.fn()} onSuccess={jest.fn()} />);
@@ -264,10 +258,7 @@ describe('CreateCommunityModal - Loading States', () => {
         expect(await screen.findByText('Creating...')).toBeInTheDocument();
 
         // Completa la promise
-        resolveFetch({
-            ok: true,
-            json: async () => ({ id: 'community123' })
-        });
+        resolveCreate({ id: 'community123' });
 
         // Dopo il completamento dovrebbe tornare "Create"
         await waitFor(() => {
