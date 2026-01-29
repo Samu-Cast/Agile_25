@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
             query = query.where('uid', '==', authorUid);
         }
 
+        // Filter by participant
+        if (req.query.participatingUid) {
+            query = query.where('participants', 'array-contains', req.query.participatingUid);
+        }
+
         const postsSnapshot = await query.get();
 
         // Fetch user's following list if filter is 'followed'
@@ -135,6 +140,13 @@ router.post('/', async (req, res) => {
                 brand: reviewData.brand || null,
                 rating: reviewData.rating,
             };
+        }
+
+        // Add event-specific data if it's an event
+        if (type === 'event' && req.body.eventDetails) {
+            newPost.eventDetails = req.body.eventDetails;
+            newPost.hosts = req.body.hosts || [];
+            newPost.participants = req.body.participants || [];
         }
 
         // Add comparison-specific data if it's a comparison

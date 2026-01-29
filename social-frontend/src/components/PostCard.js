@@ -5,6 +5,10 @@ import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
 import { toggleSavePost, updateVotes } from '../services/postService';
 
+// Default images
+import defaultPostImage from '../image_post/defaults/default_post.png';
+import defaultComparisonImage from '../image_post/defaults/default_comparison.png';
+
 
 
 const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }) => {
@@ -98,7 +102,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             display: 'flex',
                             alignItems: 'center',
                             gap: '5px',
-                            marginLeft: 'auto'
+                            marginLeft: 'auto' // Move to right
                         }}>
                             ⚖️ CONFRONTO
                         </div>
@@ -128,6 +132,132 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                     </div>
                 )}
 
+                {/* Event-specific content */}
+                {isEvent && post.eventDetails && (
+                    <div className="event-info-card" style={{
+                        margin: '15px 0',
+                        padding: '15px',
+                        backgroundColor: '#FFF8E1',
+                        borderRadius: '12px',
+                        border: '1px solid #FFE0B2'
+                    }}>
+                        <h3 style={{ margin: '0 0 10px 0', color: '#6F4E37', textAlign: 'center' }}>{post.eventDetails.title}</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', fontSize: '14px', textAlign: 'center' }}>
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>📅 Data: </span>
+                                <span>{new Date(post.eventDetails.date).toLocaleDateString()} alle {post.eventDetails.time}</span>
+                            </div>
+
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>📍 Luogo: </span>
+                                <span>{post.eventDetails.location}</span>
+                            </div>
+
+                            {post.hosts && post.hosts.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontWeight: 'bold' }}>🎤 Host:</span>
+                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                        {(post.taggedUsersData || []).filter(u => post.hosts.includes(u.uid)).map(host => (
+                                            <span key={host.uid} style={{
+                                                backgroundColor: '#fff',
+                                                padding: '2px 8px',
+                                                borderRadius: '10px',
+                                                fontSize: '12px',
+                                                border: '1px solid #ddd'
+                                            }}>
+                                                {host.nickname || host.name}
+                                            </span>
+                                        ))}
+                                        {(!post.taggedUsersData || post.taggedUsersData.length === 0) && <span>Vedi dettagli</span>}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span
+                                style={{ fontSize: '13px', color: '#666', cursor: participantsCount > 0 ? 'pointer' : 'default', textDecoration: participantsCount > 0 ? 'underline' : 'none' }}
+                                onClick={handleViewParticipants}
+                                title={participantsCount > 0 ? "Vedi partecipanti" : ""}
+                            >
+                                <strong>{participantsCount}</strong> persone parteciperanno
+                            </span>
+
+                            {!isCreator ? (
+                                <button
+                                    onClick={handleJoinEvent}
+                                    style={{
+                                        backgroundColor: isParticipating ? '#eee' : '#E67E22',
+                                        color: isParticipating ? '#333' : 'white',
+                                        border: 'none',
+                                        padding: '8px 20px',
+                                        borderRadius: '20px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isParticipating ? '✓ Parteciperai' : 'Partecipa +'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleViewParticipants}
+                                    style={{
+                                        backgroundColor: '#6F4E37',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '8px 20px',
+                                        borderRadius: '20px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    👥 Vedi Partecipanti
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Participants Modal */}
+                        {showParticipantsModal && (
+                            <div className="modal-overlay" onClick={() => setShowParticipantsModal(false)} style={{
+                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+                                    backgroundColor: 'white', padding: '20px', borderRadius: '12px',
+                                    width: '90%', maxWidth: '400px', maxHeight: '500px', overflowY: 'auto'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <h3 style={{ margin: 0 }}>Partecipanti ({participantsCount})</h3>
+                                        <button onClick={() => setShowParticipantsModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>×</button>
+                                    </div>
+
+                                    {loadingParticipants ? (
+                                        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Caricamento...</div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {(participantsList || []).map(p => (
+                                                <div key={p.uid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <img
+                                                        src={p.profilePic || p.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                                        alt={p.nickname}
+                                                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                                                    />
+                                                    <span style={{ fontWeight: '500' }}>{p.nickname || p.name}</span>
+                                                </div>
+                                            ))}
+                                            {(!participantsList || participantsList.length === 0) && <p style={{ color: '#888' }}>Nessun partecipante trovato.</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
                 {/* Comparison-specific content */}
                 {post.type === 'comparison' && post.comparisonData && (
                     <div className="comparison-card-content" style={{ margin: '15px 0', border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
@@ -161,7 +291,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                                     {post.comparisonData.item1.image ? (
                                         <img src={post.comparisonData.item1.image} alt={post.comparisonData.item1.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                        <img src={defaultComparisonImage} alt={post.comparisonData.item1.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     )}
                                 </div>
                                 <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item1.name}</h3>
@@ -174,7 +304,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                                     {post.comparisonData.item2.image ? (
                                         <img src={post.comparisonData.item2.image} alt={post.comparisonData.item2.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '24px' }}>☕</div>
+                                        <img src={defaultComparisonImage} alt={post.comparisonData.item2.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     )}
                                 </div>
                                 <h3 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{post.comparisonData.item2.name}</h3>
@@ -246,22 +376,30 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                 {post.type !== 'comparison' && post.mediaUrls && post.mediaUrls.length > 0 ? (
                     <MediaGallery mediaUrls={post.mediaUrls} altText={post.content} />
                 ) : (
-                    post.type !== 'comparison' && post.image && <img src={post.image} alt="Post content" className="post-image" />
+                    post.type !== 'comparison' && (
+                        <img
+                            src={post.image || defaultPostImage}
+                            alt="Post content"
+                            className="post-image"
+                        />
+                    )
                 )}
 
                 <div className="post-footer">
                     <div className="vote-actions">
                         <button
+                            data-testid="upvote-btn"
                             className={`vote-btn up ${userVote === 1 ? 'active' : ''}`}
                             onClick={() => handleVote(1)}
                             style={{ color: userVote === 1 ? '#4169E1' : '' }}
                         >
                             ▲
                         </button>
-                        <span className="vote-count">
+                        <span className="vote-count" data-testid="vote-count">
                             {voteCount >= 1000 ? (voteCount / 1000).toFixed(1) + 'k' : voteCount}
                         </span>
                         <button
+                            data-testid="downvote-btn"
                             className={`vote-btn down ${userVote === -1 ? 'active' : ''}`}
                             onClick={() => handleVote(-1)}
                             style={{ color: userVote === -1 ? '#4169E1' : '' }}
@@ -301,7 +439,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
     );
 };
 
-// Helper function to get item type label
+//Helper function to get item type label
 function getItemTypeLabel(itemType) {
     const labels = {
         coffee: 'Caffè in grani',

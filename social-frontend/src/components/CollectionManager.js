@@ -4,6 +4,7 @@ import '../styles/components/CollectionManager.css';
 const CollectionManager = ({ roasterId, currentUser, products, onClose, onSave, initialData = null }) => {
     const [name, setName] = useState(initialData?.name || '');
     const [description, setDescription] = useState(initialData?.description || '');
+    const [occasion, setOccasion] = useState(initialData?.occasion || '');
     const [selectedProducts, setSelectedProducts] = useState(initialData?.products || []);
 
     const handleSubmit = (e) => {
@@ -11,6 +12,7 @@ const CollectionManager = ({ roasterId, currentUser, products, onClose, onSave, 
         const collectionData = {
             name,
             description,
+            occasion,
             products: selectedProducts,
             uid: currentUser.uid
         };
@@ -50,6 +52,25 @@ const CollectionManager = ({ roasterId, currentUser, products, onClose, onSave, 
                             placeholder="Descrivi la tua collezione..."
                             rows="3"
                         />
+                    </div>
+
+                    <div className="form-group-row">
+                        <div className="form-group half">
+                            <label>Occasione d'Uso</label>
+                            <select
+                                value={occasion}
+                                onChange={(e) => setOccasion(e.target.value)}
+                                className="collection-select"
+                            >
+                                <option value="">Seleziona...</option>
+                                <option value="Festa del Papà">Festa del Papà</option>
+                                <option value="Colazione">Colazione</option>
+                                <option value="Pausa Caffè">Pausa Caffè</option>
+                                <option value="Dopo Cena">Dopo Cena</option>
+                                <option value="Regalo">Regalo</option>
+                                <option value="Degustazione">Degustazione</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="form-group">

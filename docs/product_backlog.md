@@ -272,7 +272,7 @@
 ### US28
 - **Epica**: Gestione interazione post
 - **User**: Appassionato, Barista
-- **User Story**: Voglio cercare collezioni per categoria/parola chiave o filtrare le recensioni.
+- **User Story**: Voglio cercare collezioni per categoria/parola chiave e filtrare.
 - **Effort**: 5
 - **Priority**: 3
 

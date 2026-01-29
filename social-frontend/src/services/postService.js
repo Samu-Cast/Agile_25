@@ -21,7 +21,21 @@ export const createPost = async (postData) => {
         const response = await fetch(`${API_URL}/posts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                uid: postData.uid || postData.authorUid,
+                text: postData.text || postData.content,
+                imageUrl: postData.imageUrl,
+                entityType: postData.entityType || 'user',
+                entityId: postData.entityId || postData.authorUid || postData.uid,
+                communityId: postData.communityId, // Include communityId if present
+                taggedUsers: postData.taggedUsers || [],
+                type: postData.type || 'post',
+                eventDetails: postData.eventDetails,
+                hosts: postData.hosts,
+                reviewData: postData.reviewData,
+                comparisonData: postData.comparisonData,
+                mediaUrls: postData.mediaUrls || (postData.imageUrl ? [postData.imageUrl] : [])
+            })
         });
         if (!response.ok) throw new Error('Create post failed');
         const data = await response.json();
@@ -260,5 +274,98 @@ export const deletePost = async (postId, userId) => {
     }
 };
 
-const postService = { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost };
+export const getUserEvents = async (uid) => {
+    try {
+        // Fetch events created by user
+        const createdResponse = await fetch(`${API_URL}/posts?authorUid=${uid}&type=event`);
+        if (!createdResponse.ok) throw new Error('Failed to fetch user created events');
+        const createdEvents = await createdResponse.json();
+
+        // Fetch events participating in
+        const participatingResponse = await fetch(`${API_URL}/posts?participatingUid=${uid}&type=event`);
+        if (!participatingResponse.ok) throw new Error('Failed to fetch participating events');
+        const participatingEvents = await participatingResponse.json();
+
+        // Merge and deduplicate (by id)
+        const eventMap = new Map();
+        createdEvents.forEach(e => eventMap.set(e.id, { ...e, isHost: true }));
+        participatingEvents.forEach(e => {
+            if (!eventMap.has(e.id)) {
+                eventMap.set(e.id, { ...e, isHost: false });
+            }
+        });
+
+        // Sort by date (nearest future first, then past) or just creation?
+        // Let's sort created desc for now, or maybe event date?
+        const events = Array.from(eventMap.values());
+
+        // Fetch author details
+        const authorUids = [...new Set(events.map(e => e.uid))];
+        const authorMap = {};
+
+        if (authorUids.length > 0) {
+            try {
+                const usersResponse = await fetch(`${API_URL}/users/batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uids: authorUids })
+                });
+
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    users.forEach(u => authorMap[u.uid] = u);
+                }
+            } catch (err) {
+                console.error("Error fetching event authors:", err);
+            }
+        }
+
+        return events.map(p => {
+            const authorData = authorMap[p.uid];
+            return {
+                ...p,
+                content: p.text,
+                time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now',
+                author: authorData ? (authorData.nickname || authorData.name) : 'Unknown',
+                authorAvatar: authorData ? (authorData.profilePic || authorData.photoURL) : null,
+                authorId: p.uid
+            };
+        });
+    } catch (error) {
+        console.error("Error getting user events:", error);
+        return [];
+    }
+};
+
+export const joinEvent = async (postId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userId })
+        });
+        if (!response.ok) throw new Error('Join event failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error joining event:", error);
+        throw error;
+    }
+};
+
+export const leaveEvent = async (postId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}/join`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userId })
+        });
+        if (!response.ok) throw new Error('Leave event failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error leaving event:", error);
+        throw error;
+    }
+};
+
+const postService = { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost, joinEvent, leaveEvent };
 export default postService;
