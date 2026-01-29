@@ -2,9 +2,9 @@ name: CI tests
 
 on:
   push:
-    branches: [ main, preRelease, sam-branch ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, preRelease, sam-branch ]
+    branches: [ main ]
 
 jobs:
   test-project:
