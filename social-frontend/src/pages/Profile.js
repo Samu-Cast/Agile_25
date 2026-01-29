@@ -9,6 +9,7 @@ import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
 import { getUserCommunities } from '../services/communityService';
 import CollectionManager from '../components/CollectionManager';
+import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
 // Default images

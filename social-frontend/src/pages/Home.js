@@ -177,6 +177,7 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         post={{ ...post, isSaved }}
                         currentUser={user}
                         isLoggedIn={isLoggedIn}
+                        showCommunityInfo={true}
                     />
                 );
             })}
