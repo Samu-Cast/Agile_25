@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CreateCommunityModal from './CreateCommunityModal';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { getAllCommunities } from '../services/communityService';
+import '../styles/components/Sidebar.css';
 
 const Sidebar = ({ activeFeed, onFeedChange, refreshTrigger }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -14,12 +14,8 @@ const Sidebar = ({ activeFeed, onFeedChange, refreshTrigger }) => {
         const fetchCommunities = async () => {
             if (!currentUser) return;
             try {
-                // Fetch all communities (simplification for now, user should see all or joined)
-                const response = await fetch(`${API_URL}/communities`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setCommunities(data);
-                }
+                const data = await getAllCommunities();
+                setCommunities(data);
             } catch (error) {
                 console.error("Error fetching communities:", error);
             }

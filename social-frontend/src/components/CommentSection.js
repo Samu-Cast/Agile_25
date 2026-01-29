@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { addComment, getComments } from '../services/postService';
 import { uploadMultipleMedia, validateMedia } from '../services/imageService';
+import { getUsersByUids } from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import '../styles/components/CommentSection.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const CommentSection = ({ postId, postType }) => {
     const { currentUser } = useAuth();
@@ -23,22 +22,32 @@ const CommentSection = ({ postId, postType }) => {
             setLoading(true);
             const fetchedComments = await getComments(postId);
 
-            // Fetch user details for each comment
-            const commentsWithUsers = await Promise.all(fetchedComments.map(async (comment) => {
-                let authorName = comment.uid;
-                let authorPic = null;
+            // Extract unique UIDs
+            const uids = [...new Set(fetchedComments.map(c => c.uid).filter(uid => uid))];
+
+            let userMap = {};
+            if (uids.length > 0) {
                 try {
-                    const userRes = await fetch(`${API_URL}/users/${comment.uid}`);
-                    if (userRes.ok) {
-                        const userData = await userRes.json();
-                        authorName = userData.displayName || userData.name || comment.uid;
-                        authorPic = userData.photoURL || userData.profilePic;
-                    }
+                    const users = await getUsersByUids(uids);
+                    users.forEach(u => {
+                        userMap[u.uid] = {
+                            name: u.displayName || u.name || u.uid,
+                            pic: u.photoURL || u.profilePic
+                        };
+                    });
                 } catch (e) {
-                    console.warn("Failed to fetch user for comment", e);
+                    console.warn("Failed to fetch users for comments", e);
                 }
-                return { ...comment, authorName, authorPic };
-            }));
+            }
+
+            const commentsWithUsers = fetchedComments.map(comment => {
+                const user = userMap[comment.uid] || {};
+                return {
+                    ...comment,
+                    authorName: user.name || comment.uid,
+                    authorPic: user.pic
+                };
+            });
 
             setComments(commentsWithUsers);
         } catch (error) {

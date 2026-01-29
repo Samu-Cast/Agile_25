@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { uploadMultipleMedia, validateMedia } from '../services/imageService';
-import { searchGlobal } from '../services/userService';
+import { searchGlobal, getUserCommunities } from '../services/userService';
+import { createPost } from '../services/postService';
 import CoffeeCupRating from './CoffeeCupRating';
 import '../styles/components/CreatePostModal.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const ITEM_TYPES = [
     { value: 'coffee', label: 'Caffè in grani' },
@@ -89,11 +88,8 @@ function CreatePostModal({ onClose, onSuccess }) {
         const fetchCommunities = async () => {
             if (!currentUser) return;
             try {
-                const response = await fetch(`${API_URL}/users/${currentUser.uid}/communities`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setCommunities(data);
-                }
+                const data = await getUserCommunities(currentUser.uid);
+                setCommunities(data);
             } catch (error) {
                 console.error("Error fetching communities:", error);
             }
@@ -296,18 +292,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                 };
             }
 
-            const response = await fetch(`${API_URL}/posts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(postData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to create post');
-            }
+            await createPost(postData);
 
             // Reset form and close modal
             setText('');
@@ -316,6 +301,11 @@ function CreatePostModal({ onClose, onSuccess }) {
             setReviewData({ itemName: '', itemType: 'coffee', brand: '', rating: 0 });
             setPostType('post');
             setTaggedUsers([]);
+            setComparisonData({
+                item1: { name: '', brand: '', file: null, preview: null },
+                item2: { name: '', brand: '', file: null, preview: null }
+            });
+
             if (onSuccess) onSuccess();
             onClose();
 

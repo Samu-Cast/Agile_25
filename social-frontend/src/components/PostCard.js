@@ -175,9 +175,13 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             display: 'flex',
                             alignItems: 'center',
                             gap: '5px',
+<<<<<<< HEAD
                             marginLeft: 'auto' // Move to right
+=======
+                            marginLeft: 'auto'
+>>>>>>> 3966d619975d322f00e2c274514b5ac329c28cba
                         }}>
-                            ⚖️ Confronto
+                            ⚖️ CONFRONTO
                         </div>
                     )}
                 </div>

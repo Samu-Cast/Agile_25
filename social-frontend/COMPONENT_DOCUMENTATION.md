@@ -63,8 +63,13 @@ This document provides a detailed overview of the frontend components in the `so
 
 **Functionality**:
 *   **Display**: Shows author, timestamp, content, media (via `MediaGallery`), and community info.
+<<<<<<< HEAD
 *   **Event Support**: Displays event details (Date, Time, Location, Hosts, Participant Count) and "Join" button.
 *   **Review Support**: Specialized display for reviews (Rating, Item Name, Brand, Comparison).
+=======
+*   **Review Support**: Specialized display for reviews (Rating, Item Name, Brand).
+*   **Comparison Support**: Distinct "VS" layout for comparison posts, showing two items side-by-side.
+>>>>>>> 3966d619975d322f00e2c274514b5ac329c28cba
 *   **Interactions**: Upvote/Downvote logic, Save/Unsave post.
 *   **Comments**: Toggleable `CommentSection`.
 *   **Social**: Share functionality (copies link).
@@ -127,7 +132,7 @@ This document provides a detailed overview of the frontend components in the `so
 *   `onCommunityLoaded` (func): Pass updated community data back to parent.
 
 **Functionality**:
-*   **Content**: Fetches posts specific to the community.
+*   **Content**: Fetches posts specific to the community. Maps posts to include `comparisonData` for correct display.
 *   **Management**: Owner can edit banner/avatar and details.
 *   **Layout**: Rich header with banner and info.
 
