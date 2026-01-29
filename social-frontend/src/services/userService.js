@@ -138,6 +138,17 @@ export const getUserSavedPostIds = async (uid) => {
     }
 };
 
+export const getUserCommunities = async (uid) => {
+    try {
+        const response = await fetch(`${API_URL}/users/${uid}/communities`);
+        if (!response.ok) throw new Error('Fetch user communities failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching user communities:", error);
+        return [];
+    }
+};
+
 export const getUser = async (uid) => {
     try {
         const response = await fetch(`${API_URL}/users/${uid}`);

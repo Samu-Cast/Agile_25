@@ -97,9 +97,10 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             fontWeight: 'bold',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '5px'
+                            gap: '5px',
+                            marginLeft: 'auto'
                         }}>
-                            ⚖️ Confronto
+                            ⚖️ CONFRONTO
                         </div>
                     )}
                 </div>

@@ -77,8 +77,12 @@ The routes not only define endpoints but currently contain most of the business 
 
 #### A. Service Layer (`src/services/`)
 To decouple UI from API details, all network requests are encapsulated in service modules.
-*   UI components call `postService.createPost(...)`.
-*   `postService` handles `fetch`, headers, error parsing, and response mapping.
+*   **`postService.js`**: Handles post creation, feed fetching, and interactions.
+*   **`communityService.js`**: Manages community lifecycle (create, update, join) and data fetching.
+*   **`userService.js`**: Handles user profiles and optimized batch data fetching (`getUsersByUids`).
+*   **`imageService.js`**: Manages image uploads and validation.
+
+UI components import these services directly (e.g., `import { createPost } from '../services/postService'`) instead of using global `fetch` calls. Services handle error parsing, headers, and response mapping.
 
 #### B. State Management
 *   **Context API**: Used for global, app-wide state.
@@ -122,6 +126,6 @@ To decouple UI from API details, all network requests are encapsulated in servic
 ## 6. Key Data Models (NoSQL)
 
 *   **Users**: `uid`, name, role (Appassionato, Bar, ...), specific role data.
-*   **Posts**: text, authorRef, media, likes, comments (subcollection or top-level), `taggedUsers` (array of UIDs).
+*   **Posts**: text, authorRef, media, likes, comments, `taggedUsers`, `reviewData` (for reviews), `comparisonData` (for comparisons).
 *   **Communities**: name, description, creator, members (array of UIDs).
 *   **Chats**: participants (array), lastMessage.

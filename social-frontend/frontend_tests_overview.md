@@ -43,7 +43,7 @@ These tests verify the rendering, interaction, and state management of React com
 - **Purpose:** A comprehensive test suite for the feed item component.
 - **Key Tests:**
     - **Rendering:** Displays user info, timestamp, text, and media (images/videos).
-    - **Reviews:** Shows "Coffee Cup Rating" and review details (brand, item name) if the post is a review.
+    - **Reviews/Comparisons:** Shows "Coffee Cup Rating" for reviews, and "VS" layout for comparison posts.
     - **Interactions:**
         - Like/Unlike functionality.
         - Save/Unsave post.

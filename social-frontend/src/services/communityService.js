@@ -64,6 +64,7 @@ export const getCommunity = async (id) => {
     return null;
 };
 
+// ... existing imports/code
 export const getAllCommunities = async () => {
     try {
         const response = await fetch(`${API_URL}/communities`);
@@ -79,10 +80,74 @@ export const getAllCommunities = async () => {
     }
 };
 
+export const createCommunity = async (communityData) => {
+    try {
+        const response = await fetch(`${API_URL}/communities`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(communityData)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create community');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error creating community:", error);
+        throw error;
+    }
+};
+
+export const updateCommunity = async (communityId, updates) => {
+    try {
+        const response = await fetch(`${API_URL}/communities/${communityId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        if (!response.ok) throw new Error('Failed to update community');
+
+        // Update cache
+        if (communityCache.has(communityId)) {
+            const cached = communityCache.get(communityId);
+            communityCache.set(communityId, { ...cached, ...updates });
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error updating community:", error);
+        throw error;
+    }
+};
+
+export const joinCommunity = async (communityId, uid) => {
+    try {
+        const response = await fetch(`${API_URL}/communities/${communityId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid })
+        });
+        if (!response.ok) throw new Error('Failed to join/leave community');
+
+        // Invalidate cache or fetch updated
+        // For simplicity, we might want to return the updated list of members if possible, 
+        // effectively toggling locally. 
+        // We'll let the component handle local optimistic updates or refetch.
+        return true;
+    } catch (error) {
+        console.error("Error joining community:", error);
+        throw error;
+    }
+};
+
+
 const communityService = {
     getCommunitiesByIds,
     getCommunity,
-    getAllCommunities
+    getAllCommunities,
+    createCommunity,
+    updateCommunity,
+    joinCommunity
 };
 
 export default communityService;

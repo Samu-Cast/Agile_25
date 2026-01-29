@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-// useParams removed
 import PostCard from './PostCard';
 import { getUsersByUids } from '../services/userService';
+import { getCommunity, updateCommunity } from '../services/communityService';
+import { getFeedPosts } from '../services/postService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -48,9 +49,8 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
     useEffect(() => {
         const fetchCommunityDetails = async () => {
             try {
-                const response = await fetch(`${API_URL} /communities/${communityId} `);
-                if (response.ok) {
-                    const data = await response.json();
+                const data = await getCommunity(communityId);
+                if (data) {
                     setCommunity(data);
                     if (onCommunityLoaded) onCommunityLoaded(data);
                 }
@@ -61,14 +61,10 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
 
         const fetchPosts = async () => {
             try {
-                let url = `${API_URL}/posts?communityId=${communityId}`;
-                if (user?.uid) {
-                    url += `&uid=${user.uid}`;
-                }
+                const params = { communityId: communityId };
+                if (user?.uid) params.uid = user.uid;
 
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
+                const data = await getFeedPosts(params);
 
                 // Extract unique UIDs
                 const uids = [...new Set(data.map(post => post.uid))];
@@ -80,7 +76,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                         users.forEach(u => {
                             userMap[u.uid] = {
                                 name: u.nickname || u.name,
-                                avatar: u.profilePic || u.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+                                avatar: u.photoURL || u.profilePic || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
                             };
                         });
                     } catch (err) {
@@ -88,18 +84,12 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                     }
                 }
 
-                // Fetch community details to ensure we have the name
+                // Ensure community details are available
                 let communityDetails = community;
                 if (!communityDetails) {
                     try {
-                        // We can reuse the same endpoint or service if we imported it, 
-                        // but here we can just fetch it if we don't have it yet, 
-                        // OR just wait? No, let's just fetch it quickly or check if we can get it from 'data' (posts don't have community name usually).
-                        // Actually, let's just use the service we created!
-                        // But I need to import it.
-                        // For now, let's duplicate the fetch to be safe and quick, or just fetch accessing the existing state is hard.
-                        const commRes = await fetch(`${API_URL}/communities/${communityId}`);
-                        if (commRes.ok) communityDetails = await commRes.json();
+                        const commData = await getCommunity(communityId);
+                        if (commData) communityDetails = commData;
                     } catch (e) { console.error("Error fetching community details for posts", e); }
                 }
 
@@ -117,6 +107,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                         image: post.imageUrl,
                         mediaUrls: post.mediaUrls || [], // Include media URLs array for carousel
                         reviewData: post.reviewData || null, // Include review data for review posts
+                        comparisonData: post.comparisonData || null, // Include comparison data
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,
@@ -162,13 +153,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
 
             // 2. Update Community
             const updatePayload = { [type]: url, updaterId: user.uid };
-            const updateRes = await fetch(`${API_URL}/communities/${communityId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatePayload)
-            });
-
-            if (!updateRes.ok) throw new Error('Failed to update details');
+            await updateCommunity(communityId, updatePayload);
 
             // 3. Update Local State
             setCommunity(prev => ({ ...prev, [type]: url }));
@@ -185,13 +170,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
     const handleSaveDetails = async () => {
         try {
             const updatePayload = { name: editName, description: editDescription, updaterId: user.uid };
-            const response = await fetch(`${API_URL}/communities/${communityId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatePayload)
-            });
-
-            if (!response.ok) throw new Error('Failed to update');
+            await updateCommunity(communityId, updatePayload);
 
             setCommunity(prev => ({ ...prev, name: editName, description: editDescription }));
             setIsEditing(false);

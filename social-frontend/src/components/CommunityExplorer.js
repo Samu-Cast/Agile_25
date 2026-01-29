@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { getAllCommunities, joinCommunity } from '../services/communityService';
 
 const CommunityExplorer = ({ currentUser, onNavigate, onCommunityUpdate }) => {
     const [communities, setCommunities] = useState([]);
@@ -8,11 +7,8 @@ const CommunityExplorer = ({ currentUser, onNavigate, onCommunityUpdate }) => {
     useEffect(() => {
         const fetchCommunities = async () => {
             try {
-                const response = await fetch(`${API_URL}/communities`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setCommunities(data);
-                }
+                const data = await getAllCommunities();
+                setCommunities(data);
             } catch (error) {
                 console.error("Error fetching communities:", error);
             }
@@ -23,26 +19,20 @@ const CommunityExplorer = ({ currentUser, onNavigate, onCommunityUpdate }) => {
     const handleJoinLeave = async (communityId, isMember) => {
         if (!currentUser) return;
         try {
-            const response = await fetch(`${API_URL}/communities/${communityId}/join`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: currentUser.uid })
-            });
+            await joinCommunity(communityId, currentUser.uid);
 
-            if (response.ok) {
-                // Update local state
-                setCommunities(prev => prev.map(c => {
-                    if (c.id === communityId) {
-                        const newMembers = isMember
-                            ? c.members.filter(uid => uid !== currentUser.uid)
-                            : [...(c.members || []), currentUser.uid];
-                        return { ...c, members: newMembers };
-                    }
-                    return c;
-                }));
-                // Update Sidebar
-                if (onCommunityUpdate) onCommunityUpdate();
-            }
+            // Update local state
+            setCommunities(prev => prev.map(c => {
+                if (c.id === communityId) {
+                    const newMembers = isMember
+                        ? c.members.filter(uid => uid !== currentUser.uid)
+                        : [...(c.members || []), currentUser.uid];
+                    return { ...c, members: newMembers };
+                }
+                return c;
+            }));
+            // Update Sidebar
+            if (onCommunityUpdate) onCommunityUpdate();
         } catch (error) {
             console.error("Error toggling membership:", error);
         }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import { updateCommunity } from '../services/communityService';
 
 const CommunityInfoCard = ({ community, currentUser, onCommunityUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -46,34 +45,11 @@ const CommunityInfoCard = ({ community, currentUser, onCommunityUpdate }) => {
                 updaterId: currentUser.uid
             };
 
-            const response = await fetch(`${API_URL}/communities/${community.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatePayload)
-            });
+            await updateCommunity(community.id, updatePayload);
 
-            if (!response.ok) throw new Error('Failed to update');
-
-            // Optimistic update via valid callback or simple UI switch
-            // ideally we call onCommunityUpdate to refresh parent data
             if (onCommunityUpdate) onCommunityUpdate();
-            // Since we can't easily push data UP to Home -> CommunityFeed without refetch 
-            // (Home doesn't fetch, Feed does), we might get stale data if we don't handle it carefully.
-            // But visually updating local state/props is handled by parent re-render? 
-            // Actually Home passes `currentCommunity`. We need to mutate that or wait for re-fetch.
-            // For now, toggle editing off. The user will see 'community' prop updates IF parent fetches.
-            // But parent (Home) gets it from Feed. Feed fetches. Feed needs to refetch.
-            // `onCommunityUpdate` in Home triggers `sidebarRefresh` which triggers Sidebar fetch. 
-            // It does NOT trigger CommunityFeed fetch.
-            // We should probably rely on a location reload or just optimistic local display if possible, 
-            // but `community` prop comes from parent.
-            // Let's rely on the fact that if we update, maybe we just show the edited values until refresh?
-            // No, better to try to trigger a refresh.
-
-            // Force reload for now to be safe/simple, or just update local if parent doesn't.
-            // Actually, we can just update the `community` object in place in memory if it's a prop reference? No, immutable.
             setIsEditing(false);
-            window.location.reload(); // Simplest way to ensure sync for now given the architecture
+            window.location.reload(); // Keep reload for now as agreed in original code comments
         } catch (error) {
             console.error("Error saving community info:", error);
             alert("Failed to save changes");

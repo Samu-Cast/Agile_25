@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { createCommunity } from '../services/communityService';
 import '../styles/components/CreateCommunityModal.css';
-
-// eslint-disable-next-line no-unused-vars
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 function CreateCommunityModal({ onClose, onSuccess }) {
     const [name, setName] = useState('');
@@ -22,27 +20,11 @@ function CreateCommunityModal({ onClose, onSuccess }) {
         setLoading(true);
 
         try {
-            // Hardcoding URL to rule out environmental issues
-            const cleanUrl = 'http://localhost:3001/api/communities';
-            console.log("Attempting fetch to:", cleanUrl);
-
-            const response = await fetch(cleanUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                    // specific headers removed to ensure clean request
-                },
-                body: JSON.stringify({
-                    name,
-                    description,
-                    creatorId: currentUser.uid
-                }),
+            await createCommunity({
+                name,
+                description,
+                creatorId: currentUser.uid
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to create community');
-            }
 
             if (onSuccess) onSuccess();
             onClose();

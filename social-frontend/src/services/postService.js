@@ -8,17 +8,20 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
  */
 export const createPost = async (postData) => {
     try {
+        // Map frontend fields to backend expected fields, supporting both new and legacy formats
+        const payload = {
+            ...postData,
+            uid: postData.uid || postData.authorUid,
+            text: postData.text || postData.content,
+            entityType: postData.entityType || 'user',
+            entityId: postData.entityId || postData.authorUid || postData.uid,
+            taggedUsers: postData.taggedUsers || []
+        };
+
         const response = await fetch(`${API_URL}/posts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                uid: postData.authorUid, // Backend expects uid
-                text: postData.content,  // Backend expects text
-                imageUrl: postData.imageUrl,
-                entityType: 'user', // Default
-                entityId: postData.authorUid,
-                taggedUsers: postData.taggedUsers || [] // Array of tagged user UIDs
-            })
+            body: JSON.stringify(payload)
         });
         if (!response.ok) throw new Error('Create post failed');
         const data = await response.json();

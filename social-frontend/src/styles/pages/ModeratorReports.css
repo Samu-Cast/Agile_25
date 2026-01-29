@@ -237,12 +237,12 @@
     box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
 }
 
-.close-btn {
+.moderator-layout .close-btn {
     color: #0f0 !important;
     opacity: 0.7;
 }
 
-.close-btn:hover {
+.moderator-layout .close-btn:hover {
     opacity: 1;
     text-shadow: 0 0 5px #0f0;
 }
