@@ -119,6 +119,11 @@ Adds a comment to a post.
 Saves or unsaves a post for a user.
 - **POST** / **DELETE** `/posts/:postId/save`
 
+### `joinEvent(postId, userId)` / `leaveEvent(postId, userId)`
+Manages event participation.
+- **POST** `/posts/:postId/join` / `/leave`
+- Updates local participant list and backend record.
+
 ---
 
 ## `userService.js`

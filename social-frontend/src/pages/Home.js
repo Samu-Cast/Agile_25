@@ -132,6 +132,10 @@ const Feed = ({ isLoggedIn, user, feedType }) => {
                         communityName: postCommunity?.name,
                         communityAvatar: postCommunity?.avatar,
                         communityId: post.communityId,
+                        // Event Details
+                        eventDetails: post.eventDetails || null,
+                        hosts: post.hosts || [],
+                        participants: post.participants || [],
                         createdAt: post.createdAt
                     };
                 });

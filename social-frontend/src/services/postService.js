@@ -17,7 +17,13 @@ export const createPost = async (postData) => {
                 imageUrl: postData.imageUrl,
                 entityType: 'user', // Default
                 entityId: postData.authorUid,
-                taggedUsers: postData.taggedUsers || [] // Array of tagged user UIDs
+                taggedUsers: postData.taggedUsers || [], // Array of tagged user UIDs
+                type: postData.type || 'post',
+                eventDetails: postData.eventDetails,
+                hosts: postData.hosts,
+                reviewData: postData.reviewData,
+                comparisonData: postData.comparisonData,
+                mediaUrls: postData.mediaUrls || (postData.imageUrl ? [postData.imageUrl] : [])
             })
         });
         if (!response.ok) throw new Error('Create post failed');
@@ -257,5 +263,35 @@ export const deletePost = async (postId, userId) => {
     }
 };
 
-const postService = { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost };
+export const joinEvent = async (postId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userId })
+        });
+        if (!response.ok) throw new Error('Join event failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error joining event:", error);
+        throw error;
+    }
+};
+
+export const leaveEvent = async (postId, userId) => {
+    try {
+        const response = await fetch(`${API_URL}/posts/${postId}/join`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userId })
+        });
+        if (!response.ok) throw new Error('Leave event failed');
+        return await response.json();
+    } catch (error) {
+        console.error("Error leaving event:", error);
+        throw error;
+    }
+};
+
+const postService = { createPost, getPosts, getFeedPosts, updateVotes, toggleCoffee, updateRating, addComment, getComments, getUserComments, getUserVotedPosts, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, deletePost, joinEvent, leaveEvent };
 export default postService;

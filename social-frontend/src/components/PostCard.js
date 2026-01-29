@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import CommentSection from './CommentSection';
 import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
-import { toggleSavePost, updateVotes } from '../services/postService';
+import { getUsersByUids } from '../services/userService';
+
+import { toggleSavePost, updateVotes, joinEvent, leaveEvent } from '../services/postService';
 
 
 
@@ -15,6 +17,56 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
     const navigate = useNavigate();
 
     const isReview = post.type === 'review';
+    const isEvent = post.type === 'event';
+
+    const [isParticipating, setIsParticipating] = useState(post.participants?.includes(currentUser?.uid) || false);
+    const [participantsCount, setParticipantsCount] = useState(post.participants?.length || 0);
+
+    // Participants Modal State
+    const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+    const [participantsList, setParticipantsList] = useState([]);
+    const [loadingParticipants, setLoadingParticipants] = useState(false);
+
+    const isCreator = currentUser?.uid === post.authorId || currentUser?.uid === post.uid;
+
+    const handleViewParticipants = async () => {
+        if (!post.participants || post.participants.length === 0) return;
+
+        setShowParticipantsModal(true);
+        if (participantsList.length > 0) return; // Already loaded
+
+        setLoadingParticipants(true);
+        try {
+            // Fetch users only when requested
+            const users = await getUsersByUids(post.participants);
+            setParticipantsList(users);
+        } catch (error) {
+            console.error("Error fetching participants:", error);
+        } finally {
+            setLoadingParticipants(false);
+        }
+    };
+
+    const handleJoinEvent = async () => {
+        if (!isLoggedIn) return;
+        const previousState = isParticipating;
+        // Optimistic update
+        setIsParticipating(!previousState);
+        setParticipantsCount(prev => previousState ? prev - 1 : prev + 1);
+
+        try {
+            if (previousState) {
+                await leaveEvent(post.id, currentUser.uid);
+            } else {
+                await joinEvent(post.id, currentUser.uid);
+            }
+        } catch (error) {
+            console.error("Error toggling event participation:", error);
+            // Revert
+            setIsParticipating(previousState);
+            setParticipantsCount(prev => previousState ? prev + 1 : prev - 1);
+        }
+    };
 
     const handleVote = async (type) => {
         if (!isLoggedIn) return;
@@ -82,8 +134,33 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
 
                     {/* Review Badge */}
                     {isReview && (
-                        <div className="review-badge">
+                        <div className="review-badge" style={{
+                            marginLeft: 'auto',
+                            backgroundColor: '#FFD700', // Gold color for review
+                            color: '#333',
+                            padding: '4px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                        }}>
                             ⭐ Recensione
+                        </div>
+                    )}
+                    {/* Event Badge */}
+                    {isEvent && (
+                        <div className="event-badge" style={{
+                            backgroundColor: '#E67E22',
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            marginLeft: 'auto' // Move to right
+                        }}>
+                            📅 Evento
                         </div>
                     )}
                     {/* Comparison Badge */}
@@ -97,7 +174,8 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             fontWeight: 'bold',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '5px'
+                            gap: '5px',
+                            marginLeft: 'auto' // Move to right
                         }}>
                             ⚖️ Confronto
                         </div>
@@ -123,6 +201,131 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             <span className="review-item-type">
                                 {getItemTypeLabel(post.reviewData.itemType)}
                             </span>
+                        )}
+                    </div>
+                )}
+
+
+
+                {/* Event-specific content */}
+                {isEvent && post.eventDetails && (
+                    <div className="event-info-card" style={{
+                        margin: '15px 0',
+                        padding: '15px',
+                        backgroundColor: '#FFF8E1',
+                        borderRadius: '12px',
+                        border: '1px solid #FFE0B2'
+                    }}>
+                        <h3 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>{post.eventDetails.title}</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 15px', fontSize: '14px' }}>
+                            <span style={{ fontWeight: 'bold' }}>📅 Data:</span>
+                            <span>{new Date(post.eventDetails.date).toLocaleDateString()} alle {post.eventDetails.time}</span>
+
+                            <span style={{ fontWeight: 'bold' }}>📍 Luogo:</span>
+                            <span>{post.eventDetails.location}</span>
+
+                            {post.hosts && post.hosts.length > 0 && (
+                                <>
+                                    <span style={{ fontWeight: 'bold' }}>🎤 Host:</span>
+                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                        {(post.taggedUsersData || []).filter(u => post.hosts.includes(u.uid)).map(host => (
+                                            <span key={host.uid} style={{
+                                                backgroundColor: '#fff',
+                                                padding: '2px 8px',
+                                                borderRadius: '10px',
+                                                fontSize: '12px',
+                                                border: '1px solid #ddd'
+                                            }}>
+                                                {host.nickname || host.name}
+                                            </span>
+                                        ))}
+                                        {(!post.taggedUsersData || post.taggedUsersData.length === 0) && <span>Vedi dettagli</span>}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span
+                                style={{ fontSize: '13px', color: '#666', cursor: participantsCount > 0 ? 'pointer' : 'default', textDecoration: participantsCount > 0 ? 'underline' : 'none' }}
+                                onClick={handleViewParticipants}
+                                title={participantsCount > 0 ? "Vedi partecipanti" : ""}
+                            >
+                                <strong>{participantsCount}</strong> persone parteciperanno
+                            </span>
+
+                            {!isCreator ? (
+                                <button
+                                    onClick={handleJoinEvent}
+                                    style={{
+                                        backgroundColor: isParticipating ? '#eee' : '#E67E22',
+                                        color: isParticipating ? '#333' : 'white',
+                                        border: 'none',
+                                        padding: '8px 20px',
+                                        borderRadius: '20px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isParticipating ? '✓ Parteciperai' : 'Partecipa +'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleViewParticipants}
+                                    style={{
+                                        backgroundColor: '#6F4E37',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '8px 20px',
+                                        borderRadius: '20px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    👥 Vedi Partecipanti
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Participants Modal */}
+                        {showParticipantsModal && (
+                            <div className="modal-overlay" onClick={() => setShowParticipantsModal(false)} style={{
+                                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+                                    backgroundColor: 'white', padding: '20px', borderRadius: '12px',
+                                    width: '90%', maxWidth: '400px', maxHeight: '500px', overflowY: 'auto'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <h3 style={{ margin: 0 }}>Partecipanti ({participantsCount})</h3>
+                                        <button onClick={() => setShowParticipantsModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>×</button>
+                                    </div>
+
+                                    {loadingParticipants ? (
+                                        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Caricamento...</div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {(participantsList || []).map(p => (
+                                                <div key={p.uid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <img
+                                                        src={p.profilePic || p.photoURL || "https://cdn-icons-png.flaticon.com/512/847/847969.png"}
+                                                        alt={p.nickname}
+                                                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                                                    />
+                                                    <span style={{ fontWeight: '500' }}>{p.nickname || p.name}</span>
+                                                </div>
+                                            ))}
+                                            {(!participantsList || participantsList.length === 0) && <p style={{ color: '#888' }}>Nessun partecipante trovato.</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}

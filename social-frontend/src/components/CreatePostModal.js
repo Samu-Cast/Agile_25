@@ -56,6 +56,14 @@ function CreatePostModal({ onClose, onSuccess }) {
     // Silence unused warnings
     void setIsComparison; void setComparisonTitle1; void setComparisonTitle2;
 
+    // Event fields
+    const [eventDetails, setEventDetails] = useState({
+        title: '',
+        date: '',
+        time: '',
+        location: ''
+    });
+
     const { currentUser } = useAuth();
 
     // Handle separate comparison images
@@ -224,9 +232,24 @@ function CreatePostModal({ onClose, onSuccess }) {
                 mediaUrls: mediaUrls,
                 imageUrl: mediaUrls.length > 0 ? mediaUrls[0] : null, // Legacy support
                 taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
+                taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
                 createdAt: new Date().toISOString(),
                 commentsCount: 0
             };
+
+            // Add event data if it's an event
+            if (postType === 'event') {
+                if (!eventDetails.title || !eventDetails.date || !eventDetails.time || !eventDetails.location) {
+                    alert('Please fill in all event details');
+                    setLoading(false);
+                    return;
+                }
+                postData.eventDetails = eventDetails;
+                postData.hosts = taggedUsers.map(u => u.uid || u.id); // Tagged users become hosts for events
+                // Remove taggedUsers from the main field if we want them distinct, 
+                // but strictly speaking, hosts ARE tagged users in this context. 
+                // Let's keep them in taggedUsers too for notification purposes if backend logic uses it.
+            }
 
             // Add review data if it's a review
             if (postType === 'review') {
@@ -304,6 +327,8 @@ function CreatePostModal({ onClose, onSuccess }) {
         }
     };
 
+    const isEvent = postType === 'event';
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content create-post-modal" onClick={e => e.stopPropagation()}>
@@ -334,6 +359,13 @@ function CreatePostModal({ onClose, onSuccess }) {
                         onClick={() => setPostType('comparison')}
                     >
                         ⚖️ Confronto
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-btn ${postType === 'event' ? 'active' : ''}`}
+                        onClick={() => setPostType('event')}
+                    >
+                        📅 Evento
                     </button>
 
                 </div>
@@ -459,6 +491,47 @@ function CreatePostModal({ onClose, onSuccess }) {
                                     />
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Event Fields */}
+                    {postType === 'event' && (
+                        <div className="event-fields" style={{ marginBottom: '15px' }}>
+                            <input
+                                type="text"
+                                className="post-input"
+                                placeholder="Titolo Evento"
+                                value={eventDetails.title}
+                                onChange={(e) => setEventDetails({ ...eventDetails, title: e.target.value })}
+                                required
+                                style={{ marginBottom: '10px', fontWeight: 'bold' }}
+                            />
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <input
+                                    type="date"
+                                    className="post-input"
+                                    value={eventDetails.date}
+                                    onChange={(e) => setEventDetails({ ...eventDetails, date: e.target.value })}
+                                    required
+                                    style={{ flex: 1 }}
+                                />
+                                <input
+                                    type="time"
+                                    className="post-input"
+                                    value={eventDetails.time}
+                                    onChange={(e) => setEventDetails({ ...eventDetails, time: e.target.value })}
+                                    required
+                                    style={{ flex: 1 }}
+                                />
+                            </div>
+                            <input
+                                type="text"
+                                className="post-input"
+                                placeholder="Luogo (es. Via Roma 1, Milano)"
+                                value={eventDetails.location}
+                                onChange={(e) => setEventDetails({ ...eventDetails, location: e.target.value })}
+                                required
+                            />
                         </div>
                     )}
 
@@ -635,7 +708,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                     {postType !== 'comparison' && (
                         <div className="form-group">
                             <label htmlFor="modal-media" className="image-upload-label">
-                                {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : "📸 Aggiungi Foto/Video (Opzionale)"}
+                                {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : (postType === 'event' ? "📸 Aggiungi Foto Copertina" : "📸 Aggiungi Foto/Video (Opzionale)")}
                             </label>
                             <input
                                 id="modal-media"
@@ -672,7 +745,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8e8e8'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
                         >
-                            👥 Tagga Utenti {taggedUsers.length > 0 && `(${taggedUsers.length})`}
+                            👥 {postType === 'event' ? 'Tagga Organizzatori/Host' : 'Tagga Utenti'} {taggedUsers.length > 0 && `(${taggedUsers.length})`}
                         </button>
 
                         {/* Tagged Users Display */}
@@ -852,7 +925,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                     </div>
                 </form>
             </div>
-        </div>
+        </div >
     );
 }
 

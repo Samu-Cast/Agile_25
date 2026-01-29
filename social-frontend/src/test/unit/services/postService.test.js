@@ -13,7 +13,9 @@ import {
     getUserComments,
     getUserPosts,
     getUserSavedPosts,
-    deletePost
+    deletePost,
+    joinEvent,
+    leaveEvent
 } from '../../../services/postService';
 import * as userService from '../../../services/userService';
 
@@ -54,7 +56,9 @@ describe('postService - createPost', () => {
                     imageUrl: null,
                     entityType: 'user',
                     entityId: 'user123',
-                    taggedUsers: []
+                    taggedUsers: [],
+                    type: 'post',
+                    mediaUrls: []
                 })
             })
         );
@@ -551,6 +555,59 @@ describe('postService - getUserSavedPosts', () => {
 
         const result = await getUserSavedPosts('user123');
         expect(result).toEqual([]);
+    });
+});
+
+//Gruppo di test per le funzioni joinEvent e leaveEvent
+describe('postService - Event Participation', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('dovrebbe unirsi a un evento con successo', async () => {
+        const mockResponse = { message: 'Partcipation added', participantsCount: 5 };
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockResponse
+        });
+
+        const result = await joinEvent('event123', 'user123');
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            'http://localhost:3001/api/posts/event123/join',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ uid: 'user123' })
+            })
+        );
+        expect(result).toEqual(mockResponse);
+    });
+
+    it('dovrebbe lasciare un evento con successo', async () => {
+        const mockResponse = { message: 'Partcipation removed', participantsCount: 4 };
+        global.fetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockResponse
+        });
+
+        const result = await leaveEvent('event123', 'user123');
+
+        expect(global.fetch).toHaveBeenCalledWith(
+            'http://localhost:3001/api/posts/event123/join',
+            expect.objectContaining({
+                method: 'DELETE',
+                body: JSON.stringify({ uid: 'user123' })
+            })
+        );
+        expect(result).toEqual(mockResponse);
+    });
+
+    it('dovrebbe gestire errore di partecipazione', async () => {
+        global.fetch.mockResolvedValueOnce({
+            ok: false
+        });
+
+        await expect(joinEvent('event123', 'user123')).rejects.toThrow();
     });
 });
 

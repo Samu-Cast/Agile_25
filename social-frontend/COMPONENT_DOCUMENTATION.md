@@ -63,6 +63,7 @@ This document provides a detailed overview of the frontend components in the `so
 
 **Functionality**:
 *   **Display**: Shows author, timestamp, content, media (via `MediaGallery`), and community info.
+*   **Event Support**: Displays event details (Date, Time, Location, Hosts, Participant Count) and "Join" button.
 *   **Review Support**: Specialized display for reviews (Rating, Item Name, Brand, Comparison).
 *   **Interactions**: Upvote/Downvote logic, Save/Unsave post.
 *   **Comments**: Toggleable `CommentSection`.
@@ -192,7 +193,8 @@ This document provides a detailed overview of the frontend components in the `so
 
 ### `CreatePostModal.js`
 **Description**: Complex form for creating content.
-*   **Modes**: Post or Review.
+*   **Modes**: Post, Review, or Event.
+*   **Event Features**: Scheduled date/time, location, and host tagging.
 *   **Review Features**: Item type, brand, rating, and "Comparison" mode (User vs User).
 *   **Media**: Drag-and-drop or file select for multiple images/video.
 *   **Target**: Publish to Profile or a specific Community.
