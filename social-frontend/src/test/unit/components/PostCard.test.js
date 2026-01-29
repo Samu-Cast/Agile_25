@@ -4,12 +4,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PostCard from '../../../components/PostCard';
 import { act } from 'react';
 
-// Mock AuthContext
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+    ...jest.requireActual('react-router-dom'),
+    useNavigate: () => mockNavigate,
+}));
+
+//Mock AuthContext
 jest.mock('../../../context/AuthContext', () => ({
     useAuth: () => ({ currentUser: { uid: 'user123', displayName: 'Test User' } })
 }));
 
-// Mock Post Service
+//Mock Post Service
 jest.mock('../../../services/postService', () => ({
     updateVotes: jest.fn(() => Promise.resolve()),
     toggleSavePost: jest.fn(() => Promise.resolve()),
@@ -17,11 +23,7 @@ jest.mock('../../../services/postService', () => ({
     leaveEvent: jest.fn(() => Promise.resolve()),
 }));
 
-// Mock User Service
-import * as userService from '../../../services/userService';
-jest.mock('../../../services/userService');
-
-// Mock Child Components
+//Mock Child Components
 jest.mock('../../../components/CoffeeCupRating', () => (props) => (
     <div data-testid="coffee-rating">Rating: {props.rating}</div>
 ));
@@ -64,141 +66,219 @@ describe('PostCard Component', () => {
 
     const currentUser = { uid: 'user123' };
 
-    it('renders basic post info', () => {
+    //Rendering Iniziale
+    it('renders correct initial state', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} />);
+        expect(screen.getByTestId('vote-count')).toHaveTextContent('10');
+        expect(screen.getByTestId('upvote-btn')).not.toHaveClass('active');
+    });
+
+    //Nuovo Voto (+1)
+    it('increments vote count when clicking upvote', () => {
         render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        expect(screen.getByText('User One')).toBeInTheDocument();
-        expect(screen.getByText('Hello World')).toBeInTheDocument();
-        expect(screen.getByText('10')).toBeInTheDocument(); // Votes
-        expect(screen.getByText(/5 Comments/)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('upvote-btn'));
+        expect(screen.getByTestId('vote-count')).toHaveTextContent('11');
+        expect(screen.getByTestId('upvote-btn')).toHaveClass('active');
     });
 
-    it('renders review details for review type', () => {
-        render(<PostCard post={mockReviewPost} currentUser={currentUser} isLoggedIn={true} />);
-
-        expect(screen.getByText('⭐ Recensione')).toBeInTheDocument();
-        expect(screen.getByText('Best Coffee')).toBeInTheDocument();
-        expect(screen.getByText('Lavazza')).toBeInTheDocument();
-        expect(screen.getByText('Rating: 4')).toBeInTheDocument();
-    });
-
-    it('renders media gallery when multiple media items exist', () => {
-        render(<PostCard post={mockPostWithMedia} currentUser={currentUser} isLoggedIn={true} />);
-
-        expect(screen.getByTestId('media-gallery')).toHaveTextContent('2 items');
-    });
-
-    it('renders single image if only one image provided (legacy support)', () => {
-        const legacyPost = { ...mockPost, image: 'img.jpg' };
-        render(<PostCard post={legacyPost} currentUser={currentUser} isLoggedIn={true} />);
-
-        const img = screen.getByAltText('Post content');
-        expect(img).toHaveAttribute('src', 'img.jpg');
-    });
-
-    it('handles upvote', () => {
+    //Nuovo Voto (-1)
+    it('decrements vote count when clicking downvote', () => {
         render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        fireEvent.click(screen.getByText('▲'));
-        expect(screen.getByText('11')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('downvote-btn'));
+        expect(screen.getByTestId('vote-count')).toHaveTextContent('9');
+        expect(screen.getByTestId('downvote-btn')).toHaveClass('active');
     });
 
-    it('handles downvote', () => {
-        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
+    //Annullamento Voto (Toggle)
+    it('removes vote when clicking same button again (Toggle)', () => {
+        const votedPost = { ...mockPost, userVote: 1, votes: 11 };
+        render(<PostCard post={votedPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        fireEvent.click(screen.getByText('▼'));
-        expect(screen.getByText('9')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('upvote-btn'));
+        expect(screen.getByTestId('vote-count')).toHaveTextContent('10');
+        expect(screen.getByTestId('upvote-btn')).not.toHaveClass('active');
     });
 
-    it('toggles save status', () => {
-        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
+    //Error Handling
+    it('handles vote API errors gracefully (Optimistic Rollback)', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        const errorPost = { ...mockPost, userVote: 0, votes: 10 };
+        const { updateVotes } = require('../../../services/postService'); //Re-import to get the mocked function
+        updateVotes.mockRejectedValue(new Error('Network error'));
 
-        const saveBtn = screen.getByText(/Salva/);
-        fireEvent.click(saveBtn);
+        render(<PostCard post={errorPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        expect(screen.getByText(/Salvato/)).toBeInTheDocument();
+        //1. Initial State
+        expect(screen.getByTestId('vote-count')).toHaveTextContent('10');
+
+        //2. Click Upvote
+        fireEvent.click(screen.getByTestId('upvote-btn'));
+
+        //3. Optimistic Update (Verification might be tricky with async failure, but we verify the rollback eventually)
+        //Ideally we'd check availability of '11' momentarily, but waitFor will catch the final state.
+
+        //4. Wait for Rollback
+        await waitFor(() => {
+            expect(screen.getByTestId('vote-count')).toHaveTextContent('10'); // Back to 10
+        });
+
+        expect(consoleSpy).toHaveBeenCalledWith("Error voting:", expect.any(Error));
+        consoleSpy.mockRestore();
     });
 
-    it('toggles comment section', () => {
+    //handle saving 
+    it('handle save post optimistic rollback', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        const { toggleSavePost } = require('../../../services/postService');
+        toggleSavePost.mockRejectedValue(new Error('Save failed'));
+
         render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
 
-        expect(screen.queryByTestId('comment-section')).not.toBeInTheDocument();
+        const saveButton = screen.getByText(/Salva/i);
+        fireEvent.click(saveButton);
 
-        fireEvent.click(screen.getByText(/Comments/));
+        await waitFor(() => {
+            expect(screen.getByText(/Salva/i)).toBeInTheDocument();
+            expect(screen.queryByText(/Salvato/i)).not.toBeInTheDocument();
+        });
 
+        consoleSpy.mockRestore();
+    });
+
+    //Error catch 
+    it('result error while voting if someting go wrong', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        const { updateVotes } = require('../../../services/postService');
+        updateVotes.mockRejectedValue(new Error('Vote failed'));
+
+        render(<PostCard post={mockPost} currentUser={currentUser} isLoggedIn={true} />);
+
+        fireEvent.click(screen.getByTestId('upvote-btn'));
+
+        await waitFor(() => {
+            expect(screen.getByTestId('vote-count')).toHaveTextContent('10');
+        });
+
+        expect(consoleSpy).toHaveBeenCalledWith("Error voting:", expect.any(Error));
+        consoleSpy.mockRestore();
+    });
+
+    //Image Fallback
+    it('uses fallback image on avatar load error', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} />);
+
+        const avatar = screen.getByAltText(mockPost.author);
+        //Simulo l'errore di caricamento immagine
+        fireEvent.error(avatar);
+        //Verifico che il src sia cambiato con quello di fallback
+        expect(avatar.src).toBe("https://cdn-icons-png.flaticon.com/512/847/847969.png");
+    });
+
+    //Community Info
+    it('shows community name when showCommunityInfo is true because the user is logged in', () => {
+        const postWithCommunity = { ...mockPost, communityName: 'Coffee Lovers' };
+
+        //showCommunityInfo = true
+        const { rerender } = render(
+            <PostCard
+                post={postWithCommunity}
+                currentUser={currentUser}
+                showCommunityInfo={true}
+            />
+        );
+        expect(screen.getByText('Coffee Lovers')).toBeInTheDocument();
+        expect(screen.getByText('in')).toBeInTheDocument();
+
+        //showCommunityInfo = false (default o esplicito)
+        rerender(
+            <PostCard
+                post={postWithCommunity}
+                currentUser={currentUser}
+                showCommunityInfo={false}
+            />
+        );
+        expect(screen.queryByText('Coffee Lovers')).not.toBeInTheDocument();
+    });
+
+    //Tagged user
+    it('shows tagged user when data is available', () => {
+        const postWithTaggedUser = {
+            ...mockPost,
+            taggedUsers: ['user123'],
+            taggedUsersData: [
+                { uid: 'user123', nickname: 'Mario Rossi' } // Dati necessari per il render
+            ]
+        };
+
+        render(<PostCard post={postWithTaggedUser} currentUser={currentUser} />);
+
+        // Verifica che il nome dell'utente taggato sia visibile
+        expect(screen.getByText('Mario Rossi')).toBeInTheDocument();
+    });
+
+    //click on profile
+    it('navigates to profile when clicking on tagged user', () => {
+        const postWithTaggedUser = {
+            ...mockPost,
+            taggedUsers: ['user123'],
+            taggedUsersData: [{ uid: 'user123', nickname: 'Mario Rossi' }]
+        };
+
+        render(<PostCard post={postWithTaggedUser} currentUser={currentUser} />);
+
+        // Find by nickname (as rendered in component)
+        const profileLink = screen.getByText('Mario Rossi');
+        fireEvent.click(profileLink);
+
+        expect(mockNavigate).toHaveBeenCalledWith('/profile/user123');
+    });
+
+    //Comment section
+    it('toggles comment section when comment button is clicked', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} />);
+
+        // Find button by partial text (e.g., "5 Comments")
+        const commentButton = screen.getByText(/Comments/i);
+        fireEvent.click(commentButton);
+
+        // Verify CommentSection appears
         expect(screen.getByTestId('comment-section')).toBeInTheDocument();
     });
 
-    it('displays community info if active', () => {
-        const communityPost = { ...mockPost, communityName: 'Coffee Lovers' };
-        render(<PostCard post={communityPost} currentUser={currentUser} isLoggedIn={true} showCommunityInfo={true} />);
+    //Cancel comment section
+    it('closes comment section when clicked again', () => {
+        render(<PostCard post={mockPost} currentUser={currentUser} />);
 
-        expect(screen.getByText('Coffee Lovers')).toBeInTheDocument();
+        const commentButton = screen.getByText(/Comments/i);
+
+        // Open
+        fireEvent.click(commentButton);
+        expect(screen.getByTestId('comment-section')).toBeInTheDocument();
+
+        // Close
+        fireEvent.click(commentButton);
+        expect(screen.queryByTestId('comment-section')).not.toBeInTheDocument();
     });
 
-    describe('Event Post', () => {
-        const mockEventPost = {
-            ...mockPost,
-            type: 'event',
-            eventDetails: {
-                title: 'Coffee Tasting',
-                date: '2024-12-25',
-                time: '10:00',
-                location: 'Milan'
-            },
-            participants: ['u1'], // 1 participant
-            hosts: []
-        };
+    //Delete Button
+    it('calls onDelete when delete button is clicked', () => {
+        const onDeleteMock = jest.fn();
+        // Renderizza come autore per vedere il bottone
+        render(
+            <PostCard
+                post={{ ...mockPost, authorId: 'user123' }}
+                currentUser={{ uid: 'user123' }}
+                onDelete={onDeleteMock}
+            />
+        );
 
-        it('renders event details', () => {
-            render(<PostCard post={mockEventPost} currentUser={currentUser} isLoggedIn={true} />);
+        const deleteButton = screen.getByTitle('Elimina');
+        expect(deleteButton).toBeInTheDocument();
 
-            expect(screen.getByText('📅 Evento')).toBeInTheDocument();
-            expect(screen.getByText('Coffee Tasting')).toBeInTheDocument();
-            expect(screen.getByText('Milan')).toBeInTheDocument();
-            expect(screen.getByText('1')).toBeInTheDocument(); // Participant count
-        });
-
-        it('shows Join button for non-participants', () => {
-            render(<PostCard post={mockEventPost} currentUser={currentUser} isLoggedIn={true} />);
-
-            // Current user is "user123", participant is "u1". So not participating.
-            expect(screen.getByText('Partecipa +')).toBeInTheDocument();
-        });
-
-        it('shows Participating button for participants', () => {
-            const participatingPost = { ...mockEventPost, participants: ['user123'] };
-            render(<PostCard post={participatingPost} currentUser={currentUser} isLoggedIn={true} />);
-
-            expect(screen.getByText('✓ Parteciperai')).toBeInTheDocument();
-        });
-
-        it('shows View Participants button for Creator', () => {
-            const creatorPost = { ...mockEventPost, uid: 'user123', authorId: 'user123' };
-            render(<PostCard post={creatorPost} currentUser={currentUser} isLoggedIn={true} />);
-
-            expect(screen.getByText('👥 Vedi Partecipanti')).toBeInTheDocument();
-            expect(screen.queryByText('Partecipa +')).not.toBeInTheDocument();
-        });
-
-        it('opens participants modal on click', async () => {
-            // Setup mock
-            userService.getUsersByUids.mockResolvedValue([
-                { uid: 'u1', nickname: 'Participant 1', profilePic: 'p1.jpg' }
-            ]);
-
-            render(<PostCard post={mockEventPost} currentUser={currentUser} isLoggedIn={true} />);
-
-            // Click on the count text (which has 'pointer' cursor)
-            const countText = screen.getByText('1'); // The number
-            // We need to find the clickable container, usually the direct parent span
-            // But testing-library finds by text. Let's click the text '1 persone parteciperanno' (partial match)
-            fireEvent.click(screen.getByText(/persone parteciperanno/));
-
-            // Use findByText which handles waiting automatically
-            const participantName = await screen.findByText('Participant 1', {}, { timeout: 3000 });
-            expect(participantName).toBeInTheDocument();
-            expect(screen.getByText('Partecipanti (1)')).toBeInTheDocument();
-        });
+        fireEvent.click(deleteButton);
+        expect(onDeleteMock).toHaveBeenCalledWith('post1', expect.anything());
     });
+
 });

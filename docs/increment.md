@@ -176,6 +176,8 @@ Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), 
 **User Stories completate**:
 - US10:
 - US46:  
+- US28: 
+
 
 
 

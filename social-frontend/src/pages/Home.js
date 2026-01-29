@@ -192,6 +192,24 @@ const Home = ({ onLoginClick, isLoggedIn }) => {
     const [sidebarRefresh, setSidebarRefresh] = React.useState(0);
     const [currentCommunity, setCurrentCommunity] = React.useState(null);
 
+    // Check for community to open from profile navigation
+    React.useEffect(() => {
+        const communityToOpen = sessionStorage.getItem('openCommunity');
+        if (communityToOpen) {
+            setFeedType(communityToOpen);
+            sessionStorage.removeItem('openCommunity');
+        }
+    }, []);
+
+    // Check for community to open from profile navigation
+    React.useEffect(() => {
+        const communityToOpen = sessionStorage.getItem('openCommunity');
+        if (communityToOpen) {
+            setFeedType(communityToOpen);
+            sessionStorage.removeItem('openCommunity');
+        }
+    }, []);
+
     return (
         <div className="home-layout">
             <div className={`main-container ${feedType.startsWith('community-') ? 'community-view' : ''}`}>

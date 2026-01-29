@@ -3,13 +3,18 @@ import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, deletePost } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct, deleteProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
-import { getCollections, createCollection, deleteCollection, updateCollection } from '../services/collectionService';
-import PostCard from '../components/PostCard';
+import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
+import { getUserCommunities } from '../services/communityService';
 import CollectionManager from '../components/CollectionManager';
 import '../styles/pages/Profile.css';
+
+// Default images
+import defaultPostImage from '../image_post/defaults/default_post.png';
+import defaultComparisonImage from '../image_post/defaults/default_comparison.png';
+import defaultReviewImage from '../image_post/defaults/default_post.png';
 
 // Carousel Component
 const CollectionCarousel = ({ images }) => {
@@ -112,6 +117,8 @@ function Profile() {
     const [myComments, setMyComments] = useState([]);
     const [savedPosts, setSavedPosts] = useState([]);
     const [savedGuides, setSavedGuides] = useState([]);
+    const [savedCollections, setSavedCollections] = useState([]);
+    const [userCommunities, setUserCommunities] = useState([]);
 
     // Barista Association State
     const [associatedBaristas, setAssociatedBaristas] = useState([]);
@@ -123,6 +130,16 @@ function Profile() {
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
+
+    // Collection Filter/Sort State
+    const [filterOccasion, setFilterOccasion] = useState('');
+    const [sortPriceOrder, setSortPriceOrder] = useState(''); // 'asc' or 'desc' or ''
+
+    // Helper to calc price
+    const calculateCollectionPrice = (collection) => {
+        if (!collection.products || collection.products.length === 0) return 0;
+        return collection.products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+    };
 
     // Load user's posts and reviews
     useEffect(() => {
@@ -443,64 +460,6 @@ function Profile() {
         }
     };
 
-    const handleVote = async (postId, type) => {
-        if (!currentUser) return;
-
-        // Find the post in savedPosts
-        const postIndex = savedPosts.findIndex(p => p.id === postId);
-        if (postIndex === -1) return;
-
-        const post = savedPosts[postIndex];
-        const currentVote = post.userVote || 0;
-        let newVote = 0;
-        let voteChange = 0;
-
-        if (type === 'up') {
-            newVote = currentVote === 1 ? 0 : 1;
-            voteChange = currentVote === 1 ? -1 : (currentVote === -1 ? 2 : 1);
-        } else { // down
-            newVote = currentVote === -1 ? 0 : -1;
-            voteChange = currentVote === -1 ? 1 : (currentVote === 1 ? -2 : -1);
-        }
-
-        // Optimistic update
-        const updatedPosts = [...savedPosts];
-        updatedPosts[postIndex] = {
-            ...post,
-            userVote: newVote,
-            votes: (post.votes || 0) + voteChange
-        };
-        setSavedPosts(updatedPosts);
-
-        try {
-            const valueToSend = newVote === 0 ? currentVote : newVote;
-            await updateVotes(postId, currentUser.uid, valueToSend); // Use service
-        } catch (error) {
-            console.error("Error voting in profile:", error);
-            // Revert
-            setSavedPosts(savedPosts);
-        }
-    };
-
-    const handleToggleSave = async (postId) => {
-        if (!currentUser) return;
-
-        // Optimistic update for savedPosts list
-        // If we are in "savedPosts" tab, toggling save (unsaving) should remove it from the list
-        if (activeTab === 'savedPosts') {
-            setSavedPosts(prev => prev.filter(p => p.id !== postId));
-        }
-
-        try {
-            // We assume it's currently saved if it's in the savedPosts list
-            await toggleSavePost(postId, currentUser.uid, true);
-        } catch (error) {
-            console.error("Error toggling save in profile:", error);
-            // Revert if error (fetch again)
-            const posts = await getUserSavedPosts(currentUser.uid);
-            setSavedPosts(posts);
-        }
-    };
 
     const handleDeletePost = async (postId, e) => {
         e.stopPropagation(); // Prevent navigating to post details if clicking container
@@ -550,16 +509,29 @@ function Profile() {
         const fetchData = async () => {
             // Note: posts and reviews are now loaded by the first useEffect (lines 85-103)
             // which properly filters them by type
+            const enrichPosts = async (postsToEnrich) => {
+                const uids = [...new Set(postsToEnrich.map(p => p.uid))];
+                const users = await getUsersByUids(uids);
+                return postsToEnrich.map(p => {
+                    const author = users.find(u => u.uid === p.uid);
+                    return {
+                        ...p,
+                        author: author?.nickname || author?.name || "Utente",
+                        authorAvatar: author?.profilePic || author?.photoURL || DEFAULT_AVATAR,
+                        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Data sconosciuta'
+                    };
+                });
+            };
+
             if (activeTab === 'upvoted' && user.role === 'Appassionato') {
-                // Only show upvoted if it's own profile? Or public? Let's assume public for now or restrict
                 if (isOwnProfile) {
                     const posts = await getUserVotedPosts(user.uid, 1);
-                    setUpvotedPosts(posts);
+                    setUpvotedPosts(await enrichPosts(posts));
                 }
             } else if (activeTab === 'downvoted' && user.role === 'Appassionato') {
                 if (isOwnProfile) {
                     const posts = await getUserVotedPosts(user.uid, -1);
-                    setDownvotedPosts(posts);
+                    setDownvotedPosts(await enrichPosts(posts));
                 }
             } else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);
@@ -609,6 +581,14 @@ function Profile() {
                     const products = await getRoasteryProducts(roleData.id);
                     setRoasteryProducts(products);
                 }
+            } else if (activeTab === 'savedCollections' && user.role === 'Appassionato') {
+                if (isOwnProfile) {
+                    const collections = await getUserSavedCollections(user.uid);
+                    setSavedCollections(collections);
+                }
+            } else if (activeTab === 'communities' && user.role === 'Appassionato') {
+                const communities = await getUserCommunities(user.uid);
+                setUserCommunities(communities);
             }
             // Guides would be fetched here if we had a backend for them
         };
@@ -719,8 +699,8 @@ function Profile() {
         });
     };
 
-    // Show collection details popup for non-owners
-    const showCollectionDetails = (collection) => {
+    // Show collection details popup for non-owners (with save option)
+    const showCollectionDetails = async (collection) => {
         // Get full product details
         const products = collection.products?.map(prodId =>
             roasteryProducts.find(p => p.id === prodId)
@@ -728,6 +708,9 @@ function Profile() {
 
         // Calculate total cost
         const totalCost = products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+
+        // Check if collection is already saved
+        const isSaved = savedCollections.some(sc => sc.id === collection.id);
 
         // Build products list HTML
         const productsHtml = products.length > 0
@@ -739,7 +722,7 @@ function Profile() {
             `).join('')
             : '<p style="color: #888;">Nessun prodotto in questa collezione</p>';
 
-        Swal.fire({
+        const result = await Swal.fire({
             title: collection.name,
             html: `
                 <div style="text-align: center;">
@@ -755,9 +738,83 @@ function Profile() {
                 </div>
             `,
             showCloseButton: true,
-            showConfirmButton: false,
+            showConfirmButton: currentUser && !isOwnProfile && !isSaved,
+            confirmButtonText: '💾 Salva Collezione',
+            confirmButtonColor: '#6F4E37',
+            showDenyButton: currentUser && !isOwnProfile && isSaved,
+            denyButtonText: '✖ Rimuovi dai salvati',
+            denyButtonColor: '#d33',
             width: 400
         });
+
+        if (result.isConfirmed && currentUser && roleData) {
+            try {
+                await saveCollection(currentUser.uid, roleData.id, collection.id);
+                Swal.fire('Salvata!', 'Collezione salvata nel tuo profilo.', 'success');
+                // Refresh saved collections list
+                const collections = await getUserSavedCollections(currentUser.uid);
+                setSavedCollections(collections);
+            } catch (error) {
+                Swal.fire('Errore', 'Impossibile salvare la collezione.', 'error');
+            }
+        } else if (result.isDenied && currentUser) {
+            try {
+                await unsaveCollection(currentUser.uid, collection.id);
+                Swal.fire('Rimossa!', 'Collezione rimossa dai salvati.', 'success');
+                const collections = await getUserSavedCollections(currentUser.uid);
+                setSavedCollections(collections);
+            } catch (error) {
+                Swal.fire('Errore', 'Impossibile rimuovere la collezione.', 'error');
+            }
+        }
+    };
+
+    // Show saved collection details popup (with unsave option)
+    const showSavedCollectionDetails = async (collection) => {
+        const products = collection.products || [];
+        const totalCost = products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+
+        const productsHtml = products.length > 0
+            ? products.map(p => `
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span>${p.name}</span>
+                    <strong>€${p.price || '0'}</strong>
+                </div>
+            `).join('')
+            : '<p style="color: #888;">Nessun prodotto in questa collezione</p>';
+
+        const result = await Swal.fire({
+            title: collection.name,
+            html: `
+                <div style="text-align: center;">
+                    <p style="color: #888; font-size: 12px; margin-bottom: 8px;">di ${collection.roasterName}</p>
+                    <p style="color: #666; margin-bottom: 16px;">${collection.description || 'Nessuna descrizione'}</p>
+                    <h4 style="margin-bottom: 8px;">Prodotti (${products.length})</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${productsHtml}
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #6F4E37; display: flex; justify-content: space-between;">
+                        <strong>Totale</strong>
+                        <strong style="color: #6F4E37; font-size: 18px;">€${totalCost.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `,
+            showCloseButton: true,
+            showConfirmButton: true,
+            confirmButtonText: '✖ Rimuovi dai salvati',
+            confirmButtonColor: '#d33',
+            width: 400
+        });
+
+        if (result.isConfirmed && currentUser) {
+            try {
+                await unsaveCollection(currentUser.uid, collection.id);
+                setSavedCollections(prev => prev.filter(c => c.id !== collection.id));
+                Swal.fire('Rimossa!', 'Collezione rimossa dai salvati.', 'success');
+            } catch (error) {
+                Swal.fire('Errore', 'Impossibile rimuovere la collezione.', 'error');
+            }
+        }
     };
 
     const handleDeleteProduct = async (productId, e) => {
@@ -786,28 +843,85 @@ function Profile() {
         }
     };
 
+    // Shared Grid Renderer for Posts (My Posts, Upvoted, Downvoted, Saved)
+    const renderPostGrid = (posts, emptyMessage = "Nessun post trovato.") => (
+        <div className="profile-content-grid">
+            {posts.length > 0 ? posts.map(post => {
+                // Determine image to show
+                let displayImage = post.image;
+                if (!displayImage) {
+                    if (post.type === 'comparison') {
+                        displayImage = defaultComparisonImage;
+                    } else if (post.type === 'review') {
+                        displayImage = defaultReviewImage;
+                    } else {
+                        displayImage = defaultPostImage;
+                    }
+                }
+
+                // Determine title/content preview
+                const title = post.type === 'review' && post.reviewData
+                    ? `${post.reviewData.itemName} (${post.reviewData.rating}/5)`
+                    : (post.type === 'comparison' && post.comparisonData
+                        ? `${post.comparisonData.item1?.name} vs ${post.comparisonData.item2?.name}`
+                        : (post.content ? (post.content.length > 30 ? post.content.substring(0, 30) + '...' : post.content) : 'Nuovo Post'));
+
+                return (
+                    <div
+                        key={post.id}
+                        className="content-item"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                            Swal.fire({
+                                html: `
+                                    <div style="text-align: left;">
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                            <img src="${post.authorAvatar || 'https://cdn-icons-png.flaticon.com/512/847/847969.png'}" style="width: 40px; height: 40px; border-radius: 50%;" />
+                                            <div>
+                                                <strong>${post.author || 'Utente'}</strong><br/>
+                                                <small>${post.time || 'Data sconosciuta'}</small>
+                                            </div>
+                                        </div>
+                                        ${post.image ? `<img src="${post.image}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;" />` : ''}
+                                        <p>${post.content || ''}</p>
+                                        ${post.type === 'review' && post.reviewData ? `
+                                            <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                                                <strong>${post.reviewData.itemName}</strong> - ${post.reviewData.rating} ☕<br/>
+                                                <small>${post.reviewData.brand || ''}</small>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `,
+                                showConfirmButton: false,
+                                showCloseButton: true,
+                                width: '600px'
+                            });
+                        }}
+                    >
+                        <img
+                            src={displayImage}
+                            alt="Post"
+                            className="content-image"
+                            style={{ objectFit: 'cover' }}
+                        />
+                        <div className="content-info">
+                            <h3 className="content-title" style={{ fontSize: '1rem' }}>{title}</h3>
+                        </div>
+                    </div>
+                );
+            }) : (
+                <div className="empty-state">{emptyMessage}</div>
+            )}
+        </div>
+    );
+
     const renderContent = () => {
         let data = [];
         let type = 'card'; // 'card' or 'comment'
 
         // Format posts data for display
         if (activeTab === 'posts') {
-            // Render posts with PostCard (excluding reviews)
-            return (
-                <div className="profile-feed">
-                    {myPosts.length > 0 ? myPosts.map(post => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            currentUser={currentUser}
-                            isLoggedIn={!!currentUser}
-                            onDelete={isOwnProfile ? handleDeletePost : undefined}
-                        />
-                    )) : (
-                        <div className="empty-state">Nessun post trovato.</div>
-                    )}
-                </div>
-            );
+            return renderPostGrid(myPosts, "Nessun post trovato.");
         }
         if (activeTab === 'guides') {
             // Mock guides for now, or fetch if implemented
@@ -816,56 +930,179 @@ function Profile() {
 
         // Appassionato Specific Tabs
         if (user.role === 'Appassionato') {
-            if (activeTab === 'upvoted') data = upvotedPosts.map(p => ({ ...p, image: p.imageUrl || "https://via.placeholder.com/400", type: "Upvoted" }));
-            if (activeTab === 'downvoted') data = downvotedPosts.map(p => ({ ...p, image: p.imageUrl || "https://via.placeholder.com/400", type: "Downvoted" }));
+            if (activeTab === 'upvoted') return renderPostGrid(upvotedPosts, "Nessun post 'upvoted' trovato.");
+            if (activeTab === 'downvoted') return renderPostGrid(downvotedPosts, "Nessun post 'downvoted' trovato.");
             if (activeTab === 'comments') {
                 type = 'comment';
                 data = myComments;
             }
-            if (activeTab === 'savedPosts') {
-                // For saved posts, we want to use the PostCard component
-                // We map the data but we'll render it differently in the return
-                data = savedPosts;
+            if (activeTab === 'savedPosts') return renderPostGrid(savedPosts, "Nessun post salvato.");
+
+            if (activeTab === 'savedGuides') return renderPostGrid(savedGuides, "Nessuna guida salvata.");
+            if (activeTab === 'savedCollections') {
+                // Filter Logic
+                let filtered = [...savedCollections];
+
+                if (filterOccasion) {
+                    filtered = filtered.filter(c => c.occasion === filterOccasion);
+                }
+
+                // Sort Logic
+                if (sortPriceOrder) {
+                    filtered.sort((a, b) => {
+                        const priceA = calculateCollectionPrice(a);
+                        const priceB = calculateCollectionPrice(b);
+                        return sortPriceOrder === 'asc' ? priceA - priceB : priceB - priceA;
+                    });
+                }
+
+                return (
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                        {/* Filter Sidebar */}
+                        <div style={{
+                            width: '250px',
+                            flexShrink: 0,
+                            padding: '20px',
+                            background: '#fff',
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                            position: 'sticky',
+                            top: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '20px'
+                        }}>
+                            <h4 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>Filtri</h4>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Occasione</label>
+                                <select
+                                    value={filterOccasion}
+                                    onChange={(e) => setFilterOccasion(e.target.value)}
+                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                                >
+                                    <option value="">Tutte</option>
+                                    <option value="Festa del Papà">Festa del Papà</option>
+                                    <option value="Colazione">Colazione</option>
+                                    <option value="Pausa Caffè">Pausa Caffè</option>
+                                    <option value="Dopo Cena">Dopo Cena</option>
+                                    <option value="Regalo">Regalo</option>
+                                    <option value="Degustazione">Degustazione</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Ordina per Prezzo</label>
+                                <select
+                                    value={sortPriceOrder}
+                                    onChange={(e) => setSortPriceOrder(e.target.value)}
+                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                                >
+                                    <option value="">Nessun ordine</option>
+                                    <option value="asc">Crescente (Low to High)</option>
+                                    <option value="desc">Decrescente (High to Low)</option>
+                                </select>
+                            </div>
+
+                            <button
+                                onClick={() => { setFilterOccasion(''); setSortPriceOrder(''); }}
+                                style={{
+                                    padding: '10px',
+                                    marginTop: '10px',
+                                    background: '#eee',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    color: '#666'
+                                }}
+                            >
+                                Reset Filtri
+                            </button>
+                        </div>
+
+                        {/* Main Grid Content */}
+                        <div style={{ flexGrow: 1 }}>
+                            <div className="profile-content-grid">
+                                {filtered.length > 0 ? filtered.map(collection => (
+                                    <div
+                                        key={collection.id}
+                                        className="content-item"
+                                        onClick={() => showSavedCollectionDetails(collection)}
+                                        style={{ marginBottom: '0' }}
+                                    >
+                                        {collection.products?.length > 0 && collection.products[0]?.imageUrl ? (
+                                            <img
+                                                src={collection.products[0].imageUrl}
+                                                alt={collection.name}
+                                                className="content-image"
+                                            />
+                                        ) : (
+                                            <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
+                                                🍹
+                                            </div>
+                                        )}
+                                        <div className="content-info">
+                                            <h3 className="content-title">{collection.name}</h3>
+                                            <p className="content-preview">di {collection.roasterName}</p>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.8rem', color: '#8D6E63' }}>{collection.products?.length || 0} prodotti</span>
+                                                <span style={{ fontWeight: 'bold', color: '#6F4E37' }}>€{calculateCollectionPrice(collection).toFixed(2)}</span>
+                                            </div>
+                                            {collection.occasion && <span className="collection-badge" style={{ fontSize: '0.7rem', background: '#eee', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{collection.occasion}</span>}
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+                                        Nessuna collezione trovata con questi filtri.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
             }
-            if (activeTab === 'savedGuides') data = savedGuides.map(p => ({ ...p, image: p.image || "https://via.placeholder.com/400", type: "Saved Guide" }));
-            if (activeTab === 'communities') return <div className="empty-state">Comunità in arrivo...</div>;
+            if (activeTab === 'communities') {
+                return (
+                    <div className="profile-content-grid">
+                        {userCommunities.length > 0 ? userCommunities.map(community => (
+                            <div
+                                key={community.id}
+                                className="content-item"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                    // Navigate to home with community feed hash
+                                    window.location.href = '/';
+                                    // Store in sessionStorage for Home to pick up
+                                    sessionStorage.setItem('openCommunity', `community-${community.id}`);
+                                }}
+                            >
+                                {community.avatar ? (
+                                    <img src={community.avatar} alt={community.name} className="content-image" />
+                                ) : (
+                                    <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
+                                        👥
+                                    </div>
+                                )}
+                                <div className="content-info">
+                                    <h3 className="content-title">{community.name}</h3>
+                                    <span className="content-preview">Iscritto dal {community.joinedAt ? new Date(community.joinedAt).toLocaleDateString('it-IT') : 'N/A'}</span>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="empty-state">Non sei iscritto a nessuna comunità. Esplora le comunità dalla homepage!</div>
+                        )}
+                    </div>
+                );
+            }
         }
 
         if (activeTab === 'reviews') {
-            // Render reviews with PostCard like in Home
-            return (
-                <div className="profile-feed">
-                    {myReviews.length > 0 ? myReviews.map(post => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            currentUser={currentUser}
-                            isLoggedIn={!!currentUser}
-                            onDelete={isOwnProfile ? handleDeletePost : undefined}
-                        />
-                    )) : (
-                        <div className="empty-state">Nessuna recensione trovata.</div>
-                    )}
-                </div>
-            );
+            return renderPostGrid(myReviews, "Nessuna recensione trovata.");
         }
 
         if (activeTab === 'comparisons') {
-            return (
-                <div className="profile-feed">
-                    {myComparisons.length > 0 ? myComparisons.map(post => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            currentUser={currentUser}
-                            isLoggedIn={!!currentUser}
-                            onDelete={isOwnProfile ? handleDeletePost : undefined}
-                        />
-                    )) : (
-                        <div className="empty-state">Nessun confronto trovato.</div>
-                    )}
-                </div>
-            );
+            return renderPostGrid(myComparisons, "Nessun confronto trovato.");
         }
 
         if (data.length === 0 && activeTab !== 'products' && activeTab !== 'collections') {
@@ -893,20 +1130,7 @@ function Profile() {
         }
 
         if (activeTab === 'savedPosts') {
-            return (
-                <div className="profile-feed">
-                    {data.map(post => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            user={currentUser}
-                            onVote={handleVote}
-                            onToggleSave={handleToggleSave}
-                            isSaved={true}
-                        />
-                    ))}
-                </div>
-            );
+            return renderPostGrid(data, "Nessun post salvato.");
         }
 
         if (activeTab === 'products') {
@@ -1285,6 +1509,12 @@ function Profile() {
                                         onClick={() => setActiveTab('savedGuides')}
                                     >
                                         Guide Salvate
+                                    </button>
+                                    <button
+                                        className={`tab-button ${activeTab === 'savedCollections' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('savedCollections')}
+                                    >
+                                        Collezioni Salvate
                                     </button>
                                 </>
                             )}
