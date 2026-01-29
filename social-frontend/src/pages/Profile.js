@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, deletePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost, getUserEvents } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct, deleteProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
@@ -110,8 +110,7 @@ function Profile() {
 
     // Appassionato Data State
     const [myPosts, setMyPosts] = useState([]);
-    const [upvotedPosts, setUpvotedPosts] = useState([]);
-    const [downvotedPosts, setDownvotedPosts] = useState([]);
+    const [votedPosts, setVotedPosts] = useState([]);
     const [myReviews, setMyReviews] = useState([]);
     const [myComparisons, setMyComparisons] = useState([]);
     const [myComments, setMyComments] = useState([]);
@@ -119,6 +118,7 @@ function Profile() {
     const [savedGuides, setSavedGuides] = useState([]);
     const [savedCollections, setSavedCollections] = useState([]);
     const [userCommunities, setUserCommunities] = useState([]);
+    const [myEvents, setMyEvents] = useState([]);
 
     // Barista Association State
     const [associatedBaristas, setAssociatedBaristas] = useState([]);
@@ -487,6 +487,7 @@ function Profile() {
         setMyPosts(prev => prev.filter(p => p.id !== postId));
         setMyReviews(prev => prev.filter(p => p.id !== postId));
         setMyComparisons(prev => prev.filter(p => p.id !== postId));
+        setMyEvents(prev => prev.filter(p => p.id !== postId));
 
         try {
             await deletePost(postId, currentUser.uid); // Use service
@@ -523,17 +524,30 @@ function Profile() {
                 });
             };
 
-            if (activeTab === 'upvoted' && user.role === 'Appassionato') {
+            if (activeTab === 'votes' && user.role === 'Appassionato') {
                 if (isOwnProfile) {
-                    const posts = await getUserVotedPosts(user.uid, 1);
-                    setUpvotedPosts(await enrichPosts(posts));
+                    const up = await getUserVotedPosts(user.uid, 1);
+                    const down = await getUserVotedPosts(user.uid, -1);
+                    // Merge and add type
+                    // Enrich to get author details if needed, though voted posts display usually relies on content
+                    // But if we want author name on the card...
+                    const upEnriched = await enrichPosts(up);
+                    const downEnriched = await enrichPosts(down);
+
+                    const upMapped = upEnriched.map(p => ({ ...p, voteType: 'up' }));
+                    const downMapped = downEnriched.map(p => ({ ...p, voteType: 'down' }));
+
+                    const allVoted = [...upMapped, ...downMapped];
+                    // Sort by date descending (newest first)
+                    allVoted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                    setVotedPosts(allVoted);
                 }
-            } else if (activeTab === 'downvoted' && user.role === 'Appassionato') {
-                if (isOwnProfile) {
-                    const posts = await getUserVotedPosts(user.uid, -1);
-                    setDownvotedPosts(await enrichPosts(posts));
-                }
-            } else if (activeTab === 'comments') {
+            } else if (activeTab === 'events') {
+                const events = await getUserEvents(user.uid);
+                setMyEvents(events);
+            }
+            else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);
                 setMyComments(comments);
             } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
@@ -923,6 +937,25 @@ function Profile() {
         if (activeTab === 'posts') {
             return renderPostGrid(myPosts, "Nessun post trovato.");
         }
+
+        if (activeTab === 'events') {
+            return (
+                <div className="profile-feed">
+                    {myEvents.length > 0 ? myEvents.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUser={currentUser}
+                            isLoggedIn={!!currentUser}
+                            onDelete={isOwnProfile ? handleDeletePost : undefined}
+                        />
+                    )) : (
+                        <div className="empty-state">Nessun evento in programma.</div>
+                    )}
+                </div>
+            );
+        }
+
         if (activeTab === 'guides') {
             // Mock guides for now, or fetch if implemented
             data = guides;
@@ -930,8 +963,14 @@ function Profile() {
 
         // Appassionato Specific Tabs
         if (user.role === 'Appassionato') {
-            if (activeTab === 'upvoted') return renderPostGrid(upvotedPosts, "Nessun post 'upvoted' trovato.");
-            if (activeTab === 'downvoted') return renderPostGrid(downvotedPosts, "Nessun post 'downvoted' trovato.");
+            if (activeTab === 'votes') {
+                data = votedPosts.map(p => ({
+                    ...p,
+                    image: p.imageUrl || "https://via.placeholder.com/400",
+                    type: p.voteType === 'up' ? 'Upvoted' : 'Downvoted',
+                    voteType: p.voteType
+                }));
+            }
             if (activeTab === 'comments') {
                 type = 'comment';
                 data = myComments;
@@ -1095,6 +1134,7 @@ function Profile() {
                     </div>
                 );
             }
+
         }
 
         if (activeTab === 'reviews') {
@@ -1299,9 +1339,13 @@ function Profile() {
                 {data.map(item => (
                     <div key={item.id} className={`content-item ${!item.image ? 'text-only' : ''}`}>
                         {item.image && <img src={item.image} alt={item.title} className="content-image" />}
-                        <div className="content-info">
-                            <h3 className="content-title">{item.title}</h3>
-                            <p className="content-preview">{item.type}</p>
+                        <div className="content-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <h3 className="content-title" style={{ textAlign: 'center' }}>{item.title}</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                                <p className="content-preview">{item.type}</p>
+                                {item.voteType === 'up' && <span style={{ color: '#2ecc71', fontSize: '24px', fontWeight: 'bold' }}>↑</span>}
+                                {item.voteType === 'down' && <span style={{ color: '#e74c3c', fontSize: '24px', fontWeight: 'bold' }}>↓</span>}
+                            </div>
                         </div>
                         {isOwnProfile && activeTab === 'posts' && (
                             <button
@@ -1458,6 +1502,12 @@ function Profile() {
                 >
                     Post
                 </button>
+                <button
+                    className={`tab-button ${activeTab === 'events' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('events')}
+                >
+                    Eventi
+                </button>
 
                 {
                     user.role === 'Appassionato' && (
@@ -1465,16 +1515,10 @@ function Profile() {
                             {isOwnProfile && (
                                 <>
                                     <button
-                                        className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('upvoted')}
+                                        className={`tab-button ${activeTab === 'votes' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('votes')}
                                     >
-                                        Upvoted
-                                    </button>
-                                    <button
-                                        className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('downvoted')}
-                                    >
-                                        Downvoted
+                                        Voti
                                     </button>
                                 </>
                             )}
@@ -1505,12 +1549,6 @@ function Profile() {
                                         Post Salvati
                                     </button>
                                     <button
-                                        className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('savedGuides')}
-                                    >
-                                        Guide Salvate
-                                    </button>
-                                    <button
                                         className={`tab-button ${activeTab === 'savedCollections' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('savedCollections')}
                                     >
@@ -1518,12 +1556,7 @@ function Profile() {
                                     </button>
                                 </>
                             )}
-                            <button
-                                className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('communities')}
-                            >
-                                Comunità
-                            </button>
+
                         </>
                     )
                 }
@@ -1775,19 +1808,21 @@ function Profile() {
             </div>
 
             {/* Collection Manager Modal */}
-            {showCollectionModal && (
-                <CollectionManager
-                    roasterId={currentUserRoleData.id}
-                    currentUser={currentUser}
-                    products={roasteryProducts}
-                    initialData={editingCollection}
-                    onClose={() => {
-                        setShowCollectionModal(false);
-                        setEditingCollection(null);
-                    }}
-                    onSave={handleSaveCollection}
-                />
-            )}
+            {
+                showCollectionModal && (
+                    <CollectionManager
+                        roasterId={currentUserRoleData.id}
+                        currentUser={currentUser}
+                        products={roasteryProducts}
+                        initialData={editingCollection}
+                        onClose={() => {
+                            setShowCollectionModal(false);
+                            setEditingCollection(null);
+                        }}
+                        onSave={handleSaveCollection}
+                    />
+                )
+            }
         </div >
     );
 

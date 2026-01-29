@@ -223,6 +223,31 @@ function CreatePostModal({ onClose, onSuccess }) {
                 commentsCount: 0
             };
 
+            // Add event data if it's an event
+            if (postType === 'event') {
+                if (!eventDetails.title || !eventDetails.date || !eventDetails.time || !eventDetails.location) {
+                    alert('Please fill in all event details');
+                    setLoading(false);
+                    return;
+                }
+
+                // Date Validation
+                const selectedDate = new Date(eventDetails.date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Reset time part for comparison
+
+                if (selectedDate < today) {
+                    alert('La data non va bene, deve essere almeno ' + today.toLocaleDateString() + ' (dd/mm/yyyy)');
+                    setLoading(false);
+                    return;
+                }
+
+                postData.eventDetails = eventDetails;
+                postData.hosts = taggedUsers.map(u => u.uid || u.id); // Tagged users become hosts for events
+                // Remove taggedUsers from the main field if we want them distinct, 
+                // but strictly speaking, hosts ARE tagged users in this context. 
+                // Let's keep them in taggedUsers too for notification purposes if backend logic uses it.
+            }
             // Add review data if it's a review
             if (postType === 'review') {
                 postData.reviewData = {
@@ -457,6 +482,47 @@ function CreatePostModal({ onClose, onSuccess }) {
                         </div>
                     )}
 
+                    {/* Event Fields */}
+                    {postType === 'event' && (
+                        <div className="event-fields" style={{ marginBottom: '15px' }}>
+                            <input
+                                type="text"
+                                className="post-input"
+                                placeholder="Titolo Evento"
+                                value={eventDetails.title}
+                                onChange={(e) => setEventDetails({ ...eventDetails, title: e.target.value })}
+                                required
+                                style={{ marginBottom: '10px', fontWeight: 'bold' }}
+                            />
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <input
+                                    type="date"
+                                    className="post-input"
+                                    value={eventDetails.date}
+                                    onChange={(e) => setEventDetails({ ...eventDetails, date: e.target.value })}
+                                    required
+                                    style={{ flex: 1 }}
+                                    min={new Date().toISOString().split('T')[0]}
+                                />
+                                <input
+                                    type="time"
+                                    className="post-input"
+                                    value={eventDetails.time}
+                                    onChange={(e) => setEventDetails({ ...eventDetails, time: e.target.value })}
+                                    required
+                                    style={{ flex: 1 }}
+                                />
+                            </div>
+                            <input
+                                type="text"
+                                className="post-input"
+                                placeholder="Luogo (es. Via Roma 1, Milano)"
+                                value={eventDetails.location}
+                                onChange={(e) => setEventDetails({ ...eventDetails, location: e.target.value })}
+                                required
+                            />
+                        </div>
+                    )}
 
                     {/* Review-specific fields */}
                     {postType === 'review' && (
