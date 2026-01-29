@@ -3,13 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PostDetails from '../../../pages/PostDetails';
 import { getComments, addComment } from '../../../services/postService';
 
-//Mock React Router (Dynamic Mock for useParams)
+//Mock React Router
 const mockNavigate = jest.fn();
-const mockUseParams = jest.fn(); //Create a jest function we can control
+const mockUseParams = jest.fn();
 
 jest.mock('react-router-dom', () => ({
     ...jest.requireActual('react-router-dom'),
-    useParams: () => mockUseParams(), //Return the result of our mock function
+    useParams: () => mockUseParams(),
     useNavigate: () => mockNavigate,
 }));
 
@@ -54,64 +54,9 @@ describe('PostDetails Page', () => {
         getComments.mockResolvedValue(mockComments);
     });
 
-    //Verifica che se l'ID nell'URL non corrisponde a nessun post, mostri il messaggio di caricamento/errore.
-    it('[Lines 55-61] renders loading/not found state when post does not exist', () => {
-        // Setup: ID non esistente
-        mockUseParams.mockReturnValue({ id: '999' });
-
-        render(<PostDetails posts={mockPosts} currentUser={currentUser} />);
-
-        expect(screen.getByText(/Loading post or post not found/i)).toBeInTheDocument();
-        //Verifica che il resto del componente non venga renderizzato
-        expect(screen.queryByText('My First Post')).not.toBeInTheDocument();
-    });
-
-    //Verifica che se il post esiste, visualizzi titolo, contenuto, autore e pulsante home.
-    it('[Lines 64-87] renders post content correctly and header interactions', () => {
-        render(
-            <PostDetails
-                posts={mockPosts}
-                currentUser={currentUser}
-                onVote={mockOnVote}
-            />
-        );
-
-        //Verifica contenuto statico
-        expect(screen.getByText('My First Post')).toBeInTheDocument();
-        expect(screen.getByText('This is the content of the post.')).toBeInTheDocument();
-
-        //Verifica Autore
-        expect(screen.getByText('User One')).toBeInTheDocument();
-
-        //Verifica pulsante Back
-        fireEvent.click(screen.getByText(/Back to Feed/i));
-        expect(mockNavigate).toHaveBeenCalledWith('/');
-    });
-
-    //Verifica che cliccando i pulsanti di voto venga chiamata la prop onVote con l'ID corretto.
-    it('[Lines 91-95] calls onVote with correct params when vote buttons are clicked', () => {
-        render(
-            <PostDetails
-                posts={mockPosts}
-                currentUser={currentUser}
-                onVote={mockOnVote}
-            />
-        );
-
-        const upvoteBtn = screen.getByText('▲');
-        const downvoteBtn = screen.getByText('▼');
-
-        // Test Upvote
-        fireEvent.click(upvoteBtn);
-        expect(mockOnVote).toHaveBeenCalledWith(1, 1); // ID: 1, Delta: +1
-
-        // Test Downvote
-        fireEvent.click(downvoteBtn);
-        expect(mockOnVote).toHaveBeenCalledWith(1, -1); // ID: 1, Delta: -1
-    });
 
     //Verifica che all'avvio venga chiamata getComments e che i commenti vengano renderizzati.
-    it('[Lines 13-31] loads and renders comments on mount', async () => {
+    it('loads and renders comments on mount', async () => {
         const { getComments } = require('../../../services/postService');
 
         render(<PostDetails posts={mockPosts} currentUser={currentUser} />);
@@ -126,20 +71,9 @@ describe('PostDetails Page', () => {
         });
     });
 
-    //Verifica che se l'utente non è loggato, mostri il messaggio di login invece del form.
-    it('[Lines 116-118] shows login prompt instead of input when not logged in', async () => {
-        render(<PostDetails posts={mockPosts} currentUser={null} />);
-
-        //Attendi caricamento (per evitare warning di act)
-        await waitFor(() => expect(screen.getByText('Comments (1)')).toBeInTheDocument());
-
-        //Verifica blocco input
-        expect(screen.queryByPlaceholderText(/Add a comment/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/Please log in to comment/i)).toBeInTheDocument();
-    });
 
     //Verifica logica complessa: aggiornamento UI immediato + chiamata API in background.
-    it('[Lines 33-52] handles optimistic comment submission', async () => {
+    it('handles optimistic comment submission', async () => {
         const { addComment } = require('../../../services/postService');
         addComment.mockResolvedValue({
             id: 202,
@@ -172,5 +106,73 @@ describe('PostDetails Page', () => {
             text: 'My new comment',
             author: 'Test User'
         }));
+    });
+
+    //Verifica che se l'ID nell'URL non corrisponde a nessun post, mostri il messaggio di caricamento/errore.
+    it('renders loading/not found state when post does not exist', () => {
+        //Setup: ID non esistente
+        mockUseParams.mockReturnValue({ id: '999' });
+
+        render(<PostDetails posts={mockPosts} currentUser={currentUser} />);
+
+        expect(screen.getByText(/Loading post or post not found/i)).toBeInTheDocument();
+        //Verifica che il resto del componente non venga renderizzato
+        expect(screen.queryByText('My First Post')).not.toBeInTheDocument();
+    });
+
+    //Verifica che se il post esiste, visualizzi titolo, contenuto, autore e pulsante home.
+    it('renders post content correctly and header interactions', () => {
+        render(
+            <PostDetails
+                posts={mockPosts}
+                currentUser={currentUser}
+                onVote={mockOnVote}
+            />
+        );
+
+        //Verifica contenuto statico
+        expect(screen.getByText('My First Post')).toBeInTheDocument();
+        expect(screen.getByText('This is the content of the post.')).toBeInTheDocument();
+
+        //Verifica Autore
+        expect(screen.getByText('User One')).toBeInTheDocument();
+
+        //Verifica pulsante Back
+        fireEvent.click(screen.getByText(/Back to Feed/i));
+        expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+
+    //Verifica che cliccando i pulsanti di voto venga chiamata la prop onVote con l'ID corretto.
+    it('calls onVote with correct params when vote buttons are clicked', () => {
+        render(
+            <PostDetails
+                posts={mockPosts}
+                currentUser={currentUser}
+                onVote={mockOnVote}
+            />
+        );
+
+        const upvoteBtn = screen.getByText('▲');
+        const downvoteBtn = screen.getByText('▼');
+
+        //Test Upvote
+        fireEvent.click(upvoteBtn);
+        expect(mockOnVote).toHaveBeenCalledWith(1, 1); // ID: 1, Delta: +1
+
+        //Test Downvote
+        fireEvent.click(downvoteBtn);
+        expect(mockOnVote).toHaveBeenCalledWith(1, -1); // ID: 1, Delta: -1
+    });
+
+    //Verifica che se l'utente non è loggato, mostri il messaggio di login invece del form.
+    it('shows login prompt instead of input when not logged in', async () => {
+        render(<PostDetails posts={mockPosts} currentUser={null} />);
+
+        //Attendi caricamento (per evitare warning di act)
+        await waitFor(() => expect(screen.getByText('Comments (1)')).toBeInTheDocument());
+
+        //Verifica blocco input
+        expect(screen.queryByPlaceholderText(/Add a comment/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Please log in to comment/i)).toBeInTheDocument();
     });
 });

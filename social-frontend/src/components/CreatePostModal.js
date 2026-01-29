@@ -118,8 +118,6 @@ function CreatePostModal({ onClose, onSuccess }) {
     const handleMediaChange = (e) => {
         const files = Array.from(e.target.files);
 
-        console.log('[CreatePostModal] handleMediaChange called, files:', files.length);
-
         // Max 5 images + 1 video
         const totalMedia = mediaFiles.length + files.length;
         if (totalMedia > 6) {
@@ -130,11 +128,8 @@ function CreatePostModal({ onClose, onSuccess }) {
 
         // Validate each file
         const validFiles = files.filter(file => {
-            console.log('[CreatePostModal] Validating file:', file.name, file.type, file.size);
             return validateMedia(file);
         });
-
-        console.log('[CreatePostModal] Valid files:', validFiles.length);
 
         if (validFiles.length === 0) {
             e.target.value = ''; // Reset input
@@ -833,6 +828,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                                         type="button"
                                         className="remove-media-btn"
                                         onClick={() => removeMedia(index)}
+                                        aria-label="Remove media"
                                     >
                                         ×
                                     </button>
