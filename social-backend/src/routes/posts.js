@@ -535,4 +535,88 @@ router.delete('/:postId', async (req, res) => {
     }
 });
 
+// POST /api/posts/:postId/join - Join an event
+router.post('/:postId/join', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.type !== 'event') {
+            return res.status(400).json({ error: "Post is not an event" });
+        }
+
+        const participants = postData.participants || [];
+
+        if (participants.includes(uid)) {
+            return res.status(400).json({ error: "User already participating" });
+        }
+
+        participants.push(uid);
+
+        await postRef.update({
+            participants: participants
+        });
+
+        res.json({ message: "Joined event successfully", participants });
+    } catch (error) {
+        console.error("Error joining event:", error);
+        res.status(500).json({ error: "Failed to join event" });
+    }
+});
+
+// DELETE /api/posts/:postId/join - Leave an event
+router.delete('/:postId/join', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.type !== 'event') {
+            return res.status(400).json({ error: "Post is not an event" });
+        }
+
+        const participants = postData.participants || [];
+
+        if (!participants.includes(uid)) {
+            return res.status(400).json({ error: "User not participating" });
+        }
+
+        const updatedParticipants = participants.filter(id => id !== uid);
+
+        await postRef.update({
+            participants: updatedParticipants
+        });
+
+        res.json({ message: "Left event successfully", participants: updatedParticipants });
+    } catch (error) {
+        console.error("Error leaving event:", error);
+        res.status(500).json({ error: "Failed to leave event" });
+    }
+});
+
 module.exports = router;

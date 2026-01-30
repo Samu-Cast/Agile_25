@@ -9,6 +9,7 @@ import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
 import { getUserCommunities } from '../services/communityService';
 import CollectionManager from '../components/CollectionManager';
+import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
 // Default images
@@ -99,6 +100,27 @@ function Profile() {
 
         fetchProfileData();
     }, [uid, currentUserData, currentUserRoleData, isOwnProfile]);
+
+    // Cleanup/Reset state when moving between profiles
+    useEffect(() => {
+        // Reset all data states
+        setMyPosts([]);
+        setVotedPosts([]);
+        setMyReviews([]);
+        setMyComparisons([]);
+        setMyComments([]);
+        setSavedPosts([]);
+        setSavedGuides([]);
+        setSavedCollections([]);
+        setUserCommunities([]);
+        setMyEvents([]);
+
+        setRoasteryProducts([]);
+        setRoasteryCollections([]);
+
+        // Reset tab to default to avoid being stuck on an unavailable tab (e.g. collections for simple user)
+        setActiveTab('posts');
+    }, [uid]);
 
     // Use profileUser and profileRoleData for rendering
     const user = profileUser;
@@ -575,7 +597,7 @@ function Profile() {
                         time: p.time || new Date(p.createdAt).toLocaleDateString()
                     }));
 
-                    setSavedPosts(formattedPosts);
+                    setSavedPosts(formattedPosts.map(p => ({ ...p, isSaved: true })));
                 }
             } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
                 if (isOwnProfile) {
@@ -857,73 +879,18 @@ function Profile() {
         }
     };
 
-    // Shared Grid Renderer for Posts (My Posts, Upvoted, Downvoted, Saved)
+    // Shared List Renderer for Posts (My Posts, Upvoted, Downvoted, Saved)
     const renderPostGrid = (posts, emptyMessage = "Nessun post trovato.") => (
-        <div className="profile-content-grid">
-            {posts.length > 0 ? posts.map(post => {
-                // Determine image to show
-                let displayImage = post.image;
-                if (!displayImage) {
-                    if (post.type === 'comparison') {
-                        displayImage = defaultComparisonImage;
-                    } else if (post.type === 'review') {
-                        displayImage = defaultReviewImage;
-                    } else {
-                        displayImage = defaultPostImage;
-                    }
-                }
-
-                // Determine title/content preview
-                const title = post.type === 'review' && post.reviewData
-                    ? `${post.reviewData.itemName} (${post.reviewData.rating}/5)`
-                    : (post.type === 'comparison' && post.comparisonData
-                        ? `${post.comparisonData.item1?.name} vs ${post.comparisonData.item2?.name}`
-                        : (post.content ? (post.content.length > 30 ? post.content.substring(0, 30) + '...' : post.content) : 'Nuovo Post'));
-
-                return (
-                    <div
-                        key={post.id}
-                        className="content-item"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                            Swal.fire({
-                                html: `
-                                    <div style="text-align: left;">
-                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                            <img src="${post.authorAvatar || 'https://cdn-icons-png.flaticon.com/512/847/847969.png'}" style="width: 40px; height: 40px; border-radius: 50%;" />
-                                            <div>
-                                                <strong>${post.author || 'Utente'}</strong><br/>
-                                                <small>${post.time || 'Data sconosciuta'}</small>
-                                            </div>
-                                        </div>
-                                        ${post.image ? `<img src="${post.image}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;" />` : ''}
-                                        <p>${post.content || ''}</p>
-                                        ${post.type === 'review' && post.reviewData ? `
-                                            <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px;">
-                                                <strong>${post.reviewData.itemName}</strong> - ${post.reviewData.rating} ☕<br/>
-                                                <small>${post.reviewData.brand || ''}</small>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `,
-                                showConfirmButton: false,
-                                showCloseButton: true,
-                                width: '600px'
-                            });
-                        }}
-                    >
-                        <img
-                            src={displayImage}
-                            alt="Post"
-                            className="content-image"
-                            style={{ objectFit: 'cover' }}
-                        />
-                        <div className="content-info">
-                            <h3 className="content-title" style={{ fontSize: '1rem' }}>{title}</h3>
-                        </div>
-                    </div>
-                );
-            }) : (
+        <div className="profile-feed">
+            {posts.length > 0 ? posts.map(post => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUser={currentUser}
+                    isLoggedIn={!!currentUser}
+                    onDelete={isOwnProfile && activeTab === 'posts' ? handleDeletePost : undefined}
+                />
+            )) : (
                 <div className="empty-state">{emptyMessage}</div>
             )}
         </div>
@@ -966,9 +933,9 @@ function Profile() {
             if (activeTab === 'votes') {
                 data = votedPosts.map(p => ({
                     ...p,
-                    image: p.imageUrl || "https://via.placeholder.com/400",
-                    type: p.voteType === 'up' ? 'Upvoted' : 'Downvoted',
-                    voteType: p.voteType
+                    // Preserve original type, do not overwrite with 'Upvoted'
+                    // Ensure userVote is set correctly for display in PostCard
+                    userVote: p.voteType === 'up' ? 1 : -1
                 }));
             }
             if (activeTab === 'comments') {
@@ -1334,32 +1301,7 @@ function Profile() {
             );
         }
 
-        return (
-            <div className="profile-content-grid">
-                {data.map(item => (
-                    <div key={item.id} className={`content-item ${!item.image ? 'text-only' : ''}`}>
-                        {item.image && <img src={item.image} alt={item.title} className="content-image" />}
-                        <div className="content-info" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <h3 className="content-title" style={{ textAlign: 'center' }}>{item.title}</h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
-                                <p className="content-preview">{item.type}</p>
-                                {item.voteType === 'up' && <span style={{ color: '#2ecc71', fontSize: '24px', fontWeight: 'bold' }}>↑</span>}
-                                {item.voteType === 'down' && <span style={{ color: '#e74c3c', fontSize: '24px', fontWeight: 'bold' }}>↓</span>}
-                            </div>
-                        </div>
-                        {isOwnProfile && activeTab === 'posts' && (
-                            <button
-                                className="delete-post-btn"
-                                onClick={(e) => handleDeletePost(item.id, e)}
-                                title="Elimina post"
-                            >
-                                ×
-                            </button>
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
+        return renderPostGrid(data, "Nessun contenuto trovato.");
     };
 
     if (!currentUser && isOwnProfile) {
@@ -1480,17 +1422,30 @@ function Profile() {
 
             {/* Stats Row */}
             < div className="profile-stats" >
-                <div className="stat-item">
-                    <span className="stat-value">{myPosts.length}</span>
-                    <span className="stat-label">Post</span>
+                <div className="stats-group content-stats">
+                    <div className="stat-item">
+                        <span className="stat-value">{myPosts.length}</span>
+                        <span className="stat-label">Post</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{myReviews.length}</span>
+                        <span className="stat-label">Recensioni</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{myComparisons.length}</span>
+                        <span className="stat-label">Confronti</span>
+                    </div>
                 </div>
-                <div className="stat-item">
-                    <span className="stat-value">{followersCount}</span>
-                    <span className="stat-label">Follower</span>
-                </div>
-                <div className="stat-item">
-                    <span className="stat-value">{followingCount}</span>
-                    <span className="stat-label">Following</span>
+                <div className="stats-separator"></div>
+                <div className="stats-group connection-stats">
+                    <div className="stat-item">
+                        <span className="stat-value">{followersCount}</span>
+                        <span className="stat-label">Follower</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{followingCount}</span>
+                        <span className="stat-label">Following</span>
+                    </div>
                 </div>
             </div >
 

@@ -6,9 +6,16 @@ import * as imageService from '../../../services/imageService';
 
 //Mock userService
 jest.mock('../../../services/userService', () => ({
-    searchGlobal: jest.fn()
+    searchGlobal: jest.fn(),
+    getUserCommunities: jest.fn()
 }));
-import { searchGlobal } from '../../../services/userService';
+import { searchGlobal, getUserCommunities } from '../../../services/userService';
+
+//Mock postService
+jest.mock('../../../services/postService', () => ({
+    createPost: jest.fn()
+}));
+import { createPost } from '../../../services/postService';
 
 jest.mock('../../../components/CoffeeCupRating', () => (props) => (
     <div data-testid="coffee-rating" onClick={() => props.onChange(5)}>
@@ -45,6 +52,7 @@ describe('CreatePostModal', () => {
         jest.spyOn(imageService, 'validateVideo').mockReturnValue(true);
 
         useAuth.mockReturnValue({ currentUser: mockUser });
+        getUserCommunities.mockResolvedValue(mockCommunities);
 
         //Mock fetch for communities
         global.fetch = jest.fn((url) => {
@@ -77,7 +85,7 @@ describe('CreatePostModal', () => {
         render(<CreatePostModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining(`/users/${mockUser.uid}/communities`));
+            expect(getUserCommunities).toHaveBeenCalledWith(mockUser.uid);
         });
     });
 
@@ -134,13 +142,10 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('Post'));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/posts'),
-                expect.objectContaining({
-                    method: 'POST',
-                    body: expect.stringContaining('Hello World')
-                })
-            );
+            expect(createPost).toHaveBeenCalledWith(expect.objectContaining({
+                text: 'Hello World',
+                type: 'post'
+            }));
             expect(mockOnSuccess).toHaveBeenCalled();
             expect(mockOnClose).toHaveBeenCalled();
         });
@@ -255,6 +260,11 @@ describe('CreatePostModal', () => {
         });
         fireEvent.click(screen.getByText('Coffee Lovers'));
 
+        // Wait for selection to update
+        await waitFor(() => {
+            expect(screen.getByText('Post to: Coffee Lovers')).toBeInTheDocument();
+        });
+
         // Create post
         fireEvent.change(screen.getByPlaceholderText("What's on your mind?"), {
             target: { value: 'Community post' }
@@ -263,12 +273,11 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('Post'));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/posts'),
-                expect.objectContaining({
-                    body: expect.stringMatching(/"communityId":"c1"/)
-                })
-            );
+            expect(createPost).toHaveBeenCalledWith(expect.objectContaining({
+                text: 'Community post',
+                communityId: 'c1',
+                entityType: 'community'
+            }));
         });
     });
 
@@ -292,12 +301,12 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('Pubblica Recensione'));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/posts'),
-                expect.objectContaining({
-                    body: expect.stringMatching(/Good Coffee/)
+            expect(createPost).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'review',
+                reviewData: expect.objectContaining({
+                    itemName: 'Good Coffee'
                 })
-            );
+            }));
             expect(mockOnSuccess).toHaveBeenCalled();
         });
     });
@@ -324,34 +333,19 @@ describe('CreatePostModal', () => {
         fireEvent.click(screen.getByText('Pubblica Confronto'));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/posts'),
-                expect.objectContaining({
-                    body: expect.stringMatching(/Ethiopian Blend.*Colombian Blend/)
+            expect(createPost).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'comparison',
+                comparisonData: expect.objectContaining({
+                    item1: expect.objectContaining({ name: 'Ethiopian Blend' }),
+                    item2: expect.objectContaining({ name: 'Colombian Blend' })
                 })
-            );
+            }));
         });
     });
 
     it('handles failed post creation (API error)', async () => {
         window.alert = jest.fn();
-
-        //Reset fetch mock to return error for /posts endpoint
-        global.fetch = jest.fn((url) => {
-            if (url.includes('/communities')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => mockCommunities
-                });
-            }
-            if (url.includes('/posts')) {
-                return Promise.resolve({
-                    ok: false,
-                    json: async () => ({ error: 'Server error' })
-                });
-            }
-            return Promise.resolve({ ok: true, json: async () => ({}) });
-        });
+        createPost.mockRejectedValue(new Error('Server error'));
 
         render(<CreatePostModal onClose={mockOnClose} onSuccess={mockOnSuccess} />);
 

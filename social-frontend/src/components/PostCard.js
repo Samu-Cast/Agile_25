@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import CommentSection from './CommentSection';
 import CoffeeCupRating from './CoffeeCupRating';
 import MediaGallery from './MediaGallery';
-import { toggleSavePost, updateVotes } from '../services/postService';
+import { getUsersByUids } from '../services/userService';
+
+import { toggleSavePost, updateVotes, joinEvent, leaveEvent } from '../services/postService';
 
 // Default images
 import defaultPostImage from '../image_post/defaults/default_post.png';
@@ -19,6 +21,56 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
     const navigate = useNavigate();
 
     const isReview = post.type === 'review';
+    const isEvent = post.type === 'event';
+
+    const [isParticipating, setIsParticipating] = useState(post.participants?.includes(currentUser?.uid) || false);
+    const [participantsCount, setParticipantsCount] = useState(post.participants?.length || 0);
+
+    // Participants Modal State
+    const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+    const [participantsList, setParticipantsList] = useState([]);
+    const [loadingParticipants, setLoadingParticipants] = useState(false);
+
+    const isCreator = currentUser?.uid === post.authorId || currentUser?.uid === post.uid;
+
+    const handleViewParticipants = async () => {
+        if (!post.participants || post.participants.length === 0) return;
+
+        setShowParticipantsModal(true);
+        if (participantsList.length > 0) return; // Already loaded
+
+        setLoadingParticipants(true);
+        try {
+            // Fetch users only when requested
+            const users = await getUsersByUids(post.participants);
+            setParticipantsList(users);
+        } catch (error) {
+            console.error("Error fetching participants:", error);
+        } finally {
+            setLoadingParticipants(false);
+        }
+    };
+
+    const handleJoinEvent = async () => {
+        if (!isLoggedIn) return;
+        const previousState = isParticipating;
+        // Optimistic update
+        setIsParticipating(!previousState);
+        setParticipantsCount(prev => previousState ? prev - 1 : prev + 1);
+
+        try {
+            if (previousState) {
+                await leaveEvent(post.id, currentUser.uid);
+            } else {
+                await joinEvent(post.id, currentUser.uid);
+            }
+        } catch (error) {
+            console.error("Error toggling event participation:", error);
+            // Revert
+            setIsParticipating(previousState);
+            setParticipantsCount(prev => previousState ? prev + 1 : prev - 1);
+        }
+    };
 
     const handleVote = async (type) => {
         if (!isLoggedIn) return;
@@ -86,8 +138,33 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
 
                     {/* Review Badge */}
                     {isReview && (
-                        <div className="review-badge">
+                        <div className="review-badge" style={{
+                            marginLeft: 'auto',
+                            backgroundColor: '#FFD700', // Gold color for review
+                            color: '#333',
+                            padding: '4px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                        }}>
                             ⭐ Recensione
+                        </div>
+                    )}
+                    {/* Event Badge */}
+                    {isEvent && (
+                        <div className="event-badge" style={{
+                            backgroundColor: '#E67E22',
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            marginLeft: 'auto' // Move to right
+                        }}>
+                            📅 Evento
                         </div>
                     )}
                     {/* Comparison Badge */}

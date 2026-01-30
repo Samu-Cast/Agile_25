@@ -1,12 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CommentSection from '../../../components/CommentSection';
-import * as postService from '../../../services/postService';
-import * as imageService from '../../../services/imageService';
 
 // Mock services
 jest.mock('../../../services/postService');
 jest.mock('../../../services/imageService');
+jest.mock('../../../services/userService');
+
+import * as postService from '../../../services/postService';
+import * as imageService from '../../../services/imageService';
+import { getUsersByUids } from '../../../services/userService';
 
 // Mock AuthContext
 const mockCurrentUser = { uid: 'user1', email: 'test@test.com' };
@@ -39,38 +42,26 @@ describe('CommentSection Component', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Mock fetch for user data
-        global.fetch = jest.fn((url) => {
-            if (url.includes('/users/user1')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => ({
-                        uid: 'user1',
-                        name: 'User One',
-                        displayName: 'User One',
-                        profilePic: 'pic1.jpg'
-                    })
-                });
-            }
-            if (url.includes('/users/user2')) {
-                return Promise.resolve({
-                    ok: true,
-                    json: async () => ({
-                        uid: 'user2',
-                        name: 'User Two',
-                        displayName: 'User Two',
-                        photoURL: null
-                    })
-                });
-            }
-            return Promise.reject(new Error('Unknown URL'));
-        });
-
         // Default mock implementations
         postService.getComments.mockResolvedValue(mockComments);
         postService.addComment.mockResolvedValue({ id: 'new-comment' });
         imageService.uploadMultipleMedia.mockResolvedValue(['uploaded1.jpg']);
         imageService.validateMedia.mockReturnValue(true);
+
+        getUsersByUids.mockResolvedValue([
+            {
+                uid: 'user1',
+                name: 'User One',
+                displayName: 'User One',
+                profilePic: 'pic1.jpg'
+            },
+            {
+                uid: 'user2',
+                name: 'User Two',
+                displayName: 'User Two',
+                photoURL: null
+            }
+        ]);
 
         useAuth.mockReturnValue({ currentUser: mockCurrentUser });
     });

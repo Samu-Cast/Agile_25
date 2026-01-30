@@ -112,7 +112,11 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                         votes: post.votes || 0,
                         comments: post.commentsCount || 0,
                         userVote: post.userVote || 0,
-                        communityName: communityDetails?.name || "Community" // Use fetched details
+                        communityName: communityDetails?.name || "Community", // Use fetched details
+                        // Event Details
+                        eventDetails: post.eventDetails || null,
+                        hosts: post.hosts || [],
+                        participants: post.participants || [],
                     };
                 });
 

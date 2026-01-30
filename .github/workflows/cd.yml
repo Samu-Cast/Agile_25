@@ -5,7 +5,7 @@ name: CD - Deploy & Verify
 
 on:
   push:
-    branches: [ "main", "preRelease" ]
+    branches: [ "main" ]
   #Trigger manuale per testare
   workflow_dispatch:
 

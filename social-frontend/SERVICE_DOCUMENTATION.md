@@ -67,6 +67,23 @@ Fetches all available communities.
 - **GET** `/communities`
 - Populates cache.
 
+### `getUserCommunities(uid)`
+Fetches communities a user has joined.
+- **GET** `/users/:uid/communities`
+
+### `createCommunity(communityData)`
+Creates a new community.
+- **POST** `/communities`
+- **Returns**: Created community object.
+
+### `joinCommunity(communityId, userId)`
+Joins or leaves a community (toggle).
+- **POST** `/communities/:communityId/join`
+
+### `updateCommunity(communityId, data)`
+Updates community details.
+- **PUT** `/communities/:communityId`
+
 ---
 
 ## `imageService.js`
@@ -118,6 +135,11 @@ Adds a comment to a post.
 ### `toggleSavePost(postId, userId, isSaved)`
 Saves or unsaves a post for a user.
 - **POST** / **DELETE** `/posts/:postId/save`
+
+### `joinEvent(postId, userId)` / `leaveEvent(postId, userId)`
+Manages event participation.
+- **POST** `/posts/:postId/join` / `/leave`
+- Updates local participant list and backend record.
 
 ---
 

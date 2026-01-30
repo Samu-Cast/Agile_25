@@ -55,6 +55,14 @@ function CreatePostModal({ onClose, onSuccess }) {
     // Silence unused warnings
     void setIsComparison; void setComparisonTitle1; void setComparisonTitle2;
 
+    // Event fields
+    const [eventDetails, setEventDetails] = useState({
+        title: '',
+        date: '',
+        time: '',
+        location: ''
+    });
+
     const { currentUser } = useAuth();
 
     // Handle separate comparison images
@@ -215,6 +223,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                 mediaUrls: mediaUrls,
                 imageUrl: mediaUrls.length > 0 ? mediaUrls[0] : null, // Legacy support
                 taggedUsers: taggedUsers.map(u => u.uid || u.id), // Array of UIDs
+
                 createdAt: new Date().toISOString(),
                 commentsCount: 0
             };
@@ -314,6 +323,8 @@ function CreatePostModal({ onClose, onSuccess }) {
         }
     };
 
+
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content create-post-modal" onClick={e => e.stopPropagation()}>
@@ -344,6 +355,13 @@ function CreatePostModal({ onClose, onSuccess }) {
                         onClick={() => setPostType('comparison')}
                     >
                         ⚖️ Confronto
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-btn ${postType === 'event' ? 'active' : ''}`}
+                        onClick={() => setPostType('event')}
+                    >
+                        📅 Evento
                     </button>
 
                 </div>
@@ -686,7 +704,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                     {postType !== 'comparison' && (
                         <div className="form-group">
                             <label htmlFor="modal-media" className="image-upload-label">
-                                {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : "📸 Aggiungi Foto/Video (Opzionale)"}
+                                {mediaPreviews.length > 0 ? `${mediaPreviews.length} file selezionati` : (postType === 'event' ? "📸 Aggiungi Foto Copertina" : "📸 Aggiungi Foto/Video (Opzionale)")}
                             </label>
                             <input
                                 id="modal-media"
@@ -723,7 +741,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8e8e8'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
                         >
-                            👥 Tagga Utenti {taggedUsers.length > 0 && `(${taggedUsers.length})`}
+                            👥 {postType === 'event' ? 'Tagga Organizzatori/Host' : 'Tagga Utenti'} {taggedUsers.length > 0 && `(${taggedUsers.length})`}
                         </button>
 
                         {/* Tagged Users Display */}
@@ -904,7 +922,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                     </div>
                 </form>
             </div>
-        </div>
+        </div >
     );
 }
 

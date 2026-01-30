@@ -19,6 +19,8 @@ jest.mock('../../../context/AuthContext', () => ({
 jest.mock('../../../services/postService', () => ({
     updateVotes: jest.fn(() => Promise.resolve()),
     toggleSavePost: jest.fn(() => Promise.resolve()),
+    joinEvent: jest.fn(() => Promise.resolve()),
+    leaveEvent: jest.fn(() => Promise.resolve()),
 }));
 
 //Mock Child Components
