@@ -170,17 +170,43 @@ function Profile() {
             try {
                 const userPosts = await getUserPosts(user.uid, currentUser?.uid);
 
+                // Collect all UIDs to fetch (authors + tagged users + hosts)
+                const uidsToCheck = new Set(userPosts.map(p => p.uid));
+                userPosts.forEach(p => {
+                    if (p.taggedUsers && Array.isArray(p.taggedUsers)) {
+                        p.taggedUsers.forEach(uid => uidsToCheck.add(uid));
+                    }
+                    if (p.hosts && Array.isArray(p.hosts)) {
+                        p.hosts.forEach(uid => uidsToCheck.add(uid));
+                    }
+                });
+
+                // Fetch all related users
+                const allRelatedUsers = await getUsersByUids([...uidsToCheck]);
+                const userMap = {};
+                allRelatedUsers.forEach(u => {
+                    userMap[u.uid] = u;
+                });
+
                 // Map data to match PostCard expected format (like Home.js)
-                const formattedPosts = userPosts.map(p => ({
-                    ...p,
-                    author: user.nickname || user.name,
-                    authorAvatar: user.profilePic || user.photoURL,
-                    authorId: user.uid,
-                    content: p.text || p.content,
-                    image: p.imageUrl || null,
-                    mediaUrls: p.mediaUrls || [],
-                    time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now'
-                }));
+                const formattedPosts = userPosts.map(p => {
+                    const author = userMap[p.uid] || { nickname: user.nickname || user.name, profilePic: user.profilePic || user.photoURL };
+
+                    // Resolve tagged users data
+                    const taggedUsersData = (p.taggedUsers || []).map(uid => userMap[uid]).filter(Boolean);
+
+                    return {
+                        ...p,
+                        author: author.nickname || author.name,
+                        authorAvatar: author.profilePic || author.photoURL,
+                        authorId: p.uid,
+                        content: p.text || p.content,
+                        image: p.imageUrl || null,
+                        mediaUrls: p.mediaUrls || [],
+                        time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now',
+                        taggedUsersData: taggedUsersData
+                    };
+                });
 
                 // Separate posts from reviews and comparisons
                 const posts = formattedPosts.filter(p => !p.type || p.type === 'post');
@@ -533,15 +559,32 @@ function Profile() {
             // Note: posts and reviews are now loaded by the first useEffect (lines 85-103)
             // which properly filters them by type
             const enrichPosts = async (postsToEnrich) => {
-                const uids = [...new Set(postsToEnrich.map(p => p.uid))];
-                const users = await getUsersByUids(uids);
+                const uids = new Set(postsToEnrich.map(p => p.uid));
+                postsToEnrich.forEach(p => {
+                    if (p.taggedUsers && Array.isArray(p.taggedUsers)) {
+                        p.taggedUsers.forEach(uid => uids.add(uid));
+                    }
+                    if (p.hosts && Array.isArray(p.hosts)) {
+                        p.hosts.forEach(uid => uids.add(uid));
+                    }
+                });
+
+                const users = await getUsersByUids([...uids]);
+                const userMap = {};
+                users.forEach(u => {
+                    userMap[u.uid] = u;
+                });
+
                 return postsToEnrich.map(p => {
-                    const author = users.find(u => u.uid === p.uid);
+                    const author = userMap[p.uid];
+                    const taggedUsersData = (p.taggedUsers || []).map(uid => userMap[uid]).filter(Boolean);
+
                     return {
                         ...p,
                         author: author?.nickname || author?.name || "Utente",
                         authorAvatar: author?.profilePic || author?.photoURL || DEFAULT_AVATAR,
-                        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Data sconosciuta'
+                        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Data sconosciuta',
+                        taggedUsersData
                     };
                 });
             };
@@ -567,7 +610,8 @@ function Profile() {
                 }
             } else if (activeTab === 'events') {
                 const events = await getUserEvents(user.uid);
-                setMyEvents(events);
+                const enrichedEvents = await enrichPosts(events);
+                setMyEvents(enrichedEvents);
             }
             else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);

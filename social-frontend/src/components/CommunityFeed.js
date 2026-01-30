@@ -68,16 +68,27 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                 const data = await getFeedPosts(params);
 
                 // Extract unique UIDs
-                const uids = [...new Set(data.map(post => post.uid))];
+                const uids = new Set(data.map(post => post.uid));
+                data.forEach(p => {
+                    if (p.taggedUsers && Array.isArray(p.taggedUsers)) {
+                        p.taggedUsers.forEach(uid => uids.add(uid));
+                    }
+                    if (p.hosts && Array.isArray(p.hosts)) {
+                        p.hosts.forEach(uid => uids.add(uid));
+                    }
+                });
+
                 let userMap = {};
 
-                if (uids.length > 0) {
+                if (uids.size > 0) {
                     try {
-                        const users = await getUsersByUids(uids);
+                        const users = await getUsersByUids([...uids]);
                         users.forEach(u => {
                             userMap[u.uid] = {
                                 name: u.nickname || u.name,
-                                avatar: u.photoURL || u.profilePic || "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+                                avatar: u.photoURL || u.profilePic || "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+                                nickname: u.nickname, // keep original object data if needed
+                                uid: u.uid
                             };
                         });
                     } catch (err) {
@@ -96,6 +107,12 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
 
                 const formattedPosts = data.map(post => {
                     const postUser = userMap[post.uid] || { name: "User", avatar: "https://cdn-icons-png.flaticon.com/512/847/847969.png" };
+
+                    // Enrich tagged users data
+                    const taggedUsersData = (post.taggedUsers || []).map(uid => {
+                        const u = userMap[uid];
+                        return u ? { ...u, uid: u.uid } : null;
+                    }).filter(Boolean);
 
                     return {
                         id: post.id,
@@ -117,6 +134,7 @@ const CommunityFeed = ({ communityId, isLoggedIn, user, onCommunityUpdate, onCom
                         eventDetails: post.eventDetails || null,
                         hosts: post.hosts || [],
                         participants: post.participants || [],
+                        taggedUsersData: taggedUsersData, // Pass full objects
                     };
                 });
 

@@ -279,6 +279,21 @@ describe('Profile Page', () => {
             });
         });
 
+        test('switches to comparisons tab', async () => {
+            postService.getUserPosts.mockResolvedValue([
+                { id: 'c1', content: 'Comparison 1', type: 'comparison', createdAt: new Date().toISOString() }
+            ]);
+
+            render(<Profile />);
+
+            const comparisonsTab = await screen.findByRole('button', { name: /Confronti/i });
+            fireEvent.click(comparisonsTab);
+
+            await waitFor(() => {
+                expect(screen.getByText('Comparison 1')).toBeInTheDocument();
+            });
+        });
+
         test('switches to comments tab and fetches comments', async () => {
             postService.getUserComments.mockResolvedValue([
                 { id: 'c1', text: 'Great post!', postTitle: 'Test Post', createdAt: new Date().toISOString() }
@@ -295,34 +310,20 @@ describe('Profile Page', () => {
             });
         });
 
-        test('switches to upvoted tab for own Appassionato profile', async () => {
+        test('switches to votes tab for own Appassionato profile', async () => {
             useParams.mockReturnValue({}); // Own profile
             postService.getUserVotedPosts.mockResolvedValue([
-                { id: 'up1', text: 'Upvoted Post', imageUrl: 'img.jpg' }
+                { id: 'v1', text: 'Voted Post', imageUrl: 'img.jpg', uid: 'author1' }
             ]);
+            userService.getUsersByUids.mockResolvedValue([{ uid: 'author1', nickname: 'Author' }]);
 
             render(<Profile />);
 
-            const upvotedTab = await screen.findByRole('button', { name: /Upvoted/i });
-            fireEvent.click(upvotedTab);
+            const votesTab = await screen.findByRole('button', { name: /Voti/i });
+            fireEvent.click(votesTab);
 
             await waitFor(() => {
                 expect(postService.getUserVotedPosts).toHaveBeenCalledWith('current-uid', 1);
-            });
-        });
-
-        test('switches to downvoted tab for own Appassionato profile', async () => {
-            useParams.mockReturnValue({}); // Own profile
-            postService.getUserVotedPosts.mockResolvedValue([
-                { id: 'down1', text: 'Downvoted Post', imageUrl: 'img.jpg' }
-            ]);
-
-            render(<Profile />);
-
-            const downvotedTab = await screen.findByRole('button', { name: /Downvoted/i });
-            fireEvent.click(downvotedTab);
-
-            await waitFor(() => {
                 expect(postService.getUserVotedPosts).toHaveBeenCalledWith('current-uid', -1);
             });
         });

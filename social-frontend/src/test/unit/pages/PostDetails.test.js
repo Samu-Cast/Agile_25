@@ -8,9 +8,9 @@ const mockNavigate = jest.fn();
 const mockUseParams = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
     useParams: () => mockUseParams(),
     useNavigate: () => mockNavigate,
+    Link: ({ children, to }) => <a href={to}>{children}</a>,
 }));
 
 //Mock PostService

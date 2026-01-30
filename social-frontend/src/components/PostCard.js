@@ -391,10 +391,10 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                     </div>
                 )}
 
-                <p className="post-text">{post.content}</p>
 
-                {/* Tagged Users */}
-                {post.taggedUsers && post.taggedUsers.length > 0 && post.taggedUsersData && (
+
+                {/* Tagged Users - Hide for events as they have Hosts section */}
+                {!isEvent && post.taggedUsers && post.taggedUsers.length > 0 && post.taggedUsersData && (
                     <div style={{
                         marginTop: '12px',
                         padding: '8px 0',
@@ -461,6 +461,8 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                         />
                     )
                 )}
+
+                <p className="post-text">{post.content}</p>
 
                 <div className="post-footer">
                     <div className="vote-actions">

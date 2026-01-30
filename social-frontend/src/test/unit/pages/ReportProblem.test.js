@@ -11,8 +11,9 @@ jest.mock('../../../services/reportService');
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+    BrowserRouter: ({ children }) => <div>{children}</div>,
+    Link: ({ children, to }) => <a href={to}>{children}</a>,
 }));
 
 // Mock AuthContext
