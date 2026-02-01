@@ -3,12 +3,13 @@ import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, deletePost } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost, getUserEvents } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct, deleteProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
 import { getUserCommunities } from '../services/communityService';
 import CollectionManager from '../components/CollectionManager';
+import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
 // Default images
@@ -100,6 +101,27 @@ function Profile() {
         fetchProfileData();
     }, [uid, currentUserData, currentUserRoleData, isOwnProfile]);
 
+    // Cleanup/Reset state when moving between profiles
+    useEffect(() => {
+        // Reset all data states
+        setMyPosts([]);
+        setVotedPosts([]);
+        setMyReviews([]);
+        setMyComparisons([]);
+        setMyComments([]);
+        setSavedPosts([]);
+        setSavedGuides([]);
+        setSavedCollections([]);
+        setUserCommunities([]);
+        setMyEvents([]);
+
+        setRoasteryProducts([]);
+        setRoasteryCollections([]);
+
+        // Reset tab to default to avoid being stuck on an unavailable tab (e.g. collections for simple user)
+        setActiveTab('posts');
+    }, [uid]);
+
     // Use profileUser and profileRoleData for rendering
     const user = profileUser;
     const roleData = profileRoleData;
@@ -110,8 +132,7 @@ function Profile() {
 
     // Appassionato Data State
     const [myPosts, setMyPosts] = useState([]);
-    const [upvotedPosts, setUpvotedPosts] = useState([]);
-    const [downvotedPosts, setDownvotedPosts] = useState([]);
+    const [votedPosts, setVotedPosts] = useState([]);
     const [myReviews, setMyReviews] = useState([]);
     const [myComparisons, setMyComparisons] = useState([]);
     const [myComments, setMyComments] = useState([]);
@@ -119,6 +140,7 @@ function Profile() {
     const [savedGuides, setSavedGuides] = useState([]);
     const [savedCollections, setSavedCollections] = useState([]);
     const [userCommunities, setUserCommunities] = useState([]);
+    const [myEvents, setMyEvents] = useState([]);
 
     // Barista Association State
     const [associatedBaristas, setAssociatedBaristas] = useState([]);
@@ -148,17 +170,43 @@ function Profile() {
             try {
                 const userPosts = await getUserPosts(user.uid, currentUser?.uid);
 
+                // Collect all UIDs to fetch (authors + tagged users + hosts)
+                const uidsToCheck = new Set(userPosts.map(p => p.uid));
+                userPosts.forEach(p => {
+                    if (p.taggedUsers && Array.isArray(p.taggedUsers)) {
+                        p.taggedUsers.forEach(uid => uidsToCheck.add(uid));
+                    }
+                    if (p.hosts && Array.isArray(p.hosts)) {
+                        p.hosts.forEach(uid => uidsToCheck.add(uid));
+                    }
+                });
+
+                // Fetch all related users
+                const allRelatedUsers = await getUsersByUids([...uidsToCheck]);
+                const userMap = {};
+                allRelatedUsers.forEach(u => {
+                    userMap[u.uid] = u;
+                });
+
                 // Map data to match PostCard expected format (like Home.js)
-                const formattedPosts = userPosts.map(p => ({
-                    ...p,
-                    author: user.nickname || user.name,
-                    authorAvatar: user.profilePic || user.photoURL,
-                    authorId: user.uid,
-                    content: p.text || p.content,
-                    image: p.imageUrl || null,
-                    mediaUrls: p.mediaUrls || [],
-                    time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now'
-                }));
+                const formattedPosts = userPosts.map(p => {
+                    const author = userMap[p.uid] || { nickname: user.nickname || user.name, profilePic: user.profilePic || user.photoURL };
+
+                    // Resolve tagged users data
+                    const taggedUsersData = (p.taggedUsers || []).map(uid => userMap[uid]).filter(Boolean);
+
+                    return {
+                        ...p,
+                        author: author.nickname || author.name,
+                        authorAvatar: author.profilePic || author.photoURL,
+                        authorId: p.uid,
+                        content: p.text || p.content,
+                        image: p.imageUrl || null,
+                        mediaUrls: p.mediaUrls || [],
+                        time: p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Just now',
+                        taggedUsersData: taggedUsersData
+                    };
+                });
 
                 // Separate posts from reviews and comparisons
                 const posts = formattedPosts.filter(p => !p.type || p.type === 'post');
@@ -487,6 +535,7 @@ function Profile() {
         setMyPosts(prev => prev.filter(p => p.id !== postId));
         setMyReviews(prev => prev.filter(p => p.id !== postId));
         setMyComparisons(prev => prev.filter(p => p.id !== postId));
+        setMyEvents(prev => prev.filter(p => p.id !== postId));
 
         try {
             await deletePost(postId, currentUser.uid); // Use service
@@ -510,30 +559,61 @@ function Profile() {
             // Note: posts and reviews are now loaded by the first useEffect (lines 85-103)
             // which properly filters them by type
             const enrichPosts = async (postsToEnrich) => {
-                const uids = [...new Set(postsToEnrich.map(p => p.uid))];
-                const users = await getUsersByUids(uids);
+                const uids = new Set(postsToEnrich.map(p => p.uid));
+                postsToEnrich.forEach(p => {
+                    if (p.taggedUsers && Array.isArray(p.taggedUsers)) {
+                        p.taggedUsers.forEach(uid => uids.add(uid));
+                    }
+                    if (p.hosts && Array.isArray(p.hosts)) {
+                        p.hosts.forEach(uid => uids.add(uid));
+                    }
+                });
+
+                const users = await getUsersByUids([...uids]);
+                const userMap = {};
+                users.forEach(u => {
+                    userMap[u.uid] = u;
+                });
+
                 return postsToEnrich.map(p => {
-                    const author = users.find(u => u.uid === p.uid);
+                    const author = userMap[p.uid];
+                    const taggedUsersData = (p.taggedUsers || []).map(uid => userMap[uid]).filter(Boolean);
+
                     return {
                         ...p,
                         author: author?.nickname || author?.name || "Utente",
                         authorAvatar: author?.profilePic || author?.photoURL || DEFAULT_AVATAR,
-                        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Data sconosciuta'
+                        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Data sconosciuta',
+                        taggedUsersData
                     };
                 });
             };
 
-            if (activeTab === 'upvoted' && user.role === 'Appassionato') {
+            if (activeTab === 'votes' && user.role === 'Appassionato') {
                 if (isOwnProfile) {
-                    const posts = await getUserVotedPosts(user.uid, 1);
-                    setUpvotedPosts(await enrichPosts(posts));
+                    const up = await getUserVotedPosts(user.uid, 1);
+                    const down = await getUserVotedPosts(user.uid, -1);
+                    // Merge and add type
+                    // Enrich to get author details if needed, though voted posts display usually relies on content
+                    // But if we want author name on the card...
+                    const upEnriched = await enrichPosts(up);
+                    const downEnriched = await enrichPosts(down);
+
+                    const upMapped = upEnriched.map(p => ({ ...p, voteType: 'up' }));
+                    const downMapped = downEnriched.map(p => ({ ...p, voteType: 'down' }));
+
+                    const allVoted = [...upMapped, ...downMapped];
+                    // Sort by date descending (newest first)
+                    allVoted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                    setVotedPosts(allVoted);
                 }
-            } else if (activeTab === 'downvoted' && user.role === 'Appassionato') {
-                if (isOwnProfile) {
-                    const posts = await getUserVotedPosts(user.uid, -1);
-                    setDownvotedPosts(await enrichPosts(posts));
-                }
-            } else if (activeTab === 'comments') {
+            } else if (activeTab === 'events') {
+                const events = await getUserEvents(user.uid);
+                const enrichedEvents = await enrichPosts(events);
+                setMyEvents(enrichedEvents);
+            }
+            else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);
                 setMyComments(comments);
             } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
@@ -561,7 +641,7 @@ function Profile() {
                         time: p.time || new Date(p.createdAt).toLocaleDateString()
                     }));
 
-                    setSavedPosts(formattedPosts);
+                    setSavedPosts(formattedPosts.map(p => ({ ...p, isSaved: true })));
                 }
             } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
                 if (isOwnProfile) {
@@ -843,73 +923,18 @@ function Profile() {
         }
     };
 
-    // Shared Grid Renderer for Posts (My Posts, Upvoted, Downvoted, Saved)
+    // Shared List Renderer for Posts (My Posts, Upvoted, Downvoted, Saved)
     const renderPostGrid = (posts, emptyMessage = "Nessun post trovato.") => (
-        <div className="profile-content-grid">
-            {posts.length > 0 ? posts.map(post => {
-                // Determine image to show
-                let displayImage = post.image;
-                if (!displayImage) {
-                    if (post.type === 'comparison') {
-                        displayImage = defaultComparisonImage;
-                    } else if (post.type === 'review') {
-                        displayImage = defaultReviewImage;
-                    } else {
-                        displayImage = defaultPostImage;
-                    }
-                }
-
-                // Determine title/content preview
-                const title = post.type === 'review' && post.reviewData
-                    ? `${post.reviewData.itemName} (${post.reviewData.rating}/5)`
-                    : (post.type === 'comparison' && post.comparisonData
-                        ? `${post.comparisonData.item1?.name} vs ${post.comparisonData.item2?.name}`
-                        : (post.content ? (post.content.length > 30 ? post.content.substring(0, 30) + '...' : post.content) : 'Nuovo Post'));
-
-                return (
-                    <div
-                        key={post.id}
-                        className="content-item"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                            Swal.fire({
-                                html: `
-                                    <div style="text-align: left;">
-                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                            <img src="${post.authorAvatar || 'https://cdn-icons-png.flaticon.com/512/847/847969.png'}" style="width: 40px; height: 40px; border-radius: 50%;" />
-                                            <div>
-                                                <strong>${post.author || 'Utente'}</strong><br/>
-                                                <small>${post.time || 'Data sconosciuta'}</small>
-                                            </div>
-                                        </div>
-                                        ${post.image ? `<img src="${post.image}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;" />` : ''}
-                                        <p>${post.content || ''}</p>
-                                        ${post.type === 'review' && post.reviewData ? `
-                                            <div style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px;">
-                                                <strong>${post.reviewData.itemName}</strong> - ${post.reviewData.rating} ☕<br/>
-                                                <small>${post.reviewData.brand || ''}</small>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                `,
-                                showConfirmButton: false,
-                                showCloseButton: true,
-                                width: '600px'
-                            });
-                        }}
-                    >
-                        <img
-                            src={displayImage}
-                            alt="Post"
-                            className="content-image"
-                            style={{ objectFit: 'cover' }}
-                        />
-                        <div className="content-info">
-                            <h3 className="content-title" style={{ fontSize: '1rem' }}>{title}</h3>
-                        </div>
-                    </div>
-                );
-            }) : (
+        <div className="profile-feed">
+            {posts.length > 0 ? posts.map(post => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUser={currentUser}
+                    isLoggedIn={!!currentUser}
+                    onDelete={isOwnProfile && activeTab === 'posts' ? handleDeletePost : undefined}
+                />
+            )) : (
                 <div className="empty-state">{emptyMessage}</div>
             )}
         </div>
@@ -923,6 +948,25 @@ function Profile() {
         if (activeTab === 'posts') {
             return renderPostGrid(myPosts, "Nessun post trovato.");
         }
+
+        if (activeTab === 'events') {
+            return (
+                <div className="profile-feed">
+                    {myEvents.length > 0 ? myEvents.map(post => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUser={currentUser}
+                            isLoggedIn={!!currentUser}
+                            onDelete={isOwnProfile ? handleDeletePost : undefined}
+                        />
+                    )) : (
+                        <div className="empty-state">Nessun evento in programma.</div>
+                    )}
+                </div>
+            );
+        }
+
         if (activeTab === 'guides') {
             // Mock guides for now, or fetch if implemented
             data = guides;
@@ -930,8 +974,14 @@ function Profile() {
 
         // Appassionato Specific Tabs
         if (user.role === 'Appassionato') {
-            if (activeTab === 'upvoted') return renderPostGrid(upvotedPosts, "Nessun post 'upvoted' trovato.");
-            if (activeTab === 'downvoted') return renderPostGrid(downvotedPosts, "Nessun post 'downvoted' trovato.");
+            if (activeTab === 'votes') {
+                data = votedPosts.map(p => ({
+                    ...p,
+                    // Preserve original type, do not overwrite with 'Upvoted'
+                    // Ensure userVote is set correctly for display in PostCard
+                    userVote: p.voteType === 'up' ? 1 : -1
+                }));
+            }
             if (activeTab === 'comments') {
                 type = 'comment';
                 data = myComments;
@@ -1095,6 +1145,7 @@ function Profile() {
                     </div>
                 );
             }
+
         }
 
         if (activeTab === 'reviews') {
@@ -1294,28 +1345,7 @@ function Profile() {
             );
         }
 
-        return (
-            <div className="profile-content-grid">
-                {data.map(item => (
-                    <div key={item.id} className={`content-item ${!item.image ? 'text-only' : ''}`}>
-                        {item.image && <img src={item.image} alt={item.title} className="content-image" />}
-                        <div className="content-info">
-                            <h3 className="content-title">{item.title}</h3>
-                            <p className="content-preview">{item.type}</p>
-                        </div>
-                        {isOwnProfile && activeTab === 'posts' && (
-                            <button
-                                className="delete-post-btn"
-                                onClick={(e) => handleDeletePost(item.id, e)}
-                                title="Elimina post"
-                            >
-                                ×
-                            </button>
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
+        return renderPostGrid(data, "Nessun contenuto trovato.");
     };
 
     if (!currentUser && isOwnProfile) {
@@ -1436,17 +1466,30 @@ function Profile() {
 
             {/* Stats Row */}
             < div className="profile-stats" >
-                <div className="stat-item">
-                    <span className="stat-value">{myPosts.length}</span>
-                    <span className="stat-label">Post</span>
+                <div className="stats-group content-stats">
+                    <div className="stat-item">
+                        <span className="stat-value">{myPosts.length}</span>
+                        <span className="stat-label">Post</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{myReviews.length}</span>
+                        <span className="stat-label">Recensioni</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{myComparisons.length}</span>
+                        <span className="stat-label">Confronti</span>
+                    </div>
                 </div>
-                <div className="stat-item">
-                    <span className="stat-value">{followersCount}</span>
-                    <span className="stat-label">Follower</span>
-                </div>
-                <div className="stat-item">
-                    <span className="stat-value">{followingCount}</span>
-                    <span className="stat-label">Following</span>
+                <div className="stats-separator"></div>
+                <div className="stats-group connection-stats">
+                    <div className="stat-item">
+                        <span className="stat-value">{followersCount}</span>
+                        <span className="stat-label">Follower</span>
+                    </div>
+                    <div className="stat-item">
+                        <span className="stat-value">{followingCount}</span>
+                        <span className="stat-label">Following</span>
+                    </div>
                 </div>
             </div >
 
@@ -1458,6 +1501,12 @@ function Profile() {
                 >
                     Post
                 </button>
+                <button
+                    className={`tab-button ${activeTab === 'events' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('events')}
+                >
+                    Eventi
+                </button>
 
                 {
                     user.role === 'Appassionato' && (
@@ -1465,16 +1514,10 @@ function Profile() {
                             {isOwnProfile && (
                                 <>
                                     <button
-                                        className={`tab-button ${activeTab === 'upvoted' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('upvoted')}
+                                        className={`tab-button ${activeTab === 'votes' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('votes')}
                                     >
-                                        Upvoted
-                                    </button>
-                                    <button
-                                        className={`tab-button ${activeTab === 'downvoted' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('downvoted')}
-                                    >
-                                        Downvoted
+                                        Voti
                                     </button>
                                 </>
                             )}
@@ -1505,12 +1548,6 @@ function Profile() {
                                         Post Salvati
                                     </button>
                                     <button
-                                        className={`tab-button ${activeTab === 'savedGuides' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('savedGuides')}
-                                    >
-                                        Guide Salvate
-                                    </button>
-                                    <button
                                         className={`tab-button ${activeTab === 'savedCollections' ? 'active' : ''}`}
                                         onClick={() => setActiveTab('savedCollections')}
                                     >
@@ -1518,12 +1555,7 @@ function Profile() {
                                     </button>
                                 </>
                             )}
-                            <button
-                                className={`tab-button ${activeTab === 'communities' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('communities')}
-                            >
-                                Comunità
-                            </button>
+
                         </>
                     )
                 }
@@ -1775,19 +1807,21 @@ function Profile() {
             </div>
 
             {/* Collection Manager Modal */}
-            {showCollectionModal && (
-                <CollectionManager
-                    roasterId={currentUserRoleData.id}
-                    currentUser={currentUser}
-                    products={roasteryProducts}
-                    initialData={editingCollection}
-                    onClose={() => {
-                        setShowCollectionModal(false);
-                        setEditingCollection(null);
-                    }}
-                    onSave={handleSaveCollection}
-                />
-            )}
+            {
+                showCollectionModal && (
+                    <CollectionManager
+                        roasterId={currentUserRoleData.id}
+                        currentUser={currentUser}
+                        products={roasteryProducts}
+                        initialData={editingCollection}
+                        onClose={() => {
+                            setShowCollectionModal(false);
+                            setEditingCollection(null);
+                        }}
+                        onSave={handleSaveCollection}
+                    />
+                )
+            }
         </div >
     );
 

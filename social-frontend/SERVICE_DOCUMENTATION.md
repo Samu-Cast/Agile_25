@@ -47,6 +47,18 @@ Updates an existing collection.
 Deletes a collection. Requires owner UID for verification.
 - **DELETE** `/roasters/:roasterId/collections/:collectionId`
 
+### `getUserSavedCollections(userId)`
+Fetches collections saved by a user.
+- **GET** `/users/:userId/saved-collections`
+
+### `saveCollection(userId, roasteryId, collectionId)`
+Saves a collection for a user.
+- **POST** `/users/:userId/saved-collections`
+
+### `unsaveCollection(userId, collectionId)`
+Removes a collection from user's saved list.
+- **DELETE** `/users/:userId/saved-collections/:collectionId`
+
 ---
 
 ## `communityService.js`
@@ -66,6 +78,23 @@ Fetches single community details.
 Fetches all available communities.
 - **GET** `/communities`
 - Populates cache.
+
+### `getUserCommunities(uid)`
+Fetches communities a user has joined.
+- **GET** `/users/:uid/communities`
+
+### `createCommunity(communityData)`
+Creates a new community.
+- **POST** `/communities`
+- **Returns**: Created community object.
+
+### `joinCommunity(communityId, userId)`
+Joins or leaves a community (toggle).
+- **POST** `/communities/:communityId/join`
+
+### `updateCommunity(communityId, data)`
+Updates community details.
+- **PUT** `/communities/:communityId`
 
 ---
 
@@ -123,6 +152,30 @@ Saves or unsaves a post for a user.
 Manages event participation.
 - **POST** `/posts/:postId/join` / `/leave`
 - Updates local participant list and backend record.
+
+### `getUserPosts(userId, currentUserId)`
+Fetches posts created by specific user.
+- **GET** `/users/:userId/posts`
+
+### `getUserVotedPosts(userId, voteValue)`
+Fetches posts upvoted/downvoted by user.
+- **GET** `/users/:userId/votes` (with query `value`)
+
+### `getUserSavedPosts(userId)`
+Fetches posts saved by user.
+- **GET** `/users/:userId/saved-posts`
+
+### `getUserComments(userId)`
+Fetches comments made by user.
+- **GET** `/users/:userId/comments`
+
+### `getUserEvents(userId)`
+Fetches events created by or participating in by user.
+- **GET** `/users/:userId/events`
+
+### `deletePost(postId, userId)`
+Deletes a post.
+- **DELETE** `/posts/:postId`
 
 ---
 

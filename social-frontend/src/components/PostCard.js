@@ -209,8 +209,6 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                     </div>
                 )}
 
-
-
                 {/* Event-specific content */}
                 {isEvent && post.eventDetails && (
                     <div className="event-info-card" style={{
@@ -220,18 +218,22 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                         borderRadius: '12px',
                         border: '1px solid #FFE0B2'
                     }}>
-                        <h3 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>{post.eventDetails.title}</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 15px', fontSize: '14px' }}>
-                            <span style={{ fontWeight: 'bold' }}>📅 Data:</span>
-                            <span>{new Date(post.eventDetails.date).toLocaleDateString()} alle {post.eventDetails.time}</span>
+                        <h3 style={{ margin: '0 0 10px 0', color: '#6F4E37', textAlign: 'center' }}>{post.eventDetails.title}</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', fontSize: '14px', textAlign: 'center' }}>
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>📅 Data: </span>
+                                <span>{new Date(post.eventDetails.date).toLocaleDateString()} alle {post.eventDetails.time}</span>
+                            </div>
 
-                            <span style={{ fontWeight: 'bold' }}>📍 Luogo:</span>
-                            <span>{post.eventDetails.location}</span>
+                            <div>
+                                <span style={{ fontWeight: 'bold' }}>📍 Luogo: </span>
+                                <span>{post.eventDetails.location}</span>
+                            </div>
 
                             {post.hosts && post.hosts.length > 0 && (
-                                <>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
                                     <span style={{ fontWeight: 'bold' }}>🎤 Host:</span>
-                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center' }}>
                                         {(post.taggedUsersData || []).filter(u => post.hosts.includes(u.uid)).map(host => (
                                             <span key={host.uid} style={{
                                                 backgroundColor: '#fff',
@@ -245,7 +247,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                                         ))}
                                         {(!post.taggedUsersData || post.taggedUsersData.length === 0) && <span>Vedi dettagli</span>}
                                     </div>
-                                </>
+                                </div>
                             )}
                         </div>
 
@@ -333,7 +335,6 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                         )}
                     </div>
                 )}
-
                 {/* Comparison-specific content */}
                 {post.type === 'comparison' && post.comparisonData && (
                     <div className="comparison-card-content" style={{ margin: '15px 0', border: '1px solid #eee', borderRadius: '12px', overflow: 'hidden' }}>
@@ -390,10 +391,10 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                     </div>
                 )}
 
-                <p className="post-text">{post.content}</p>
 
-                {/* Tagged Users */}
-                {post.taggedUsers && post.taggedUsers.length > 0 && post.taggedUsersData && (
+
+                {/* Tagged Users - Hide for events as they have Hosts section */}
+                {!isEvent && post.taggedUsers && post.taggedUsers.length > 0 && post.taggedUsersData && (
                     <div style={{
                         marginTop: '12px',
                         padding: '8px 0',
@@ -460,6 +461,8 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                         />
                     )
                 )}
+
+                <p className="post-text">{post.content}</p>
 
                 <div className="post-footer">
                     <div className="vote-actions">

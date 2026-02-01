@@ -235,13 +235,24 @@ function CreatePostModal({ onClose, onSuccess }) {
                     setLoading(false);
                     return;
                 }
+
+                // Date Validation
+                const selectedDate = new Date(eventDetails.date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Reset time part for comparison
+
+                if (selectedDate < today) {
+                    alert('La data non va bene, deve essere almeno ' + today.toLocaleDateString() + ' (dd/mm/yyyy)');
+                    setLoading(false);
+                    return;
+                }
+
                 postData.eventDetails = eventDetails;
                 postData.hosts = taggedUsers.map(u => u.uid || u.id); // Tagged users become hosts for events
                 // Remove taggedUsers from the main field if we want them distinct, 
                 // but strictly speaking, hosts ARE tagged users in this context. 
                 // Let's keep them in taggedUsers too for notification purposes if backend logic uses it.
             }
-
             // Add review data if it's a review
             if (postType === 'review') {
                 postData.reviewData = {
@@ -499,6 +510,7 @@ function CreatePostModal({ onClose, onSuccess }) {
                                     onChange={(e) => setEventDetails({ ...eventDetails, date: e.target.value })}
                                     required
                                     style={{ flex: 1 }}
+                                    min={new Date().toISOString().split('T')[0]}
                                 />
                                 <input
                                     type="time"
@@ -519,7 +531,6 @@ function CreatePostModal({ onClose, onSuccess }) {
                             />
                         </div>
                     )}
-
 
                     {/* Review-specific fields */}
                     {postType === 'review' && (

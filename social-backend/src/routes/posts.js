@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
             query = query.where('uid', '==', authorUid);
         }
 
+        // Filter by participant
+        if (req.query.participatingUid) {
+            query = query.where('participants', 'array-contains', req.query.participatingUid);
+        }
+
         const postsSnapshot = await query.get();
 
         // Fetch user's following list if filter is 'followed'
@@ -135,6 +140,13 @@ router.post('/', async (req, res) => {
                 brand: reviewData.brand || null,
                 rating: reviewData.rating,
             };
+        }
+
+        // Add event-specific data if it's an event
+        if (type === 'event' && req.body.eventDetails) {
+            newPost.eventDetails = req.body.eventDetails;
+            newPost.hosts = req.body.hosts || [];
+            newPost.participants = req.body.participants || [];
         }
 
         // Add comparison-specific data if it's a comparison
@@ -520,6 +532,90 @@ router.delete('/:postId', async (req, res) => {
     } catch (error) {
         console.error(`[DELETE] Error deleting post ${req.params.postId}:`, error);
         res.status(500).json({ error: "Failed to delete post" });
+    }
+});
+
+// POST /api/posts/:postId/join - Join an event
+router.post('/:postId/join', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.type !== 'event') {
+            return res.status(400).json({ error: "Post is not an event" });
+        }
+
+        const participants = postData.participants || [];
+
+        if (participants.includes(uid)) {
+            return res.status(400).json({ error: "User already participating" });
+        }
+
+        participants.push(uid);
+
+        await postRef.update({
+            participants: participants
+        });
+
+        res.json({ message: "Joined event successfully", participants });
+    } catch (error) {
+        console.error("Error joining event:", error);
+        res.status(500).json({ error: "Failed to join event" });
+    }
+});
+
+// DELETE /api/posts/:postId/join - Leave an event
+router.delete('/:postId/join', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { uid } = req.body;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const postRef = db.collection('posts').doc(postId);
+        const doc = await postRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const postData = doc.data();
+
+        if (postData.type !== 'event') {
+            return res.status(400).json({ error: "Post is not an event" });
+        }
+
+        const participants = postData.participants || [];
+
+        if (!participants.includes(uid)) {
+            return res.status(400).json({ error: "User not participating" });
+        }
+
+        const updatedParticipants = participants.filter(id => id !== uid);
+
+        await postRef.update({
+            participants: updatedParticipants
+        });
+
+        res.json({ message: "Left event successfully", participants: updatedParticipants });
+    } catch (error) {
+        console.error("Error leaving event:", error);
+        res.status(500).json({ error: "Failed to leave event" });
     }
 });
 

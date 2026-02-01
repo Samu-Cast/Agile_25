@@ -210,7 +210,12 @@
 /* Stats Row */
 .profile-stats {
     display: flex;
-    justify-content: space-around;
+    /* Restore flex display */
+    justify-content: center;
+    align-items: center;
+    /* Center separator */
+    gap: 3rem;
+    /* Increase gap between groups */
     padding: 1.5rem 0;
     border-top: 1px solid #EFEBE9;
     border-bottom: 1px solid #EFEBE9;
@@ -232,7 +237,33 @@
     font-size: 0.9rem;
     color: #8D6E63;
     text-transform: uppercase;
+    font-size: 0.9rem;
+    color: #8D6E63;
+    text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.stats-group {
+    display: flex;
+    gap: 1.5rem;
+    /* Gap between items in the same group */
+}
+
+/* Specific tighter gap for content stats if needed */
+.content-stats {
+    gap: 1.5rem;
+}
+
+/* Specific gap for connection stats */
+.connection-stats {
+    gap: 2rem;
+}
+
+.stats-separator {
+    width: 1px;
+    height: 40px;
+    background-color: #E0E0E0;
+
 }
 
 /* Tabs Navigation */

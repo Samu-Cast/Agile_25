@@ -6,8 +6,8 @@ import { act } from 'react';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-    ...jest.requireActual('react-router-dom'),
     useNavigate: () => mockNavigate,
+    Link: ({ children, to }) => <a href={to}>{children}</a>,
 }));
 
 //Mock AuthContext
