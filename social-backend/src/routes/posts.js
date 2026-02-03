@@ -558,6 +558,28 @@ router.post('/:postId/join', async (req, res) => {
             return res.status(400).json({ error: "Post is not an event" });
         }
 
+        // Check for event expiration
+        if (postData.eventDetails && postData.eventDetails.date) {
+            const eventDate = new Date(postData.eventDetails.date);
+            const now = new Date();
+
+            // If time is provided, combine it to get precise expiration
+            if (postData.eventDetails.time) {
+                const [hours, minutes] = postData.eventDetails.time.split(':');
+                eventDate.setHours(hours, minutes);
+            } else {
+                // Default to end of day if no time specified? Or beginning? 
+                // Let's assume end of day to be permissive, or just use date comparison.
+                // Actually CreatePostModal requires time, so we should rely on it if present.
+                // If no time, let's assume valid until end of that day.
+                eventDate.setHours(23, 59, 59);
+            }
+
+            if (eventDate < now) {
+                return res.status(400).json({ error: "Event has concluded" });
+            }
+        }
+
         const participants = postData.participants || [];
 
         if (participants.includes(uid)) {
@@ -598,6 +620,22 @@ router.delete('/:postId/join', async (req, res) => {
 
         if (postData.type !== 'event') {
             return res.status(400).json({ error: "Post is not an event" });
+        }
+
+        // Check for event expiration
+        if (postData.eventDetails && postData.eventDetails.date) {
+            const eventDate = new Date(postData.eventDetails.date);
+            const now = new Date();
+            if (postData.eventDetails.time) {
+                const [hours, minutes] = postData.eventDetails.time.split(':');
+                eventDate.setHours(hours, minutes);
+            } else {
+                eventDate.setHours(23, 59, 59);
+            }
+
+            if (eventDate < now) {
+                return res.status(400).json({ error: "Event has concluded" });
+            }
         }
 
         const participants = postData.participants || [];
