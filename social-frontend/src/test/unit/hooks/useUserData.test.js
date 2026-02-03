@@ -41,9 +41,6 @@ describe('useUserData', () => {
         expect(getUser).toHaveBeenCalledWith('user123');
     });
 
-    //Test: verifica che il hook gestisca correttamente l'assenza di utente loggato
-    it('dovrebbe restituire null se non c\'è currentUser', async () => {
-    });
 });
 
 //Gruppo di test per il hook useRoleData

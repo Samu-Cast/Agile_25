@@ -166,28 +166,37 @@ Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), 
 
 ---
 
-### Sprint 4
+### Sprint 4 / Feature aggiuntive per consegna
 **Data inizio**: 9 Gennaio 2026  
 **Data fine**: 5 Febbraio 2026 
 **Status**: Done
 
-**Sprint Goal**: Perfezionare test e ultime funzionalità del sistema
+**Sprint Goal**: Perfezionare test, sistema eventi e ultime funzionalità per la consegna
 
 **User Stories completate**:
-- US10:
-- US46:  
-- US28: 
+- US10: Segnalare problemi tecnici agli sviluppatori (Effort: 4) -> 4/4
+- US28: Cercare collezioni per categoria/parola chiave e filtrare (Effort: 5) -> 5/5
+- US34: Creare eventi/workshop propri, virtuali e fisici (Effort: 11) -> 11/11
+- US46: Visualizzare registro segnalazioni e archiviare risolte (Effort: 8) -> 8/8
 
+**User Stories parzialmente completate**:
+- US33: Partecipare a eventi online e visualizzare calendario (Effort: 13) -> 8/13 volontariamente
+- US35: Visualizzare calendario eventi e ricevere feedback (Effort: 8) -> 4/8 volontariamente
 
-
-
-**Story Points completati**: 
+**Story Points completati**: 40/49 (81.63%)
 
 **Descrizione**:
-
+Sprint finale focalizzato sul consolidamento delle funzionalità di testing frontend, implementazione del sistema eventi e rifinitura dell'applicazione per la consegna. Completato il sistema di segnalazione problemi con dashboard moderatori, ricerca/filtro collezioni, e creazione eventi da parte di Bar e Torrefazioni. Implementate le funzionalità di partecipazione eventi e parzialmente calendario (US33, US35) senza notifiche e feedback partecipanti.
 
 **Funzionalità implementate**:
-
+- **Testing**: Sistema completo di testing frontend con Jest e React Testing Library, copertura test incrementata
+- **Eventi**: Creazione eventi/workshop da Bar e Torrefazioni, partecipazione utenti (Join/Leave)
+- **Segnalazioni**: Sistema segnalazione problemi utenti, dashboard moderatori con priorità e archiviazione
+- **Collezioni**: Ricerca e filtro collezioni per categoria e parola chiave
+- **CI/CD**: Pipeline GitHub Actions funzionante su branch main
 
 **Note incrementate**:
-
+- Copertura test frontend incrementata con test intelligenti e utili
+- Documentazione completa del progetto aggiornata
+- CI/CD pipeline funzionante con GitHub Actions su main
+- Applicazione pronta per la consegna finale
