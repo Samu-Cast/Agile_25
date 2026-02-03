@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData, useRoleData } from '../hooks/useUserData';
-import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, getUserSavedGuides, toggleSavePost, updateVotes, deletePost, getUserEvents } from '../services/postService';
+import { getUserVotedPosts, getUserComments, getUserPosts, getUserSavedPosts, deletePost, getUserEvents } from '../services/postService';
 import { searchUsers, getUsersByUids, updateUserProfile, createRoleProfile, updateRoleProfile, followUser, unfollowUser, checkFollowStatus, getUser, getRoleProfile, getRoasteryProducts, createProduct, deleteProduct } from '../services/userService';
 import { validateImage } from '../services/imageService';
 import { getCollections, createCollection, deleteCollection, updateCollection, getUserSavedCollections, saveCollection, unsaveCollection } from '../services/collectionService';
@@ -12,10 +12,10 @@ import CollectionManager from '../components/CollectionManager';
 import PostCard from '../components/PostCard';
 import '../styles/pages/Profile.css';
 
-// Default images
+// Default images - eslint-disable-next-line to prevent unused variable warnings
+// These may be used in dynamic post rendering
+// eslint-disable-next-line no-unused-vars
 import defaultPostImage from '../image_post/defaults/default_post.png';
-import defaultComparisonImage from '../image_post/defaults/default_comparison.png';
-import defaultReviewImage from '../image_post/defaults/default_post.png';
 
 // Carousel Component
 const CollectionCarousel = ({ images }) => {
@@ -137,9 +137,9 @@ function Profile() {
     const [myComparisons, setMyComparisons] = useState([]);
     const [myComments, setMyComments] = useState([]);
     const [savedPosts, setSavedPosts] = useState([]);
-    const [savedGuides, setSavedGuides] = useState([]);
+    const [, setSavedGuides] = useState([]);
     const [savedCollections, setSavedCollections] = useState([]);
-    const [userCommunities, setUserCommunities] = useState([]);
+    const [, setUserCommunities] = useState([]);
     const [myEvents, setMyEvents] = useState([]);
 
     // Barista Association State
@@ -930,7 +930,7 @@ function Profile() {
 
     const renderContent = () => {
         let data = [];
-        let type = 'card'; // 'card' or 'comment'
+        // type variable removed - unused
 
         // Format posts data for display
         if (activeTab === 'posts') {
