@@ -20,7 +20,8 @@ Check individual endpoints for authentication requirements. Many endpoints requi
 - `filter` (string): `followed` to show only posts from followed users.
 - `sort` (string): `popular` (by votes) or default (newest first).
 - `communityId` (string): Filter by community ID.
-- `type` (string): Filter by post type (`post` or `review`).
+- `type` (string): Filter by post type (`post`, `review`, `event`).
+- `participatingUid` (string): Filter by user participation (for events).
 **Response:** Array of post objects.
 
 ### POST /api/posts
@@ -28,11 +29,13 @@ Check individual endpoints for authentication requirements. Many endpoints requi
 **Body:**
 - `uid` (string, required): ID of the user creating the post.
 - `text` (string, required): Content of the post.
-- `type` (string): `post` (default) or `review`.
+- `type` (string): `post` (default), `review`, or `event`.
 - `communityId` (string): Optional community ID.
 - `imageUrl` (string): Optional legacy image URL.
 - `mediaUrls` (array): Optional list of media URLs.
 - `reviewData` (object): Required if `type` is `review`. Contains `rating` (0.5-5), `itemName`, `itemType`, `brand`.
+- `eventDetails` (object): Required if `type` is `event`. Contains `title`, `date`, `time`, `location`.
+- `hosts` (array): Optional array of host UIDs for the event.
 **Response:** The created post object with its ID.
 
 ### GET /api/posts/:postId/comments
@@ -98,6 +101,18 @@ Check individual endpoints for authentication requirements. Many endpoints requi
 **Body:**
 - `uid` (string, required): User ID of the requester.
 **Response:** Success message.
+
+### POST /api/posts/:postId/join
+**Description:** Joins an event.
+**Body:**
+- `uid` (string, required): User ID.
+**Response:** Message and updated `participants` list. Returns `400 Bad Request` if event is expired.
+
+### DELETE /api/posts/:postId/join
+**Description:** Leaves an event.
+**Body:**
+- `uid` (string, required): User ID.
+**Response:** Message and updated `participants` list. Returns `400 Bad Request` if event is expired.
 
 ---
 

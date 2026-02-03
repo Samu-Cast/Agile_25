@@ -13,6 +13,20 @@ import defaultComparisonImage from '../image_post/defaults/default_comparison.pn
 
 
 
+const isEventExpired = (eventDetails) => {
+    if (!eventDetails || !eventDetails.date) return false;
+    const eventDate = new Date(eventDetails.date);
+    const now = new Date();
+
+    if (eventDetails.time) {
+        const [hours, minutes] = eventDetails.time.split(':');
+        eventDate.setHours(hours, minutes);
+    } else {
+        eventDate.setHours(23, 59, 59);
+    }
+    return eventDate < now;
+};
+
 const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }) => {
     const [userVote, setUserVote] = useState(post.userVote || 0);
     const [voteCount, setVoteCount] = useState(post.votes || 0);
@@ -22,6 +36,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
 
     const isReview = post.type === 'review';
     const isEvent = post.type === 'event';
+    const isExpired = isEvent && isEventExpired(post.eventDetails);
 
     const [isParticipating, setIsParticipating] = useState(post.participants?.includes(currentUser?.uid) || false);
     const [participantsCount, setParticipantsCount] = useState(post.participants?.length || 0);
@@ -153,7 +168,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                     {/* Event Badge */}
                     {isEvent && (
                         <div className="event-badge" style={{
-                            backgroundColor: '#E67E22',
+                            backgroundColor: isExpired ? '#95a5a6' : '#E67E22',
                             color: 'white',
                             padding: '4px 12px',
                             borderRadius: '16px',
@@ -164,7 +179,7 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
                             gap: '5px',
                             marginLeft: 'auto' // Move to right
                         }}>
-                            📅 Evento
+                            {isExpired ? '🏁 Concluso' : '📅 Evento'}
                         </div>
                     )}
                     {/* Comparison Badge */}
@@ -262,19 +277,22 @@ const PostCard = ({ post, currentUser, isLoggedIn, showCommunityInfo, onDelete }
 
                             {!isCreator ? (
                                 <button
-                                    onClick={handleJoinEvent}
+                                    onClick={!isExpired ? handleJoinEvent : undefined}
                                     style={{
-                                        backgroundColor: isParticipating ? '#eee' : '#E67E22',
-                                        color: isParticipating ? '#333' : 'white',
+                                        backgroundColor: isExpired ? '#e0e0e0' : (isParticipating ? '#eee' : '#E67E22'),
+                                        color: isExpired ? '#999' : (isParticipating ? '#333' : 'white'),
                                         border: 'none',
                                         padding: '8px 20px',
                                         borderRadius: '20px',
                                         fontWeight: 'bold',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
+                                        cursor: isExpired ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s',
+                                        opacity: isExpired ? 0.7 : 1
                                     }}
+                                    disabled={isExpired}
+                                    title={isExpired ? "Evento concluso" : ""}
                                 >
-                                    {isParticipating ? '✓ Parteciperai' : 'Partecipa +'}
+                                    {isExpired ? 'Concluso' : (isParticipating ? '✓ Parteciperai' : 'Partecipa +')}
                                 </button>
                             ) : (
                                 <button
