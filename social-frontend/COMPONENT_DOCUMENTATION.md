@@ -171,7 +171,7 @@ This document provides a detailed overview of the frontend components in the `so
 **Description**: A comprehensive profile page handling various user roles (Appassionato, Bar, Torrefazione).
 
 *   **Functionality**:
-*   **Tabs**: Posts, Upvoted, Downvoted, Reviews, Comments, Saved, Products, Collections, etc.
+*   **Tabs**: Post, Eventi, Recensioni, Confronti, Voti (Private), Commenti, Collezioni Salvate (Private), Post Salvati (Private), Prodotti (Torrefazione), Collezioni (Torrefazione).
 *   **Post Display**: Uses `PostCard` to display all content types (Posts, Reviews, Comparisons, Saved Posts, Votes) as full cards instead of grid items.
 *   **Statistics**: Displays user stats including Post count, Review count, Comparison count, Followers, and Following.
 *   **Role Logic**: Different layout and data for standard users vs. business accounts.

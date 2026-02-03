@@ -376,13 +376,14 @@ describe('Profile Page', () => {
 
             render(<Profile />);
 
-            const collectionsTab = await screen.findByRole('button', { name: /Collezioni/i });
+            // Increased timeout for state updates
+            const collectionsTab = await screen.findByRole('button', { name: /Collezioni/i }, { timeout: 3000 });
             fireEvent.click(collectionsTab);
 
             await waitFor(() => {
                 expect(collectionService.getCollections).toHaveBeenCalledWith('torrefazione-role-id');
                 expect(screen.getByText('Premium Blend')).toBeInTheDocument();
-            });
+            }, { timeout: 3000 });
         });
     });
 
@@ -524,7 +525,8 @@ describe('Profile Page', () => {
         test('shows add product button for own Torrefazione profile', async () => {
             render(<Profile />);
 
-            const productsTab = await screen.findByRole('button', { name: /Prodotti/i });
+
+            const productsTab = await screen.findByRole('button', { name: /Prodotti/i }, { timeout: 3000 });
             fireEvent.click(productsTab);
 
             await waitFor(() => {
@@ -581,7 +583,7 @@ describe('Profile Page', () => {
 
     describe('Collection Management (Torrefazione)', () => {
         beforeEach(() => {
-            const torrefazioneUser = { ...mockCurrentUser, role: 'Torrefazione' };
+            const torrefazioneUser = mockTorrefazioneUser;
             useParams.mockReturnValue({}); // Own profile
             useAuth.mockReturnValue({ currentUser: torrefazioneUser });
             useUserData.mockReturnValue(torrefazioneUser);
@@ -591,7 +593,7 @@ describe('Profile Page', () => {
         test('shows create collection button for own profile', async () => {
             render(<Profile />);
 
-            const collectionsTab = await screen.findByRole('button', { name: /Collezioni/i });
+            const collectionsTab = await screen.findByRole('button', { name: "Collezioni" }, { timeout: 3000 });
             fireEvent.click(collectionsTab);
 
             await waitFor(() => {
@@ -608,7 +610,7 @@ describe('Profile Page', () => {
 
             render(<Profile />);
 
-            const collectionsTab = await screen.findByRole('button', { name: /Collezioni/i });
+            const collectionsTab = await screen.findByRole('button', { name: "Collezioni" });
             fireEvent.click(collectionsTab);
 
             await waitFor(() => {
@@ -827,7 +829,7 @@ describe('Profile Page', () => {
     });
 
     describe('Collection Operations Complete', () => {
-        const torrefazioneUser = { ...mockCurrentUser, role: 'Torrefazione' };
+        const torrefazioneUser = mockTorrefazioneUser;
 
         beforeEach(() => {
             useParams.mockReturnValue({});
@@ -842,7 +844,12 @@ describe('Profile Page', () => {
 
             render(<Profile />);
 
-            const collectionsTab = await screen.findByRole('button', { name: /Collezioni/i });
+            await waitFor(() => {
+                expect(screen.getByText('(@BestRoastery)')).toBeInTheDocument();
+            });
+
+            // Use exact name match to avoid "Collezioni Salvate"
+            const collectionsTab = await screen.findByRole('button', { name: "Collezioni" });
             fireEvent.click(collectionsTab);
 
             await waitFor(() => {

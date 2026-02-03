@@ -136,7 +136,7 @@ The `Profile.js` page (1512 lines) is the most complex component, handling multi
 **Test Structure** (29 tests: 26 passing, 3 skipped):
 - **Basic Rendering**: Loading states, authentication, role-specific profiles
 - **Follow System**: Follow/unfollow with optimistic updates
-- **Tab Switching**: All role-specific tabs (posts, reviews, comments, saved, products, collections)
+- **Tab Switching**: All role-specific tabs (Post, Eventi, Recensioni, Confronti, Voti, Commenti, Collezioni Salvate, Post Salvati, Prodotti, Collezioni).
 - **Edit Profile**: Drawer functionality, form updates, save operations
 - **Post Interactions**: Saved posts, delete posts
 - **Product Management**: Add/delete products (Torrefazione role)

@@ -589,13 +589,11 @@ function Profile() {
                 });
             };
 
-            if (activeTab === 'votes' && user.role === 'Appassionato') {
+            if (activeTab === 'votes') {
                 if (isOwnProfile) {
                     const up = await getUserVotedPosts(user.uid, 1);
                     const down = await getUserVotedPosts(user.uid, -1);
                     // Merge and add type
-                    // Enrich to get author details if needed, though voted posts display usually relies on content
-                    // But if we want author name on the card...
                     const upEnriched = await enrichPosts(up);
                     const downEnriched = await enrichPosts(down);
 
@@ -603,7 +601,6 @@ function Profile() {
                     const downMapped = downEnriched.map(p => ({ ...p, voteType: 'down' }));
 
                     const allVoted = [...upMapped, ...downMapped];
-                    // Sort by date descending (newest first)
                     allVoted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
                     setVotedPosts(allVoted);
@@ -616,7 +613,7 @@ function Profile() {
             else if (activeTab === 'comments') {
                 const comments = await getUserComments(user.uid);
                 setMyComments(comments);
-            } else if (activeTab === 'savedPosts' && user.role === 'Appassionato') {
+            } else if (activeTab === 'savedPosts') {
                 if (isOwnProfile) {
                     const posts = await getUserSavedPosts(user.uid);
 
@@ -632,7 +629,7 @@ function Profile() {
                     const formattedPosts = posts.map(p => ({
                         ...p,
                         author: userMap[p.uid] || p.uid,
-                        authorName: userMap[p.uid] || p.uid, // PostCard uses authorName or author
+                        authorName: userMap[p.uid] || p.uid,
                         title: p.text ? (p.text.substring(0, 50) + (p.text.length > 50 ? "..." : "")) : "No Title",
                         content: p.text,
                         image: p.imageUrl,
@@ -643,11 +640,6 @@ function Profile() {
 
                     setSavedPosts(formattedPosts.map(p => ({ ...p, isSaved: true })));
                 }
-            } else if (activeTab === 'savedGuides' && user.role === 'Appassionato') {
-                if (isOwnProfile) {
-                    const guides = await getUserSavedGuides(user.uid);
-                    setSavedGuides(guides);
-                }
             } else if (activeTab === 'products' && user.role && user.role.toLowerCase() === 'torrefazione') {
                 if (roleData && roleData.id) {
                     const products = await getRoasteryProducts(roleData.id);
@@ -657,29 +649,25 @@ function Profile() {
                 if (roleData && roleData.id) {
                     const collections = await getCollections(roleData.id);
                     setRoasteryCollections(collections);
-                    // Also fetch products for the manager (owner) OR for details popup (visitor)
                     const products = await getRoasteryProducts(roleData.id);
                     setRoasteryProducts(products);
                 }
-            } else if (activeTab === 'savedCollections' && user.role === 'Appassionato') {
+            } else if (activeTab === 'savedCollections') {
                 if (isOwnProfile) {
                     const collections = await getUserSavedCollections(user.uid);
                     setSavedCollections(collections);
                 }
-            } else if (activeTab === 'communities' && user.role === 'Appassionato') {
+            } else if (activeTab === 'communities') {
+                // Keep for legacy/fallback if needed, but not in main tabs anymore
                 const communities = await getUserCommunities(user.uid);
                 setUserCommunities(communities);
             }
-            // Guides would be fetched here if we had a backend for them
         };
 
         fetchData();
     }, [activeTab, user, isOwnProfile, roleData]);
 
-    // Mock Content Data (Removed static mocks for dynamic tabs)
-    const guides = [
-        { id: 1, title: "V60 Brewing Guide", image: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=400", type: "Guide" },
-    ];
+    const guides = [];
 
     const handleSaveCollection = async (collectionData) => {
         try {
@@ -972,181 +960,13 @@ function Profile() {
             data = guides;
         }
 
-        // Appassionato Specific Tabs
-        if (user.role === 'Appassionato') {
-            if (activeTab === 'votes') {
-                data = votedPosts.map(p => ({
-                    ...p,
-                    // Preserve original type, do not overwrite with 'Upvoted'
-                    // Ensure userVote is set correctly for display in PostCard
-                    userVote: p.voteType === 'up' ? 1 : -1
-                }));
-            }
-            if (activeTab === 'comments') {
-                type = 'comment';
-                data = myComments;
-            }
-            if (activeTab === 'savedPosts') return renderPostGrid(savedPosts, "Nessun post salvato.");
-
-            if (activeTab === 'savedGuides') return renderPostGrid(savedGuides, "Nessuna guida salvata.");
-            if (activeTab === 'savedCollections') {
-                // Filter Logic
-                let filtered = [...savedCollections];
-
-                if (filterOccasion) {
-                    filtered = filtered.filter(c => c.occasion === filterOccasion);
-                }
-
-                // Sort Logic
-                if (sortPriceOrder) {
-                    filtered.sort((a, b) => {
-                        const priceA = calculateCollectionPrice(a);
-                        const priceB = calculateCollectionPrice(b);
-                        return sortPriceOrder === 'asc' ? priceA - priceB : priceB - priceA;
-                    });
-                }
-
-                return (
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                        {/* Filter Sidebar */}
-                        <div style={{
-                            width: '250px',
-                            flexShrink: 0,
-                            padding: '20px',
-                            background: '#fff',
-                            borderRadius: '12px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                            position: 'sticky',
-                            top: '20px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '20px'
-                        }}>
-                            <h4 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>Filtri</h4>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Occasione</label>
-                                <select
-                                    value={filterOccasion}
-                                    onChange={(e) => setFilterOccasion(e.target.value)}
-                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
-                                >
-                                    <option value="">Tutte</option>
-                                    <option value="Festa del Papà">Festa del Papà</option>
-                                    <option value="Colazione">Colazione</option>
-                                    <option value="Pausa Caffè">Pausa Caffè</option>
-                                    <option value="Dopo Cena">Dopo Cena</option>
-                                    <option value="Regalo">Regalo</option>
-                                    <option value="Degustazione">Degustazione</option>
-                                </select>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Ordina per Prezzo</label>
-                                <select
-                                    value={sortPriceOrder}
-                                    onChange={(e) => setSortPriceOrder(e.target.value)}
-                                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
-                                >
-                                    <option value="">Nessun ordine</option>
-                                    <option value="asc">Crescente (Low to High)</option>
-                                    <option value="desc">Decrescente (High to Low)</option>
-                                </select>
-                            </div>
-
-                            <button
-                                onClick={() => { setFilterOccasion(''); setSortPriceOrder(''); }}
-                                style={{
-                                    padding: '10px',
-                                    marginTop: '10px',
-                                    background: '#eee',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    color: '#666'
-                                }}
-                            >
-                                Reset Filtri
-                            </button>
-                        </div>
-
-                        {/* Main Grid Content */}
-                        <div style={{ flexGrow: 1 }}>
-                            <div className="profile-content-grid">
-                                {filtered.length > 0 ? filtered.map(collection => (
-                                    <div
-                                        key={collection.id}
-                                        className="content-item"
-                                        onClick={() => showSavedCollectionDetails(collection)}
-                                        style={{ marginBottom: '0' }}
-                                    >
-                                        {collection.products?.length > 0 && collection.products[0]?.imageUrl ? (
-                                            <img
-                                                src={collection.products[0].imageUrl}
-                                                alt={collection.name}
-                                                className="content-image"
-                                            />
-                                        ) : (
-                                            <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
-                                                🍹
-                                            </div>
-                                        )}
-                                        <div className="content-info">
-                                            <h3 className="content-title">{collection.name}</h3>
-                                            <p className="content-preview">di {collection.roasterName}</p>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.8rem', color: '#8D6E63' }}>{collection.products?.length || 0} prodotti</span>
-                                                <span style={{ fontWeight: 'bold', color: '#6F4E37' }}>€{calculateCollectionPrice(collection).toFixed(2)}</span>
-                                            </div>
-                                            {collection.occasion && <span className="collection-badge" style={{ fontSize: '0.7rem', background: '#eee', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{collection.occasion}</span>}
-                                        </div>
-                                    </div>
-                                )) : (
-                                    <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
-                                        Nessuna collezione trovata con questi filtri.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-            if (activeTab === 'communities') {
-                return (
-                    <div className="profile-content-grid">
-                        {userCommunities.length > 0 ? userCommunities.map(community => (
-                            <div
-                                key={community.id}
-                                className="content-item"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => {
-                                    // Navigate to home with community feed hash
-                                    window.location.href = '/';
-                                    // Store in sessionStorage for Home to pick up
-                                    sessionStorage.setItem('openCommunity', `community-${community.id}`);
-                                }}
-                            >
-                                {community.avatar ? (
-                                    <img src={community.avatar} alt={community.name} className="content-image" />
-                                ) : (
-                                    <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
-                                        👥
-                                    </div>
-                                )}
-                                <div className="content-info">
-                                    <h3 className="content-title">{community.name}</h3>
-                                    <span className="content-preview">Iscritto dal {community.joinedAt ? new Date(community.joinedAt).toLocaleDateString('it-IT') : 'N/A'}</span>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="empty-state">Non sei iscritto a nessuna comunità. Esplora le comunità dalla homepage!</div>
-                        )}
-                    </div>
-                );
-            }
-
+        if (activeTab === 'votes') {
+            // Already mapped to display-like objects in fetchData, 
+            // but here we might need to render them as posts.
+            // Reusing renderPostGrid for consistency
+            return renderPostGrid(votedPosts, "Nessun post votato.");
         }
+
 
         if (activeTab === 'reviews') {
             return renderPostGrid(myReviews, "Nessuna recensione trovata.");
@@ -1156,14 +976,14 @@ function Profile() {
             return renderPostGrid(myComparisons, "Nessun confronto trovato.");
         }
 
-        if (data.length === 0 && activeTab !== 'products' && activeTab !== 'collections') {
+        if (data.length === 0 && activeTab !== 'products' && activeTab !== 'collections' && activeTab !== 'comments' && activeTab !== 'savedCollections') {
             return <div className="empty-state">Nessun contenuto trovato.</div>;
         }
 
-        if (type === 'comment') {
+        if (activeTab === 'comments') {
             return (
                 <div className="profile-comments-list">
-                    {data.map(item => (
+                    {myComments.map(item => (
                         <div key={item.id} className="profile-comment-item">
                             {item.postTitle && (
                                 <p className="comment-post-title">
@@ -1180,9 +1000,130 @@ function Profile() {
             );
         }
 
-        if (activeTab === 'savedPosts') {
-            return renderPostGrid(data, "Nessun post salvato.");
+        if (activeTab === 'savedPosts') return renderPostGrid(savedPosts, "Nessun post salvato.");
+
+        if (activeTab === 'savedCollections') {
+            // Filter Logic
+            let filtered = [...savedCollections];
+            if (filterOccasion) {
+                filtered = filtered.filter(c => c.occasion === filterOccasion);
+            }
+            // Sort Logic
+            if (sortPriceOrder) {
+                filtered.sort((a, b) => {
+                    const priceA = calculateCollectionPrice(a);
+                    const priceB = calculateCollectionPrice(b);
+                    return sortPriceOrder === 'asc' ? priceA - priceB : priceB - priceA;
+                });
+            }
+
+            return (
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                    {/* Filter Sidebar */}
+                    <div style={{
+                        width: '250px',
+                        flexShrink: 0,
+                        padding: '20px',
+                        background: '#fff',
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                        position: 'sticky',
+                        top: '20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '20px'
+                    }}>
+                        <h4 style={{ margin: '0 0 10px 0', color: '#6F4E37' }}>Filtri</h4>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Occasione</label>
+                            <select
+                                value={filterOccasion}
+                                onChange={(e) => setFilterOccasion(e.target.value)}
+                                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                            >
+                                <option value="">Tutte</option>
+                                <option value="Festa del Papà">Festa del Papà</option>
+                                <option value="Colazione">Colazione</option>
+                                <option value="Pausa Caffè">Pausa Caffè</option>
+                                <option value="Dopo Cena">Dopo Cena</option>
+                                <option value="Regalo">Regalo</option>
+                                <option value="Degustazione">Degustazione</option>
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#555' }}>Ordina per Prezzo</label>
+                            <select
+                                value={sortPriceOrder}
+                                onChange={(e) => setSortPriceOrder(e.target.value)}
+                                style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', width: '100%' }}
+                            >
+                                <option value="">Nessun ordine</option>
+                                <option value="asc">Crescente (Low to High)</option>
+                                <option value="desc">Decrescente (High to Low)</option>
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={() => { setFilterOccasion(''); setSortPriceOrder(''); }}
+                            style={{
+                                padding: '10px',
+                                marginTop: '10px',
+                                background: '#eee',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                color: '#666'
+                            }}
+                        >
+                            Reset Filtri
+                        </button>
+                    </div>
+
+                    {/* Main Grid Content */}
+                    <div style={{ flexGrow: 1 }}>
+                        <div className="profile-content-grid">
+                            {filtered.length > 0 ? filtered.map(collection => (
+                                <div
+                                    key={collection.id}
+                                    className="content-item"
+                                    onClick={() => showSavedCollectionDetails(collection)}
+                                    style={{ marginBottom: '0' }}
+                                >
+                                    {collection.products?.length > 0 && collection.products[0]?.imageUrl ? (
+                                        <img
+                                            src={collection.products[0].imageUrl}
+                                            alt={collection.name}
+                                            className="content-image"
+                                        />
+                                    ) : (
+                                        <div className="content-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #6F4E37, #8D6E63)', color: 'white', fontSize: '2rem' }}>
+                                            🍹
+                                        </div>
+                                    )}
+                                    <div className="content-info">
+                                        <h3 className="content-title">{collection.name}</h3>
+                                        <p className="content-preview">di {collection.roasterName}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.8rem', color: '#8D6E63' }}>{collection.products?.length || 0} prodotti</span>
+                                            <span style={{ fontWeight: 'bold', color: '#6F4E37' }}>€{calculateCollectionPrice(collection).toFixed(2)}</span>
+                                        </div>
+                                        {collection.occasion && <span className="collection-badge" style={{ fontSize: '0.7rem', background: '#eee', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>{collection.occasion}</span>}
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+                                    Nessuna collezione trovata con questi filtri.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
         }
+
 
         if (activeTab === 'products') {
             return (
@@ -1507,96 +1448,68 @@ function Profile() {
                 >
                     Eventi
                 </button>
+                <button
+                    className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('reviews')}
+                >
+                    Recensioni
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'comparisons' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('comparisons')}
+                >
+                    Confronti
+                </button>
 
-                {
-                    user.role === 'Appassionato' && (
-                        <>
-                            {isOwnProfile && (
-                                <>
-                                    <button
-                                        className={`tab-button ${activeTab === 'votes' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('votes')}
-                                    >
-                                        Voti
-                                    </button>
-                                </>
-                            )}
-                            <button
-                                className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('reviews')}
-                            >
-                                Recensioni
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('comments')}
-                            >
-                                Commenti
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'comparisons' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('comparisons')}
-                            >
-                                Confronti
-                            </button>
-                            {isOwnProfile && (
-                                <>
-                                    <button
-                                        className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('savedPosts')}
-                                    >
-                                        Post Salvati
-                                    </button>
-                                    <button
-                                        className={`tab-button ${activeTab === 'savedCollections' ? 'active' : ''}`}
-                                        onClick={() => setActiveTab('savedCollections')}
-                                    >
-                                        Collezioni Salvate
-                                    </button>
-                                </>
-                            )}
+                {isOwnProfile && (
+                    <button
+                        className={`tab-button ${activeTab === 'votes' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('votes')}
+                    >
+                        Voti
+                    </button>
+                )}
 
-                        </>
-                    )
-                }
-                {
-                    (user.role === 'Bar' || (user.role && user.role.toLowerCase() === 'torrefazione')) && (
+                <button
+                    className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('comments')}
+                >
+                    Commenti
+                </button>
+
+                {isOwnProfile && (
+                    <>
                         <button
-                            className={`tab-button ${activeTab === 'reviews' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('reviews')}
+                            className={`tab-button ${activeTab === 'savedCollections' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('savedCollections')}
                         >
-                            Recensioni
+                            Collezioni Salvate
                         </button>
-                    )
-                }
-                {
-                    (user.role === 'Bar' || (user.role && user.role.toLowerCase() === 'torrefazione')) && (
                         <button
-                            className={`tab-button ${activeTab === 'guides' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('guides')}
+                            className={`tab-button ${activeTab === 'savedPosts' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('savedPosts')}
                         >
-                            Guide
+                            Post Salvati
                         </button>
-                    )
-                }
-                {
-                    user.role && user.role.toLowerCase() === 'torrefazione' && (
-                        <>
-                            <button
-                                className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('products')}
-                            >
-                                Prodotti
-                            </button>
-                            <button
-                                className={`tab-button ${activeTab === 'collections' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('collections')}
-                            >
-                                Collezioni
-                            </button>
-                        </>
-                    )
-                }
+                    </>
+                )}
+
+                {user.role && user.role.toLowerCase() === 'torrefazione' && (
+                    <>
+                        <button
+                            className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('products')}
+                        >
+                            Prodotti
+                        </button>
+                        <button
+                            className={`tab-button ${activeTab === 'collections' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('collections')}
+                        >
+                            Collezioni
+                        </button>
+                    </>
+                )}
             </div >
 
             {/* Content Area */}
