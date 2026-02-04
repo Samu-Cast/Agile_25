@@ -2,7 +2,7 @@
 
 **Data Sprint**: 13 Dicembre 2025 - 8 Gennaio 2026  
 **Durata**: ~4 settimane (include pausa festiva)  
-**Partecipanti**: tutti
+**Partecipanti**: Tutti
 
 ---
 

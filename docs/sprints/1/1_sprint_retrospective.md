@@ -85,7 +85,7 @@
    - Discutere sufunzionalità incerte e stime relative (campo nuovo per tutti)
 
 2. **Documentazione**
-   - Documentare sprint e raffinare il file 'increment.md'
+   - Documentare sprint e raffinare il file `increment.md`
    - Aggiornare README durante sviluppo
 
 ### Team

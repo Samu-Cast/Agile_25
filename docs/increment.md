@@ -12,7 +12,6 @@ Per essere considerato "Done", un Increment deve soddisfare tutti i seguenti cri
 
 ### Code Quality
 - Il codice è stato scritto seguendo le convenzioni del progetto
-- Il codice è stato revisionato da almeno un altro membro del team (Code Review)
 - Non ci sono conflitti di merge irrisolti
 - Non ci sono warning 
 
@@ -20,7 +19,6 @@ Per essere considerato "Done", un Increment deve soddisfare tutti i seguenti cri
 - Tutti i test unitari esistenti passano
 - Nuovi test unitari sono stati scritti per le nuove funzionalità
 - Code coverage minimo del 70% per il codice modificato
-- Test di integrazione passano (dove applicabile)
 - Test manuali completati e documentati
 
 ### Documentation
@@ -166,7 +164,7 @@ Implementazione completa del sistema di recensioni con punteggio (tazzine 1-5), 
 
 ---
 
-### Sprint 4 / Feature aggiuntive per consegna
+### Feature aggiuntive per consegna
 **Data inizio**: 9 Gennaio 2026  
 **Data fine**: 5 Febbraio 2026 
 **Status**: Done

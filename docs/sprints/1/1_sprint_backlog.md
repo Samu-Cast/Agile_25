@@ -2,7 +2,7 @@
 
 **Data Sprint**: 14 Novembre 2025 - 27 Novembre 2025  
 **Durata**: 2 settimane  
-**Partecipanti**: tutti
+**Partecipanti**: Tutti
 
 ---
 
