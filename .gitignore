@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build output
+build/
+dist/
+
+# IDE
+.idea/
+
+# Firebase
+.firebase/
+
+# Coverage
+coverage/

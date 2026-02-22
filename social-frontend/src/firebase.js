@@ -3,14 +3,14 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
-// FIREBASE CONFIG
+// FIREBASE CONFIG (loaded from environment variables)
 const firebaseConfig = {
-  apiKey: "AIzaSyBUqVOuYrLYAgEBXpYFvnHKCGv798h5KqI",
-  authDomain: "brewhub-bd760.firebaseapp.com",
-  projectId: "brewhub-bd760",
-  storageBucket: "brewhub-bd760.firebasestorage.app",
-  messagingSenderId: "527787031458",
-  appId: "1:527787031458:web:937fde47a28b5c419690fb"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
