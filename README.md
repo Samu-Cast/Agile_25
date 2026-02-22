@@ -13,6 +13,7 @@
 </div>
 
 > **Descrizione formale** 
+
 > Questo è un progetto di gruppo realizzato durante il corso universitario di **Metodi e sviluppo Agile**. È stato sviluppato in team da 4 studenti seguendo la metodologia **Scrum**, con sprint planning, retrospettive, CI/CD e test automatizzati. Il codice riflette un'esperienza reale di sviluppo collaborativo in ambito accademico.
 
 ---
