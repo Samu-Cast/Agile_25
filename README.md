@@ -1,4 +1,4 @@
-# ☕ BrewHub - Piattaforma Social per il Caffè Artigianale
+# BrewHub - Piattaforma Social per il Caffè Artigianale
 
 <div align="center">
 
@@ -12,29 +12,31 @@
 
 </div>
 
+> **Descrizione formale** Questo è un progetto di gruppo realizzato durante il corso universitario di **Metodi e sviluppo Agile**. È stato sviluppato in team da 4 studenti seguendo la metodologia **Scrum**, con sprint planning, retrospettive, CI/CD e test automatizzati. Il codice riflette un'esperienza reale di sviluppo collaborativo in ambito accademico.
+
 ---
 
-## 📖 Descrizione
+## Descrizione
 
 **BrewHub** è una piattaforma social dedicata alla community del caffè artigianale, sviluppata seguendo la metodologia **Agile/Scrum**. L'applicazione consente a tre tipologie di utenti di connettersi e interagire:
 
 | Ruolo | Descrizione |
 |-------|-------------|
-| ☕ **Appassionato** | Amante del caffè che recensisce, scopre nuove miscele e segue esperti |
-| 👨‍🍳 **Barista** | Professionista con profilo bar e gestione team di baristi associati |
-| 🏭 **Torrefazione** | Azienda produttrice con profilo aziendale e catalogo prodotti |
+| **Appassionato** | Amante del caffè che recensisce, scopre nuove miscele e segue esperti |
+| **Barista** | Professionista con profilo bar e gestione team di baristi associati |
+| **Torrefazione** | Azienda produttrice con profilo aziendale e catalogo prodotti |
 
 ---
 
-## ✨ Funzionalità Principali
+## Funzionalità Principali
 
-### 🔐 Autenticazione e Gestione Utenti
+### Autenticazione e Gestione Utenti
 - Registrazione e login sicuri tramite **Firebase Authentication**
 - Recupero password via email
 - Profili utente personalizzati con ruoli distinti
 - Gestione team (Barista) e staff (Torrefazione)
 
-### 📱 Sistema Social
+### Sistema Social
 - Creazione e pubblicazione di post con testo e immagini
 - Sistema di **upvote/downvote** per i post
 - **Commenti con thread** (risposte ai commenti)
@@ -43,24 +45,24 @@
 - **Tagging** utenti nei post
 - **Messaggi diretti** tra utenti
 
-### ⭐ Recensioni e Valutazioni
+### Recensioni e Valutazioni
 - Sistema di **punteggio tazzine** (1-5)
 - Recensioni testuali dettagliate con possibilità di risposta
 - Inserimento **dati tecnici** sulla preparazione (temperatura, umidità, pressione)
 - Storico recensioni e contributi per utente
 
-### 📂 Collezioni Prodotti
+### Collezioni Prodotti
 - Creazione collezioni
 - **Confronto** tra diverse miscele di caffè
 - Ricerca e filtri per categoria e tag
 
-### 🔍 Ricerca
+### Ricerca
 - Ricerca utenti per nome, nickname o email
 - Ricerca bar e torrefazioni per nome o città
 
 ---
 
-## 🛠️ Tecnologie Utilizzate
+## Tecnologie Utilizzate
 
 | Categoria | Tecnologia |
 |-----------|------------|
@@ -75,7 +77,7 @@
 
 ---
 
-## 📁 Struttura del Progetto
+## Struttura del Progetto
 
 ```
 Agile_25/
@@ -108,7 +110,7 @@ Agile_25/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisiti
 
@@ -156,7 +158,7 @@ Agile_25/
 
 ---
 
-## ▶️ Avvio dell'Applicazione
+## Avvio dell'Applicazione
 
 **Backend** (Terminal 1):
 ```bash
@@ -174,7 +176,7 @@ npm start
 
 ---
 
-## 🧪 Testing
+## Testing
 
 **Backend**:
 ```bash
@@ -186,13 +188,13 @@ npm test -- --coverage      # Con report coverage
 **Frontend**:
 ```bash
 cd social-frontend
-npm test                    # Modalità interattiva
+npm test                                 # Modalità interattiva
 npm test -- --watchAll=false --coverage  # Esecuzione singola con coverage
 ```
 
 ---
 
-## 📚 Documentazione
+## Documentazione
 
 | Documento | Descrizione |
 |-----------|-------------|
@@ -202,7 +204,7 @@ npm test -- --watchAll=false --coverage  # Esecuzione singola con coverage
 
 ---
 
-## 👥 Team di Sviluppo
+## Team di Sviluppo
 
 **Progetto Agile 25/26**
 
@@ -215,7 +217,7 @@ npm test -- --watchAll=false --coverage  # Esecuzione singola con coverage
 
 ---
 
-## 📄 License
+## License
 
 Progetto accademico - Università degli Studi
 
@@ -223,6 +225,6 @@ Progetto accademico - Università degli Studi
 
 <div align="center">
 
-Made with ☕ and ❤️ by the BrewHub Team
+Made with love by the BrewHub Team
 
 </div>
